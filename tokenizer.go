@@ -106,8 +106,8 @@ type Tokenizer struct {
 	current rune
 }
 
-// NewTokenizer creates a new Tokenizer for the given input
-func NewTokenizer(input string) *Tokenizer {
+// newTokenizer creates a new Tokenizer for the given input
+func newTokenizer(input string) *Tokenizer {
 	t := &Tokenizer{
 		input: input,
 		pos:   0,

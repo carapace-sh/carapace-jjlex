@@ -66,22 +66,22 @@ type CompletionContext struct {
 	Message string
 }
 
-// CompletionAnalyzer analyzes revset expressions for completion context
-type CompletionAnalyzer struct {
+// completionAnalyzer analyzes revset expressions for completion context
+type completionAnalyzer struct {
 	input string
 }
 
 // NewCompletionAnalyzer creates a new analyzer for the given input and cursor position
-func NewCompletionAnalyzer(input string) *CompletionAnalyzer {
-	return &CompletionAnalyzer{
+func newCompletionAnalyzer(input string) *completionAnalyzer {
+	return &completionAnalyzer{
 		input: input,
 	}
 }
 
 // Analyze returns the completion context at the cursor position
-func (ca *CompletionAnalyzer) Analyze() CompletionContext {
+func (ca *completionAnalyzer) Analyze() CompletionContext {
 	// Tokenize up to cursor position
-	tokenizer := NewTokenizer(ca.input)
+	tokenizer := newTokenizer(ca.input)
 	tokens := tokenizer.TokenizeAll()
 
 	ctx := CompletionContext{
@@ -158,7 +158,7 @@ func (ca *CompletionAnalyzer) Analyze() CompletionContext {
 }
 
 // analyzeSymbolCompletion handles completion for symbol tokens
-func (ca *CompletionAnalyzer) analyzeSymbolCompletion(ctx CompletionContext, tokens []Token, lastToken Token) CompletionContext {
+func (ca *completionAnalyzer) analyzeSymbolCompletion(ctx CompletionContext, tokens []Token, lastToken Token) CompletionContext {
 	ctx.Prefix = lastToken.Value
 
 	// Check if previous token is '('
@@ -181,7 +181,7 @@ func (ca *CompletionAnalyzer) analyzeSymbolCompletion(ctx CompletionContext, tok
 }
 
 // analyzeFunctionArgument handles completion inside function arguments
-func (ca *CompletionAnalyzer) analyzeFunctionArgument(ctx CompletionContext, tokens []Token) CompletionContext {
+func (ca *completionAnalyzer) analyzeFunctionArgument(ctx CompletionContext, tokens []Token) CompletionContext {
 	// Find the function name
 	funcNameToken := ca.findFunctionName(tokens, len(tokens)-1)
 	if funcNameToken == nil {
@@ -209,7 +209,7 @@ func (ca *CompletionAnalyzer) analyzeFunctionArgument(ctx CompletionContext, tok
 }
 
 // analyzePatternPrefix handles completion after pattern prefix (exact:, substring:)
-func (ca *CompletionAnalyzer) analyzePatternPrefix(ctx CompletionContext, tokens []Token) CompletionContext {
+func (ca *completionAnalyzer) analyzePatternPrefix(ctx CompletionContext, tokens []Token) CompletionContext {
 	// Check what's before the colon
 	if len(tokens) >= 1 {
 		prevToken := tokens[len(tokens)-2]
@@ -230,14 +230,14 @@ func (ca *CompletionAnalyzer) analyzePatternPrefix(ctx CompletionContext, tokens
 
 // Helper methods
 
-func (ca *CompletionAnalyzer) extractPrefix(lastToken Token) string {
+func (ca *completionAnalyzer) extractPrefix(lastToken Token) string {
 	if lastToken.Type == TokenSymbol || lastToken.Type == TokenQuotedString {
 		return lastToken.Value
 	}
 	return ""
 }
 
-func (ca *CompletionAnalyzer) findFunctionName(tokens []Token, upToIndex int) *Token {
+func (ca *completionAnalyzer) findFunctionName(tokens []Token, upToIndex int) *Token {
 	// Search backwards for a symbol followed by '('
 	for i := upToIndex; i >= 0; i-- {
 		if tokens[i].Type == TokenLParen && i > 0 && tokens[i-1].Type == TokenSymbol {
@@ -247,7 +247,7 @@ func (ca *CompletionAnalyzer) findFunctionName(tokens []Token, upToIndex int) *T
 	return nil
 }
 
-func (ca *CompletionAnalyzer) countFunctionArguments(tokens []Token, upToIndex int) int {
+func (ca *completionAnalyzer) countFunctionArguments(tokens []Token, upToIndex int) int {
 	// Find the opening paren
 	parenIndex := -1
 	for i := upToIndex; i >= 0; i-- {
@@ -280,7 +280,7 @@ func (ca *CompletionAnalyzer) countFunctionArguments(tokens []Token, upToIndex i
 	return commaCount
 }
 
-func (ca *CompletionAnalyzer) expectsRevsetArgument(funcName string, argIndex int) bool {
+func (ca *completionAnalyzer) expectsRevsetArgument(funcName string, argIndex int) bool {
 	// Functions that take revset arguments in their first position
 	revsetFirstFuncs := map[string]bool{
 		"parents":     true,
