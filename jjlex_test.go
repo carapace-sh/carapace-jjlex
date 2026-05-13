@@ -24,12 +24,16 @@ func TestSplit(t *testing.T) {
 			Prefix: "",
 			Type:   CompletionTypeRevision,
 		},
-		"parent(": {
+		"parents(": {
 			Type: CompletionTypeFunctionArg,
 		},
-		"parent(a": {
+		"parents(a": {
 			Prefix: "a",
 			Type:   CompletionTypeFunctionArg,
+		},
+		"parents(a)": {
+			Prefix: "",
+			Type:   CompletionTypeOperator,
 		},
 	} {
 		t.Run(revset, func(t *testing.T) {
