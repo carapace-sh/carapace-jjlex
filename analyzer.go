@@ -136,16 +136,6 @@ func (ca *completionAnalyzer) Analyze() CompletionContext {
 		return ca.analyzeFunctionArgument(ctx, tokens)
 
 	case TokenAmpersand, TokenPipe, TokenTilde, TokenMinus, TokenPlus:
-		// If operator immediately follows a symbol (no whitespace), treat it as part of the prefix
-		if len(tokens) >= 2 {
-			prevToken := tokens[len(tokens)-2]
-			if prevToken.Type == TokenSymbol && lastToken.Pos == prevToken.Pos+len(prevToken.Value) {
-				ctx.Type = CompletionTypeRevision
-				ctx.Prefix = prevToken.Value + lastToken.Value
-				ctx.Message = fmt.Sprintf("Complete revision '%s'", ctx.Prefix)
-				return ctx
-			}
-		}
 		ctx.Type = CompletionTypeRevision
 		ctx.Prefix = ""
 		ctx.Message = "Complete a revision after operator"
