@@ -222,7 +222,7 @@ func (ca *completionAnalyzer) analyzeFunctionArgument(ctx CompletionContext, tok
 // analyzePatternPrefix handles completion after pattern prefix (exact:, substring:)
 func (ca *completionAnalyzer) analyzePatternPrefix(ctx CompletionContext, tokens []Token) CompletionContext {
 	// Check what's before the colon
-	if len(tokens) >= 1 {
+	if len(tokens) >= 2 {
 		prevToken := tokens[len(tokens)-2]
 		if prevToken.Type == TokenSymbol {
 			prefix := prevToken.Value
@@ -235,7 +235,9 @@ func (ca *completionAnalyzer) analyzePatternPrefix(ctx CompletionContext, tokens
 		}
 	}
 
-	ctx.Type = CompletionTypeRevision
+	ctx.Type = CompletionTypeOperator
+	ctx.Prefix = ":"
+	ctx.Message = "Complete after operator"
 	return ctx
 }
 
