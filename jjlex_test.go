@@ -4,12 +4,13 @@ import "testing"
 
 func TestSplit(t *testing.T) {
 	for revset, expected := range map[string]CompletionContext{
-		"rev":      {Prefix: "rev", Type: CompletionTypeRevision},
-		"rev-":     {Prefix: "rev-", Type: CompletionTypeRevision},
-		"rev&":     {Prefix: "rev&", Type: CompletionTypeRevision},
-		"rev &":    {Prefix: "", Type: CompletionTypeRevision},
-		"rev & ":   {Prefix: "", Type: CompletionTypeRevision},
-		"parents(": {Type: CompletionTypeFunctionArg}, "parents(a": {Prefix: "a", Type: CompletionTypeFunctionArg},
+		"rev":                      {Prefix: "rev", Type: CompletionTypeRevision},
+		"rev-":                     {Prefix: "rev-", Type: CompletionTypeRevision},
+		"rev&":                     {Prefix: "rev&", Type: CompletionTypeRevision},
+		"rev &":                    {Prefix: "", Type: CompletionTypeRevision},
+		"rev & ":                   {Prefix: "", Type: CompletionTypeRevision},
+		"parents(":                 {Type: CompletionTypeFunctionArg},
+		"parents(a":                {Prefix: "a", Type: CompletionTypeFunctionArg},
 		"parents(a)":               {Prefix: "", Type: CompletionTypeOperator},
 		"parents(a)|":              {Prefix: "", Type: CompletionTypeRevision},
 		"parents(a)| ":             {Prefix: "", Type: CompletionTypeRevision},
