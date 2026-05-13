@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"unicode"
 )
 
 // CompletionType indicates what kind of completion is being requested
@@ -109,6 +110,9 @@ func (ca *completionAnalyzer) Analyze() CompletionContext {
 		return ctx
 	}
 
+	// Check if input ends with whitespace (symbol is complete, expect operator)
+	inputTrailingSpace := len(ca.input) > 0 && unicode.IsSpace(rune(ca.input[len(ca.input)-1]))
+
 	lastToken := tokens[len(tokens)-1]
 
 	// Determine prefix for completion
@@ -117,6 +121,12 @@ func (ca *completionAnalyzer) Analyze() CompletionContext {
 	// Analyze based on last token type
 	switch lastToken.Type {
 	case TokenSymbol, TokenQuotedString:
+		if inputTrailingSpace {
+			ctx.Type = CompletionTypeOperator
+			ctx.Prefix = ""
+			ctx.Message = "Complete an operator or end expression"
+			return ctx
+		}
 		return ca.analyzeSymbolCompletion(ctx, tokens, lastToken)
 
 	case TokenLParen:
