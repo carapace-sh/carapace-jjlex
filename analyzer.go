@@ -65,6 +65,9 @@ type CompletionContext struct {
 
 	// Human-readable message explaining the context
 	Message string
+
+	// When completing an operator this completes the attached revset
+	AttachedRevset string
 }
 
 // completionAnalyzer analyzes revset expressions for completion context
