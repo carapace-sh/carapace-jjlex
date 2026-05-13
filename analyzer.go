@@ -194,15 +194,16 @@ func (ca *completionAnalyzer) Analyze() CompletionContext {
 func (ca *completionAnalyzer) analyzeSymbolCompletion(ctx CompletionContext, tokens []Token, lastToken Token) CompletionContext {
 	ctx.Prefix = lastToken.Value
 
-	// Check if previous token is '('
-	if len(tokens) >= 2 && tokens[len(tokens)-2].Type == TokenLParen {
+	// Check if previous token is '(' or ','
+	if len(tokens) >= 2 && (tokens[len(tokens)-2].Type == TokenLParen || tokens[len(tokens)-2].Type == TokenComma) {
 		// We're inside a function call
 		funcNameToken := ca.findFunctionName(tokens, len(tokens)-2)
 		if funcNameToken != nil {
+			argCount := ca.countFunctionArguments(tokens, len(tokens)-2)
 			ctx.FunctionName = funcNameToken.Value
 			ctx.Type = CompletionTypeFunctionArg
-			ctx.ArgumentIndex = 0
-			ctx.ExpectingRevset = ca.expectsRevsetArgument(funcNameToken.Value, 0)
+			ctx.ArgumentIndex = argCount
+			ctx.ExpectingRevset = ca.expectsRevsetArgument(funcNameToken.Value, argCount)
 			ctx.Message = fmt.Sprintf("Complete argument for function '%s'", funcNameToken.Value)
 			return ctx
 		}
