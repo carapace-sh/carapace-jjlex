@@ -398,5 +398,5 @@ func isSymbolStart(ch rune) bool {
 }
 
 func isSymbolChar(ch rune) bool {
-	return unicode.IsLetter(ch) || unicode.IsDigit(ch) || ch == '_' || ch == '@' || ch == '-'
+	return unicode.IsLetter(ch) || unicode.IsDigit(ch) || ch == '_' || ch == '@' || ch == '-' || ch == '/'
 }
