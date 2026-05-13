@@ -145,7 +145,7 @@ func (ca *completionAnalyzer) Analyze() CompletionContext {
 		return ca.analyzePatternPrefix(ctx, tokens)
 
 	case TokenRParen:
-		ctx.Type = CompletionTypeRevision
+		ctx.Type = CompletionTypeOperator
 		ctx.Prefix = ""
 		ctx.Message = "Complete an operator or end expression"
 		return ctx
