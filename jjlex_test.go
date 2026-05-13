@@ -51,6 +51,14 @@ func TestSplit(t *testing.T) {
 			Prefix: "",
 			Type:   CompletionTypeRevision,
 		},
+		":": {
+			Prefix: ":",
+			Type:   CompletionTypeOperator,
+		},
+		"::": {
+			Prefix: "",
+			Type:   CompletionTypeRevision,
+		},
 	} {
 		t.Run(revset, func(t *testing.T) {
 			actual := Split(revset)
