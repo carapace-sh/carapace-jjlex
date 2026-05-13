@@ -25,7 +25,7 @@ func TestSplit(t *testing.T) {
 		"(y & z":        {Prefix: "z", Type: CompletionTypeRevision},
 		"(y & z)":       {Prefix: "", Type: CompletionTypeOperator},
 		"(y & z) ":      {Prefix: "", Type: CompletionTypeOperator},
-		// "(y.":                      {Prefix: ".", Type: CompletionTypeOperator},
+		"(y.":                      {Prefix: ".", Type: CompletionTypeOperator},
 		"(y..":                     {Prefix: "", Type: CompletionTypeRevision},
 		"heads(::@ & bookmark":     {Prefix: "bookmark", Type: CompletionTypeRevision},
 		"heads(::@ & bookmarks())": {Prefix: "", Type: CompletionTypeOperator},

@@ -152,6 +152,12 @@ func (ca *completionAnalyzer) Analyze() CompletionContext {
 		return ctx
 
 	case TokenDotDot, TokenColonColon:
+		if lastToken.Value == "." {
+			ctx.Type = CompletionTypeOperator
+			ctx.Prefix = "."
+			ctx.Message = "Complete after partial range operator"
+			return ctx
+		}
 		ctx.Type = CompletionTypeRevision
 		ctx.Prefix = ""
 		ctx.Message = "Complete a revision after operator"

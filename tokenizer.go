@@ -173,7 +173,8 @@ func (t *Tokenizer) NextToken() Token {
 			t.advance()
 			return Token{Type: TokenDotDot, Value: "..", Pos: pos}
 		}
-		return Token{Type: TokenError, Value: "unexpected '.'", Pos: pos}
+		t.advance()
+		return Token{Type: TokenDotDot, Value: ".", Pos: pos}
 
 	case ':':
 		if t.peek() == ':' {
