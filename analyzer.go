@@ -151,6 +151,9 @@ func (ca *completionAnalyzer) Analyze() CompletionContext {
 			ctx.Message = "Complete after partial range operator"
 			return ctx
 		}
+		if lastToken.Type == TokenColonColon {
+			ctx.AttachedRevset = lastToken.Value
+		}
 		ctx.Type = CompletionTypeRevision
 		ctx.Prefix = ""
 		ctx.Message = "Complete a revision after operator"
@@ -160,6 +163,11 @@ func (ca *completionAnalyzer) Analyze() CompletionContext {
 		return ca.analyzePatternPrefix(ctx, tokens)
 
 	case TokenRParen:
+		if !inputTrailingSpace {
+			if funcName := ca.findTopLevelFunctionName(tokens); funcName != nil {
+				ctx.AttachedRevset = ca.input[funcName.Pos:]
+			}
+		}
 		ctx.Type = CompletionTypeOperator
 		ctx.Prefix = ""
 		ctx.Message = "Complete an operator or end expression"
@@ -187,6 +195,28 @@ func (ca *completionAnalyzer) Analyze() CompletionContext {
 func (ca *completionAnalyzer) analyzeSymbolCompletion(ctx CompletionContext, tokens []Token, lastToken Token) CompletionContext {
 	ctx.Prefix = lastToken.Value
 
+	// Check if the symbol is directly attached to a preceding token
+	if len(tokens) >= 2 {
+		prevToken := tokens[len(tokens)-2]
+		prevEnd := prevToken.Pos + len(prevToken.Value)
+		if lastToken.Pos == prevEnd {
+			switch prevToken.Type {
+			case TokenLParen:
+				ctx.AttachedRevset = lastToken.Value
+			case TokenComma:
+				ctx.AttachedRevset = lastToken.Value
+			case TokenDotDot, TokenColonColon:
+				ctx.AttachedRevset = ca.input[prevToken.Pos:]
+			default:
+				if isBinarySetOperator(prevToken.Type) {
+					ctx.AttachedRevset = lastToken.Value
+				}
+			}
+		} else if prevToken.Type == TokenComma {
+			ctx.AttachedRevset = lastToken.Value
+		}
+	}
+
 	// Check if previous token is '(' or ','
 	if len(tokens) >= 2 && (tokens[len(tokens)-2].Type == TokenLParen || tokens[len(tokens)-2].Type == TokenComma) {
 		// We're inside a function call
@@ -204,6 +234,9 @@ func (ca *completionAnalyzer) analyzeSymbolCompletion(ctx CompletionContext, tok
 
 	ctx.Type = CompletionTypeRevision
 	ctx.Message = fmt.Sprintf("Complete revision '%s' (branch, tag, commit ID, or alias)", ctx.Prefix)
+	if ctx.AttachedRevset == "" && !hasPrecedingOperatorOrParen(tokens) {
+		ctx.AttachedRevset = lastToken.Value
+	}
 	return ctx
 }
 
@@ -258,6 +291,59 @@ func (ca *completionAnalyzer) analyzePatternPrefix(ctx CompletionContext, tokens
 }
 
 // Helper methods
+
+func hasPrecedingOperatorOrParen(tokens []Token) bool {
+	for i := len(tokens) - 2; i >= 0; i-- {
+		tt := tokens[i].Type
+		if tt == TokenLParen || isOperatorToken(tt) || tt == TokenRParen {
+			return true
+		}
+		if tt == TokenComma {
+			continue
+		}
+		break
+	}
+	return false
+}
+
+func isBinarySetOperator(tt TokenType) bool {
+	switch tt {
+	case TokenAmpersand, TokenPipe, TokenTilde, TokenMinus, TokenPlus:
+		return true
+	}
+	return false
+}
+
+func isOperatorToken(tt TokenType) bool {
+	switch tt {
+	case TokenAmpersand, TokenPipe, TokenTilde, TokenMinus, TokenPlus, TokenDotDot, TokenColonColon:
+		return true
+	}
+	return false
+}
+
+func (ca *completionAnalyzer) findTopLevelFunctionName(tokens []Token) *Token {
+	if len(tokens) < 4 {
+		return nil
+	}
+	if tokens[0].Type != TokenSymbol || tokens[1].Type != TokenLParen {
+		return nil
+	}
+	if tokens[len(tokens)-1].Type != TokenRParen {
+		return nil
+	}
+	hasOperator := false
+	for _, tok := range tokens[2 : len(tokens)-1] {
+		if isOperatorToken(tok.Type) {
+			hasOperator = true
+			break
+		}
+	}
+	if hasOperator {
+		return nil
+	}
+	return &tokens[0]
+}
 
 func (ca *completionAnalyzer) extractPrefix(lastToken Token) string {
 	if lastToken.Type == TokenSymbol || lastToken.Type == TokenQuotedString {
