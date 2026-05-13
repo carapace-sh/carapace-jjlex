@@ -21,6 +21,7 @@ func TestSplit(t *testing.T) {
 		"parents(":                 {Type: CompletionTypeFunctionArg},
 		"parents(a":                {Prefix: "a", Type: CompletionTypeFunctionArg, ArgumentIndex: 0, AttachedRevset: "a"},
 		"parents(a)":               {Prefix: "", Type: CompletionTypeOperator, AttachedRevset: "parents(a)"},
+		"parents(a)-":              {Prefix: "", Type: CompletionTypeOperator, AttachedRevset: "parents(a)-"},
 		"parents(a)|":              {Prefix: "", Type: CompletionTypeRevision},
 		"parents(a)| ":             {Prefix: "", Type: CompletionTypeRevision},
 		"parents(a) |":             {Prefix: "", Type: CompletionTypeRevision},
