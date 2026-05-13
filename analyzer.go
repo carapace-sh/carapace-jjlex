@@ -138,7 +138,24 @@ func (ca *completionAnalyzer) Analyze() CompletionContext {
 	case TokenComma:
 		return ca.analyzeFunctionArgument(ctx, tokens)
 
-	case TokenAmpersand, TokenPipe, TokenTilde, TokenMinus, TokenPlus:
+	case TokenAmpersand, TokenPipe, TokenTilde:
+		ctx.Type = CompletionTypeRevision
+		ctx.Prefix = ""
+		ctx.Message = "Complete a revision after operator"
+		return ctx
+
+	case TokenMinus, TokenPlus:
+		if len(tokens) >= 2 {
+			prevToken := tokens[len(tokens)-2]
+			prevEnd := prevToken.Pos + len(prevToken.Value)
+			if lastToken.Pos == prevEnd {
+				ctx.Type = CompletionTypeOperator
+				ctx.Prefix = ""
+				ctx.AttachedRevset = ca.input
+				ctx.Message = "Complete after postfix operator"
+				return ctx
+			}
+		}
 		ctx.Type = CompletionTypeRevision
 		ctx.Prefix = ""
 		ctx.Message = "Complete a revision after operator"
