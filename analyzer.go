@@ -180,13 +180,19 @@ func (ca *completionAnalyzer) Analyze() CompletionContext {
 		return ca.analyzePatternPrefix(ctx, tokens)
 
 	case TokenRParen:
+		prefix := ""
 		if !inputTrailingSpace {
-			if funcName := ca.findTopLevelFunctionName(tokens); funcName != nil {
+			if funcName := ca.findEnclosingFunctionName(tokens); funcName != nil {
+				ctx.AttachedRevset = ca.input[funcName.Pos:]
+				if ca.isZeroArgFunctionCall(tokens, funcName) {
+					prefix = ca.input[funcName.Pos:]
+				}
+			} else if funcName := ca.findTopLevelFunctionName(tokens); funcName != nil {
 				ctx.AttachedRevset = ca.input[funcName.Pos:]
 			}
 		}
 		ctx.Type = CompletionTypeOperator
-		ctx.Prefix = ""
+		ctx.Prefix = prefix
 		ctx.Message = "Complete an operator or end expression"
 		return ctx
 
@@ -233,7 +239,7 @@ func (ca *completionAnalyzer) analyzeSymbolCompletion(ctx CompletionContext, tok
 			}
 		} else if prevToken.Type == TokenComma {
 			ctx.AttachedRevset = lastToken.Value
-		} else if isBinarySetOperator(prevToken.Type) && !ca.isInsideParens(tokens) {
+		} else if isBinarySetOperator(prevToken.Type) && !ca.isInsideBareParens(tokens) {
 			ctx.AttachedRevset = lastToken.Value
 		}
 	}
@@ -312,7 +318,8 @@ func (ca *completionAnalyzer) analyzePatternPrefix(ctx CompletionContext, tokens
 
 // Helper methods
 
-func (ca *completionAnalyzer) isInsideParens(tokens []Token) bool {
+// isInsideBareParens checks if we're inside parentheses that are NOT a function call
+func (ca *completionAnalyzer) isInsideBareParens(tokens []Token) bool {
 	depth := 0
 	for i := len(tokens) - 1; i >= 0; i-- {
 		switch tokens[i].Type {
@@ -322,6 +329,10 @@ func (ca *completionAnalyzer) isInsideParens(tokens []Token) bool {
 			if depth > 0 {
 				depth--
 			} else {
+				// Check if this paren is part of a function call
+				if i > 0 && tokens[i-1].Type == TokenSymbol {
+					return false
+				}
 				return true
 			}
 		}
@@ -359,8 +370,40 @@ func isOperatorToken(tt TokenType) bool {
 	return false
 }
 
+// isZeroArgFunctionCall checks if the given function name token starts a zero-arg call
+// by looking for Symbol LParen RParen pattern
+func (ca *completionAnalyzer) isZeroArgFunctionCall(tokens []Token, funcName *Token) bool {
+	for i, tok := range tokens {
+		if tok.Pos == funcName.Pos && tok.Type == TokenSymbol {
+			if i+2 < len(tokens) && tokens[i+1].Type == TokenLParen && tokens[i+2].Type == TokenRParen {
+				return true
+			}
+			return false
+		}
+	}
+	return false
+}
+
+// findEnclosingFunctionName finds the function name for the innermost function call
+// that the last token (a closing paren) belongs to
+func (ca *completionAnalyzer) findEnclosingFunctionName(tokens []Token) *Token {
+	depth := 0
+	for i := len(tokens) - 1; i >= 0; i-- {
+		switch tokens[i].Type {
+		case TokenRParen:
+			depth++
+		case TokenLParen:
+			depth--
+			if depth == 0 && i > 0 && tokens[i-1].Type == TokenSymbol {
+				return &tokens[i-1]
+			}
+		}
+	}
+	return nil
+}
+
 func (ca *completionAnalyzer) findTopLevelFunctionName(tokens []Token) *Token {
-	if len(tokens) < 4 {
+	if len(tokens) < 3 {
 		return nil
 	}
 	if tokens[0].Type != TokenSymbol || tokens[1].Type != TokenLParen {
@@ -369,14 +412,20 @@ func (ca *completionAnalyzer) findTopLevelFunctionName(tokens []Token) *Token {
 	if tokens[len(tokens)-1].Type != TokenRParen {
 		return nil
 	}
-	hasOperator := false
-	for _, tok := range tokens[2 : len(tokens)-1] {
-		if isOperatorToken(tok.Type) {
-			hasOperator = true
-			break
+	// Verify parens are balanced and the last RParen matches the first LParen
+	depth := 0
+	for i := 1; i < len(tokens)-1; i++ {
+		switch tokens[i].Type {
+		case TokenLParen:
+			depth++
+		case TokenRParen:
+			depth--
+			if depth < 0 {
+				return nil
+			}
 		}
 	}
-	if hasOperator {
+	if depth != 0 {
 		return nil
 	}
 	return &tokens[0]
