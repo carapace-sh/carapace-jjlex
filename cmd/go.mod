@@ -4,7 +4,7 @@ go 1.26.2
 
 require (
 	github.com/carapace-sh/carapace v1.11.4
-	github.com/carapace-sh/carapace-bin v1.6.6-0.20260512183518-d4a055963e40
+	github.com/carapace-sh/carapace-bin v1.6.6-0.20260514083529-fb8146228384
 	github.com/carapace-sh/carapace-jjlex v1.1.1
 	github.com/spf13/cobra v1.10.2
 )
@@ -22,3 +22,5 @@ require (
 replace github.com/carapace-sh/carapace-jjlex => ../
 
 replace github.com/kevinburke/ssh_config => github.com/carapace-sh/ssh_config v1.4.1-0.20260319075335-4f04016b8b4b
+
+replace github.com/carapace-sh/carapace-bin => ../../carapace-bin/

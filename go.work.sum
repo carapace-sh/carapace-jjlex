@@ -1,8 +1,11 @@
 github.com/carapace-sh/carapace v1.11.0/go.mod h1:NVkuv1s8wyFvu7d98rdgYwqGKMB6GO1MEUZp5RcWri8=
 github.com/carapace-sh/carapace v1.11.1/go.mod h1:5MUSHyLN9GGb5/NY/j9VI68/TcZV4ApRCAHGg4WeU0s=
+github.com/carapace-sh/carapace-bin v1.6.6-0.20260514083529-fb8146228384/go.mod h1:9eD/SUBT/4taaNhFHu8nObQxjxv+F8pyBe8oU+/pUM8=
+github.com/carapace-sh/carapace-bin v1.6.6-0.20260514090802-217f2227e141/go.mod h1:4nxa46tyKRT/dadCrFOPjc9XEjljPJbbeX+NLpBr5yI=
 github.com/carapace-sh/carapace-bridge v1.4.11/go.mod h1:cRTSrcdvoaz68yZGd24YhCljaBSUMxCUjB/wTRPqsVI=
 github.com/carapace-sh/carapace-bridge v1.5.3/go.mod h1:Utr88jqALn+TgKBEosozRmENzrgdQovBjbz7ZsXWtWM=
 github.com/carapace-sh/carapace-selfupdate v0.0.10/go.mod h1:4RavsY8l/RFtA9UXluUnEM5DF7zUkknMeRe/VN8QCGY=
 github.com/carapace-sh/carapace-spec v1.5.1/go.mod h1:tuyJA7EffxdF12zjxxsh9mQCwtDS/sj5YghSBARxbOM=
 golang.org/x/tools v0.44.0/go.mod h1:KA0AfVErSdxRZIsOVipbv3rQhVXTnlU6UhKxHd1seDI=
+gopkg.in/ini.v1 v1.67.1/go.mod h1:x/cyOwCgZqOkJoDIJ3c1KNHMo10+nLGAhh+kn3Zizss=
 gopkg.in/ini.v1 v1.67.2/go.mod h1:x/cyOwCgZqOkJoDIJ3c1KNHMo10+nLGAhh+kn3Zizss=
