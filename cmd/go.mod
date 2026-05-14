@@ -1,6 +1,6 @@
 module github.com/carapace-sh/carapace-jjlex/cmd
 
-go 1.26.2
+go 1.26.1
 
 require (
 	github.com/carapace-sh/carapace v1.11.4
