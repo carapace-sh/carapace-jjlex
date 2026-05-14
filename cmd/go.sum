@@ -1,7 +1,5 @@
 github.com/carapace-sh/carapace v1.11.4 h1:0OljF8oxBd0H7jJxWAnci1hiGS2H2wOOw/DK4tCstzw=
 github.com/carapace-sh/carapace v1.11.4/go.mod h1:5MUSHyLN9GGb5/NY/j9VI68/TcZV4ApRCAHGg4WeU0s=
-github.com/carapace-sh/carapace-bin v1.6.6-0.20260514083529-fb8146228384 h1:wufpDNmDfchwAemH/Onv8N4vWn6gTPNZfRdjX1iRPCY=
-github.com/carapace-sh/carapace-bin v1.6.6-0.20260514083529-fb8146228384/go.mod h1:9eD/SUBT/4taaNhFHu8nObQxjxv+F8pyBe8oU+/pUM8=
 github.com/carapace-sh/carapace-shlex v1.1.1 h1:ccmNeetAYZOk4IcV36youFDsXusT9uCNW2Njkw+QS+Q=
 github.com/carapace-sh/carapace-shlex v1.1.1/go.mod h1:lJ4ZsdxytE0wHJ8Ta9S7Qq0XpjgjU0mdfCqiI2FHx7M=
 github.com/carapace-sh/ssh_config v1.4.1-0.20260319075335-4f04016b8b4b h1:f4NGFmIRWxmaQIVX8vt2pEJdFLjz3qwoQWqMxhKjlBI=

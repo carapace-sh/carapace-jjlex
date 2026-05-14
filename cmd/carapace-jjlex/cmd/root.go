@@ -11,7 +11,7 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:  "carapace-jjlex",
+	Use:  "carapace-jjlex revset",
 	Long: "simple jujutsu revset lexer",
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,
