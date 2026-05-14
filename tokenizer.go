@@ -173,6 +173,10 @@ func (t *Tokenizer) NextToken() Token {
 			t.advance()
 			return Token{Type: TokenDotDot, Value: "..", Pos: pos}
 		}
+		// Single dot followed by a digit is part of a version-like symbol (e.g. v1.0.0)
+		if t.peek() != 0 && unicode.IsDigit(t.peek()) {
+			return t.readSymbol()
+		}
 		t.advance()
 		return Token{Type: TokenDotDot, Value: ".", Pos: pos}
 
@@ -369,8 +373,8 @@ func (t *Tokenizer) readNumber() Token {
 	}
 
 	// If followed by symbol characters (e.g. "123a"), treat the whole thing as a symbol
-	if t.pos < len(t.input) && isSymbolChar(t.current) {
-		for t.pos < len(t.input) && isSymbolChar(t.current) {
+	if t.pos < len(t.input) && (isSymbolChar(t.current) || t.isSymbolDotChar()) {
+		for t.pos < len(t.input) && (isSymbolChar(t.current) || (t.current == '.' && t.isSymbolDotChar())) {
 			sb.WriteRune(t.current)
 			t.advance()
 		}
@@ -392,10 +396,16 @@ func (t *Tokenizer) readSymbol() Token {
 	pos := t.pos
 	var sb strings.Builder
 
-	// Read identifier (can include alphanumeric, _, @, etc.)
-	for t.pos < len(t.input) && isSymbolChar(t.current) {
-		sb.WriteRune(t.current)
-		t.advance()
+	for t.pos < len(t.input) {
+		if isSymbolChar(t.current) {
+			if t.current == '.' && !t.isSymbolDotChar() {
+				break
+			}
+			sb.WriteRune(t.current)
+			t.advance()
+		} else {
+			break
+		}
 	}
 
 	value := sb.String()
@@ -411,5 +421,16 @@ func isSymbolStart(ch rune) bool {
 }
 
 func isSymbolChar(ch rune) bool {
-	return unicode.IsLetter(ch) || unicode.IsDigit(ch) || ch == '_' || ch == '@' || ch == '-' || ch == '/'
+	return unicode.IsLetter(ch) || unicode.IsDigit(ch) || ch == '_' || ch == '@' || ch == '-' || ch == '/' || ch == '.'
+}
+
+// isSymbolDotChar checks if '.' at current position is part of a symbol (version-like, e.g. "1.0")
+func (t *Tokenizer) isSymbolDotChar() bool {
+	if t.current != '.' {
+		return false
+	}
+	if t.peek() == '.' {
+		return false
+	}
+	return t.peek() != 0 && (unicode.IsDigit(t.peek()) || unicode.IsLetter(t.peek()))
 }
