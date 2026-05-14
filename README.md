@@ -9,3 +9,5 @@ Simple [Jujutsu Revset](https://docs.jj-vcs.dev/latest/revsets/) lexer aimed to 
 > This is a clanker generated (low quality) lexer with no ambition for absolute correctness in all cases.
 
 [carapace-bin]:https://github.com/carapace-sh/carapace-bin
+
+[![asciicast](https://asciinema.org/a/1051682.svg)](https://asciinema.org/a/1051682)
