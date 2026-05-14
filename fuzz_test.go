@@ -71,3 +71,40 @@ func FuzzSplit(f *testing.F) {
 		}
 	})
 }
+
+func randomString(r *rand.Rand) string {
+	length := r.Intn(32)
+	var sb strings.Builder
+	for range length {
+		sb.WriteRune(rune(r.Intn(0x80)))
+	}
+	return sb.String()
+}
+
+func FuzzSplitRandom(f *testing.F) {
+	r := rand.New(rand.NewSource(99))
+	for range 100 {
+		f.Add(randomString(r))
+	}
+
+	f.Fuzz(func(t *testing.T, s string) {
+		ctx := Split(s)
+
+		if ctx.FullInput != s {
+			t.Errorf("FullInput mismatch: got %q, want %q", ctx.FullInput, s)
+		}
+
+		if ctx.Type == CompletionTypeUnknown && ctx.IsValid {
+			t.Errorf("unknown type should not be valid")
+		}
+
+		if len(ctx.Tokens) == 0 {
+			t.Errorf("expected at least one token (EOF)")
+		}
+
+		lastToken := ctx.Tokens[len(ctx.Tokens)-1]
+		if lastToken.Type != TokenEOF {
+			t.Errorf("last token should be EOF, got %v", lastToken.Type)
+		}
+	})
+}
