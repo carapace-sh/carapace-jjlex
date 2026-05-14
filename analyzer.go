@@ -233,6 +233,8 @@ func (ca *completionAnalyzer) analyzeSymbolCompletion(ctx CompletionContext, tok
 			}
 		} else if prevToken.Type == TokenComma {
 			ctx.AttachedRevset = lastToken.Value
+		} else if isBinarySetOperator(prevToken.Type) && !ca.isInsideParens(tokens) {
+			ctx.AttachedRevset = lastToken.Value
 		}
 	}
 
@@ -309,6 +311,23 @@ func (ca *completionAnalyzer) analyzePatternPrefix(ctx CompletionContext, tokens
 }
 
 // Helper methods
+
+func (ca *completionAnalyzer) isInsideParens(tokens []Token) bool {
+	depth := 0
+	for i := len(tokens) - 1; i >= 0; i-- {
+		switch tokens[i].Type {
+		case TokenRParen:
+			depth++
+		case TokenLParen:
+			if depth > 0 {
+				depth--
+			} else {
+				return true
+			}
+		}
+	}
+	return false
+}
 
 func hasPrecedingOperatorOrParen(tokens []Token) bool {
 	for i := len(tokens) - 2; i >= 0; i-- {
