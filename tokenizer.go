@@ -368,6 +368,19 @@ func (t *Tokenizer) readNumber() Token {
 		t.advance()
 	}
 
+	// If followed by symbol characters (e.g. "123a"), treat the whole thing as a symbol
+	if t.pos < len(t.input) && isSymbolChar(t.current) {
+		for t.pos < len(t.input) && isSymbolChar(t.current) {
+			sb.WriteRune(t.current)
+			t.advance()
+		}
+		return Token{
+			Type:  TokenSymbol,
+			Value: sb.String(),
+			Pos:   pos,
+		}
+	}
+
 	return Token{
 		Type:  TokenInteger,
 		Value: sb.String(),

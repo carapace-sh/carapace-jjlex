@@ -123,7 +123,7 @@ func (ca *completionAnalyzer) Analyze() CompletionContext {
 
 	// Analyze based on last token type
 	switch lastToken.Type {
-	case TokenSymbol, TokenQuotedString:
+	case TokenSymbol, TokenQuotedString, TokenInteger:
 		if inputTrailingSpace {
 			ctx.Type = CompletionTypeOperator
 			ctx.Prefix = ""
@@ -212,7 +212,9 @@ func (ca *completionAnalyzer) Analyze() CompletionContext {
 func (ca *completionAnalyzer) analyzeSymbolCompletion(ctx CompletionContext, tokens []Token, lastToken Token) CompletionContext {
 	ctx.Prefix = lastToken.Value
 
-	// Check if the symbol is directly attached to a preceding token
+	isRevsetLike := lastToken.Type == TokenSymbol || lastToken.Type == TokenInteger
+
+	// Check if the token is directly attached to a preceding token
 	if len(tokens) >= 2 {
 		prevToken := tokens[len(tokens)-2]
 		prevEnd := prevToken.Pos + len(prevToken.Value)
@@ -236,7 +238,6 @@ func (ca *completionAnalyzer) analyzeSymbolCompletion(ctx CompletionContext, tok
 
 	// Check if previous token is '(' or ','
 	if len(tokens) >= 2 && (tokens[len(tokens)-2].Type == TokenLParen || tokens[len(tokens)-2].Type == TokenComma) {
-		// We're inside a function call
 		funcNameToken := ca.findFunctionName(tokens, len(tokens)-2)
 		if funcNameToken != nil {
 			argCount := ca.countFunctionArguments(tokens, len(tokens)-2)
@@ -251,7 +252,7 @@ func (ca *completionAnalyzer) analyzeSymbolCompletion(ctx CompletionContext, tok
 
 	ctx.Type = CompletionTypeRevision
 	ctx.Message = fmt.Sprintf("Complete revision '%s' (branch, tag, commit ID, or alias)", ctx.Prefix)
-	if ctx.AttachedRevset == "" && !hasPrecedingOperatorOrParen(tokens) {
+	if ctx.AttachedRevset == "" && isRevsetLike && !hasPrecedingOperatorOrParen(tokens) {
 		ctx.AttachedRevset = lastToken.Value
 	}
 	return ctx
@@ -363,7 +364,7 @@ func (ca *completionAnalyzer) findTopLevelFunctionName(tokens []Token) *Token {
 }
 
 func (ca *completionAnalyzer) extractPrefix(lastToken Token) string {
-	if lastToken.Type == TokenSymbol || lastToken.Type == TokenQuotedString {
+	if lastToken.Type == TokenSymbol || lastToken.Type == TokenQuotedString || lastToken.Type == TokenInteger {
 		return lastToken.Value
 	}
 	return ""
