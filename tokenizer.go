@@ -432,5 +432,12 @@ func (t *Tokenizer) isSymbolDotChar() bool {
 	if t.peek() == '.' {
 		return false
 	}
-	return t.peek() != 0 && (unicode.IsDigit(t.peek()) || unicode.IsLetter(t.peek()))
+	if t.peek() != 0 && (unicode.IsDigit(t.peek()) || unicode.IsLetter(t.peek())) {
+		return true
+	}
+	// Trailing dot at end of input is part of symbol if preceded by a digit (e.g. "v1.")
+	if t.peek() == 0 && t.pos > 0 && unicode.IsDigit(rune(t.input[t.pos-1])) {
+		return true
+	}
+	return false
 }
