@@ -197,7 +197,14 @@ func (ca *completionAnalyzer) Analyze() CompletionContext {
 		return ctx
 
 	case TokenError:
-		// Check if it's a partial operator
+		if strings.HasPrefix(lastToken.Value, "unterminated quoted string") {
+			ctx.Type = CompletionTypeRevision
+			ctx.Prefix = ca.input[lastToken.Pos:]
+			ctx.AttachedRevset = ca.input[lastToken.Pos:]
+			ctx.ExpectingRevset = true
+			ctx.Message = "Complete revision inside quoted string"
+			return ctx
+		}
 		if strings.HasPrefix(lastToken.Value, "unexpected") {
 			ctx.Type = CompletionTypeUnknown
 			ctx.IsValid = false
@@ -216,14 +223,17 @@ func (ca *completionAnalyzer) Analyze() CompletionContext {
 
 // analyzeSymbolCompletion handles completion for symbol tokens
 func (ca *completionAnalyzer) analyzeSymbolCompletion(ctx CompletionContext, tokens []Token, lastToken Token) CompletionContext {
-	ctx.Prefix = lastToken.Value
+	ctx.Prefix = ca.extractPrefix(lastToken)
 
-	isRevsetLike := lastToken.Type == TokenSymbol || lastToken.Type == TokenInteger
+	isRevsetLike := lastToken.Type == TokenSymbol || lastToken.Type == TokenInteger || lastToken.Type == TokenQuotedString
 
 	// Check if the token is directly attached to a preceding token
 	if len(tokens) >= 2 {
 		prevToken := tokens[len(tokens)-2]
 		prevEnd := prevToken.Pos + len(prevToken.Value)
+		if prevToken.Type == TokenQuotedString {
+			prevEnd += 2 // account for surrounding quotes
+		}
 		if lastToken.Pos == prevEnd {
 			switch prevToken.Type {
 			case TokenLParen:
@@ -232,6 +242,14 @@ func (ca *completionAnalyzer) analyzeSymbolCompletion(ctx CompletionContext, tok
 				ctx.AttachedRevset = lastToken.Value
 			case TokenDotDot, TokenColonColon:
 				ctx.AttachedRevset = ca.input[prevToken.Pos:]
+			case TokenQuotedString:
+				// e.g. "parent("@git - quoted symbol followed by remote suffix
+				ctx.Prefix = ca.input[prevToken.Pos:]
+				ctx.AttachedRevset = ca.input[prevToken.Pos:]
+				ctx.Type = CompletionTypeRevision
+				ctx.ExpectingRevset = true
+				ctx.Message = fmt.Sprintf("Complete revision '%s' (branch, tag, commit ID, or alias)", ctx.Prefix)
+				return ctx
 			default:
 				if isBinarySetOperator(prevToken.Type) {
 					ctx.AttachedRevset = lastToken.Value
@@ -275,7 +293,10 @@ func (ca *completionAnalyzer) analyzeSymbolCompletion(ctx CompletionContext, tok
 	ctx.Type = CompletionTypeRevision
 	ctx.Message = fmt.Sprintf("Complete revision '%s' (branch, tag, commit ID, or alias)", ctx.Prefix)
 	if ctx.AttachedRevset == "" && isRevsetLike && !hasPrecedingOperatorOrParen(tokens) {
-		ctx.AttachedRevset = lastToken.Value
+		ctx.AttachedRevset = ca.extractPrefix(lastToken)
+	}
+	if lastToken.Type == TokenQuotedString {
+		ctx.ExpectingRevset = true
 	}
 	return ctx
 }
@@ -455,8 +476,11 @@ func (ca *completionAnalyzer) findTopLevelFunctionName(tokens []Token) *Token {
 }
 
 func (ca *completionAnalyzer) extractPrefix(lastToken Token) string {
-	if lastToken.Type == TokenSymbol || lastToken.Type == TokenQuotedString || lastToken.Type == TokenInteger {
+	if lastToken.Type == TokenSymbol || lastToken.Type == TokenInteger {
 		return lastToken.Value
+	}
+	if lastToken.Type == TokenQuotedString {
+		return `"` + lastToken.Value + `"`
 	}
 	return ""
 }
