@@ -70,7 +70,7 @@ func TestSplit(t *testing.T) {
 		"(y..z":                        {IsValid: true, Prefix: "z", Type: CompletionTypeRevision, AttachedRevset: "z"},
 		"(1..":                         {IsValid: true, Prefix: "", Type: CompletionTypeRevision},
 		"(1..2":                        {IsValid: true, Prefix: "2", Type: CompletionTypeRevision, AttachedRevset: "2"},
-		"(1..2345":                     {IsValid: true, Prefix: "345", Type: CompletionTypeRevision, AttachedRevset: "2345"},
+		"(1..2345":                     {IsValid: true, Prefix: "2345", Type: CompletionTypeRevision, AttachedRevset: "2345"},
 		"bookmark()":                   {IsValid: true, Prefix: "bookmark()", Type: CompletionTypeOperator, AttachedRevset: "bookmark()"},
 		"heads(::@ & bookmark":         {IsValid: true, Prefix: "bookmark", Type: CompletionTypeRevision, AttachedRevset: "bookmark"},
 		"heads(::@ & bookmark()":       {IsValid: true, Prefix: "bookmark()", Type: CompletionTypeOperator, AttachedRevset: "bookmark()"},
