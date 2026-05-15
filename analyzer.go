@@ -231,6 +231,9 @@ func (ca *completionAnalyzer) analyzeSymbolCompletion(ctx CompletionContext, tok
 	if len(tokens) >= 2 {
 		prevToken := tokens[len(tokens)-2]
 		prevEnd := prevToken.Pos + len(prevToken.Value)
+		if prevToken.Type == TokenQuotedString {
+			prevEnd += 2 // account for surrounding quotes
+		}
 		if lastToken.Pos == prevEnd {
 			switch prevToken.Type {
 			case TokenLParen:
@@ -239,6 +242,14 @@ func (ca *completionAnalyzer) analyzeSymbolCompletion(ctx CompletionContext, tok
 				ctx.AttachedRevset = lastToken.Value
 			case TokenDotDot, TokenColonColon:
 				ctx.AttachedRevset = ca.input[prevToken.Pos:]
+			case TokenQuotedString:
+				// e.g. "parent("@git - quoted symbol followed by remote suffix
+				ctx.Prefix = ca.input[prevToken.Pos:]
+				ctx.AttachedRevset = ca.input[prevToken.Pos:]
+				ctx.Type = CompletionTypeRevision
+				ctx.ExpectingRevset = true
+				ctx.Message = fmt.Sprintf("Complete revision '%s' (branch, tag, commit ID, or alias)", ctx.Prefix)
+				return ctx
 			default:
 				if isBinarySetOperator(prevToken.Type) {
 					ctx.AttachedRevset = lastToken.Value
