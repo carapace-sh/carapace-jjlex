@@ -130,6 +130,43 @@ func (ca *completionAnalyzer) Analyze() CompletionContext {
 			ctx.Message = "Complete an operator or end expression"
 			return ctx
 		}
+
+		// When QuotedString is followed by Symbol or Minus/Plus, they form a combined revision
+		// e.g. "parents("@git or "parents("- (suffix)
+		if lastToken.Type == TokenQuotedString && len(tokens) >= 2 {
+			// QuotedString alone as last token - it's a revision being completed
+			if !inputTrailingSpace {
+				ctx.Type = CompletionTypeRevision
+				ctx.Prefix = ca.extractPrefix(lastToken)
+				ctx.AttachedRevset = ca.extractPrefix(lastToken)
+				ctx.ExpectingRevset = true
+
+				// Check if we're inside a function call to set FunctionName
+				if len(tokens) >= 2 && (tokens[len(tokens)-2].Type == TokenLParen || tokens[len(tokens)-2].Type == TokenComma) {
+					funcNameToken := ca.findFunctionName(tokens, len(tokens)-2)
+					if funcNameToken != nil {
+						argCount := ca.countFunctionArguments(tokens, len(tokens)-2)
+						ctx.FunctionName = funcNameToken.Value
+						ctx.ArgumentIndex = argCount
+						ctx.IsValid = ca.isValidArgumentCount(funcNameToken.Value, argCount)
+						ctx.ExpectingRevset = ca.expectsRevsetArgument(funcNameToken.Value, argCount)
+						if !ctx.IsValid {
+							ctx.Prefix = ""
+							ctx.Type = CompletionTypeUnknown
+							ctx.FunctionName = ""
+							ctx.ArgumentIndex = 0
+							ctx.ExpectingRevset = false
+							ctx.AttachedRevset = ""
+							ctx.Message = fmt.Sprintf("function '%s' has too many arguments", funcNameToken.Value)
+						} else {
+							ctx.Message = fmt.Sprintf("Complete revision '%s' (branch, tag, commit ID, or alias)", ctx.Prefix)
+						}
+					}
+				}
+				return ctx
+			}
+		}
+
 		return ca.analyzeSymbolCompletion(ctx, tokens, lastToken)
 
 	case TokenLParen:
@@ -145,9 +182,35 @@ func (ca *completionAnalyzer) Analyze() CompletionContext {
 		return ctx
 
 	case TokenMinus, TokenPlus:
+		// Check if minus/plus is a suffix attached to a quoted string revision
+		// e.g. parents("parents("- where - is a suffix of the revision "parents("
 		if len(tokens) >= 2 {
 			prevToken := tokens[len(tokens)-2]
+			if prevToken.Type == TokenQuotedString {
+				quotedWithSuffix := ca.input[prevToken.Pos:]
+				ctx.Type = CompletionTypeRevision
+				ctx.Prefix = quotedWithSuffix
+				ctx.AttachedRevset = quotedWithSuffix
+				ctx.ExpectingRevset = true
+
+				// Check if we're inside a function call
+				if len(tokens) >= 3 && (tokens[len(tokens)-3].Type == TokenLParen || tokens[len(tokens)-3].Type == TokenComma) {
+					funcNameToken := ca.findFunctionName(tokens, len(tokens)-3)
+					if funcNameToken != nil {
+						argCount := ca.countFunctionArguments(tokens, len(tokens)-3)
+						ctx.FunctionName = funcNameToken.Value
+						ctx.ArgumentIndex = argCount
+						ctx.IsValid = ca.isValidArgumentCount(funcNameToken.Value, argCount)
+						ctx.ExpectingRevset = ca.expectsRevsetArgument(funcNameToken.Value, argCount)
+					}
+				}
+				return ctx
+			}
+
 			prevEnd := prevToken.Pos + len(prevToken.Value)
+			if prevToken.Type == TokenQuotedString {
+				prevEnd += 2
+			}
 			if lastToken.Pos == prevEnd {
 				ctx.Type = CompletionTypeOperator
 				ctx.Prefix = ""
@@ -248,6 +311,20 @@ func (ca *completionAnalyzer) analyzeSymbolCompletion(ctx CompletionContext, tok
 				ctx.AttachedRevset = ca.input[prevToken.Pos:]
 				ctx.Type = CompletionTypeRevision
 				ctx.ExpectingRevset = true
+				// Also check if we're inside a function call (look past the QuotedString)
+				if len(tokens) >= 3 {
+					searchIdx := len(tokens) - 3
+					if searchIdx >= 0 && (tokens[searchIdx].Type == TokenLParen || tokens[searchIdx].Type == TokenComma) {
+						funcNameToken := ca.findFunctionName(tokens, searchIdx)
+						if funcNameToken != nil {
+							argCount := ca.countFunctionArguments(tokens, searchIdx)
+							ctx.FunctionName = funcNameToken.Value
+							ctx.ArgumentIndex = argCount
+							ctx.IsValid = ca.isValidArgumentCount(funcNameToken.Value, argCount)
+							ctx.ExpectingRevset = ca.expectsRevsetArgument(funcNameToken.Value, argCount)
+						}
+					}
+				}
 				ctx.Message = fmt.Sprintf("Complete revision '%s' (branch, tag, commit ID, or alias)", ctx.Prefix)
 				return ctx
 			default:
@@ -262,11 +339,16 @@ func (ca *completionAnalyzer) analyzeSymbolCompletion(ctx CompletionContext, tok
 		}
 	}
 
-	// Check if previous token is '(' or ','
-	if len(tokens) >= 2 && (tokens[len(tokens)-2].Type == TokenLParen || tokens[len(tokens)-2].Type == TokenComma) {
-		funcNameToken := ca.findFunctionName(tokens, len(tokens)-2)
+	// Check if we're inside a function call by looking for '(' or ','
+	// accounting for QuotedString that may precede the current symbol
+	searchIdx := len(tokens) - 2
+	if searchIdx >= 0 && tokens[searchIdx].Type == TokenQuotedString && searchIdx > 0 {
+		searchIdx--
+	}
+	if searchIdx >= 0 && (tokens[searchIdx].Type == TokenLParen || tokens[searchIdx].Type == TokenComma) {
+		funcNameToken := ca.findFunctionName(tokens, searchIdx)
 		if funcNameToken != nil {
-			argCount := ca.countFunctionArguments(tokens, len(tokens)-2)
+			argCount := ca.countFunctionArguments(tokens, searchIdx)
 			ctx.FunctionName = funcNameToken.Value
 			ctx.Type = CompletionTypeFunctionArg
 			ctx.ArgumentIndex = argCount
