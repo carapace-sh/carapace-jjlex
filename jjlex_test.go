@@ -36,25 +36,26 @@ func TestSplit(t *testing.T) {
 		"rev | ":                  {Prefix: "", Type: CompletionTypeRevision},
 		"rev | r":                 {Prefix: "r", Type: CompletionTypeRevision, AttachedRevset: "r"},
 		"rev | r-":                {Prefix: "r-", Type: CompletionTypeRevision, AttachedRevset: "r-"},
-		"parents(":                {Type: CompletionTypeFunctionArg},
-		"parents(a":               {Prefix: "a", Type: CompletionTypeFunctionArg, ArgumentIndex: 0, AttachedRevset: "a"},
-		"parents(1":               {Prefix: "1", Type: CompletionTypeFunctionArg, ArgumentIndex: 1, AttachedRevset: "1"},
-		"parents(1a":              {Prefix: "1a", Type: CompletionTypeFunctionArg, ArgumentIndex: 1, AttachedRevset: "1a"},
-		"parents(1a/":             {Prefix: "1a/", Type: CompletionTypeFunctionArg, ArgumentIndex: 1, AttachedRevset: "1a/"},
-		"parents(1a/b":            {Prefix: "1a/b", Type: CompletionTypeFunctionArg, ArgumentIndex: 1, AttachedRevset: "1a/b"},
-		"parents(v1":              {Prefix: "v1", Type: CompletionTypeFunctionArg, ArgumentIndex: 1, AttachedRevset: "v1"},
-		"parents(v1.":             {Prefix: "v1.", Type: CompletionTypeFunctionArg, ArgumentIndex: 1, AttachedRevset: "v1."},
-		"parents(v1.0.0":          {Prefix: "v1.0.0", Type: CompletionTypeFunctionArg, ArgumentIndex: 1, AttachedRevset: "v1.0.0"},
-		"parents(v1.0.0-beta":     {Prefix: "v1.0.0-beta", Type: CompletionTypeFunctionArg, ArgumentIndex: 1, AttachedRevset: "v1.0.0-beta"},
+		"parents(":                {Type: CompletionTypeFunctionArg, FunctionName: "parents"},
+		"parents(a":               {Prefix: "a", Type: CompletionTypeFunctionArg, FunctionName: "parents", ArgumentIndex: 0, AttachedRevset: "a"},
+		"parents(1":               {Prefix: "1", Type: CompletionTypeFunctionArg, FunctionName: "parents", ArgumentIndex: 0, AttachedRevset: "1"},
+		"parents(1a":              {Prefix: "1a", Type: CompletionTypeFunctionArg, FunctionName: "parents", ArgumentIndex: 0, AttachedRevset: "1a"},
+		"parents(1a/":             {Prefix: "1a/", Type: CompletionTypeFunctionArg, FunctionName: "parents", ArgumentIndex: 0, AttachedRevset: "1a/"},
+		"parents(1a/b":            {Prefix: "1a/b", Type: CompletionTypeFunctionArg, FunctionName: "parents", ArgumentIndex: 0, AttachedRevset: "1a/b"},
+		"parents(v1":              {Prefix: "v1", Type: CompletionTypeFunctionArg, FunctionName: "parents", ArgumentIndex: 0, AttachedRevset: "v1"},
+		"parents(v1.":             {Prefix: "v1.", Type: CompletionTypeFunctionArg, FunctionName: "parents", ArgumentIndex: 0, AttachedRevset: "v1."},
+		"parents(v1.0.0":          {Prefix: "v1.0.0", Type: CompletionTypeFunctionArg, FunctionName: "parents", ArgumentIndex: 0, AttachedRevset: "v1.0.0"},
+		"parents(v1.0.0-beta":     {Prefix: "v1.0.0-beta", Type: CompletionTypeFunctionArg, FunctionName: "parents", ArgumentIndex: 0, AttachedRevset: "v1.0.0-beta"},
 		"parents(a)":              {Prefix: "", Type: CompletionTypeOperator, AttachedRevset: "parents(a)"},
 		"parents(a)-":             {Prefix: "", Type: CompletionTypeOperator, AttachedRevset: "parents(a)-"},
 		"parents(a)|":             {Prefix: "", Type: CompletionTypeRevision},
 		"parents(a)| ":            {Prefix: "", Type: CompletionTypeRevision},
 		"parents(a) |":            {Prefix: "", Type: CompletionTypeRevision},
 		"parents(a) | ":           {Prefix: "", Type: CompletionTypeRevision},
-		"parents(a,":              {Prefix: "", Type: CompletionTypeFunctionArg, ArgumentIndex: 1},
-		"parents(a,b":             {Prefix: "b", Type: CompletionTypeFunctionArg, ArgumentIndex: 1, AttachedRevset: "b"},
-		"parents(a, b":            {Prefix: "b", Type: CompletionTypeFunctionArg, ArgumentIndex: 1, AttachedRevset: "b"},
+		"parents(a,":              {Prefix: "", Type: CompletionTypeFunctionArg, FunctionName: "parents", ArgumentIndex: 1},
+		"parents(a,b":             {Prefix: "b", Type: CompletionTypeFunctionArg, FunctionName: "parents", ArgumentIndex: 1, AttachedRevset: "b"},
+		"parents(a, b":            {Prefix: "b", Type: CompletionTypeFunctionArg, FunctionName: "parents", ArgumentIndex: 1, AttachedRevset: "b"},
+		"parents(children(a":      {Prefix: "a", Type: CompletionTypeFunctionArg, FunctionName: "children", ArgumentIndex: 0, AttachedRevset: "a"},
 		":":                       {Prefix: ":", Type: CompletionTypeOperator},
 		"::":                      {Prefix: "", Type: CompletionTypeRevision, AttachedRevset: "::"},
 		"::r":                     {Prefix: "r", Type: CompletionTypeRevision, AttachedRevset: "::r"},
@@ -80,6 +81,12 @@ func TestSplit(t *testing.T) {
 			}
 			if actual.AttachedRevset != expected.AttachedRevset {
 				t.Fatalf("wrong attached revset (expected: %s, was: %s)", expected.AttachedRevset, actual.AttachedRevset)
+			}
+			if actual.FunctionName != expected.FunctionName {
+				t.Fatalf("wrong function name (expected: %s, was: %s)", expected.FunctionName, actual.FunctionName)
+			}
+			if actual.ArgumentIndex != expected.ArgumentIndex {
+				t.Fatalf("wrong argument index (expected: %v, was: %v)", expected.ArgumentIndex, actual.ArgumentIndex)
 			}
 		})
 	}
