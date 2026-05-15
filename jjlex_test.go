@@ -81,6 +81,7 @@ func TestSplit(t *testing.T) {
 		"parents(\"parents(\"@git":  {IsValid: true, Prefix: "\"parents(\"@git", Type: CompletionTypeRevision, FunctionName: "parents", ArgumentIndex: 0, AttachedRevset: "\"parents(\"@git", ExpectingRevset: true},
 		"parents(\"parents(\"-":     {IsValid: true, Prefix: "\"parents(\"-", Type: CompletionTypeRevision, FunctionName: "parents", ArgumentIndex: 0, AttachedRevset: "\"parents(\"-", ExpectingRevset: true},
 		"parents(\"parents(\"@git-": {IsValid: true, Prefix: "\"parents(\"@git-", Type: CompletionTypeRevision, FunctionName: "parents", ArgumentIndex: 0, AttachedRevset: "\"parents(\"@git-", ExpectingRevset: true},
+		"parents(\"parents(\"----":  {IsValid: true, Prefix: "\"parents(\"----", Type: CompletionTypeRevision, FunctionName: "parents", ArgumentIndex: 0, AttachedRevset: "\"parents(\"----", ExpectingRevset: true},
 	} {
 		t.Run(revset, func(t *testing.T) {
 			actual := Split(revset)
