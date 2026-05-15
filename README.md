@@ -6,7 +6,7 @@
 
 Simple [Jujutsu Revset](https://docs.jj-vcs.dev/latest/revsets/) lexer aimed to enable complex completion in [carapace-bin].
 
-> This is a clanker generated (low quality) lexer with no ambition for absolute correctness in all cases.
+> This is a clanker generated lexer with the sole ambition to provide completion context.
 
 [carapace-bin]:https://github.com/carapace-sh/carapace-bin
 
