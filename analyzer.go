@@ -197,7 +197,14 @@ func (ca *completionAnalyzer) Analyze() CompletionContext {
 		return ctx
 
 	case TokenError:
-		// Check if it's a partial operator
+		if strings.HasPrefix(lastToken.Value, "unterminated quoted string") {
+			ctx.Type = CompletionTypeRevision
+			ctx.Prefix = ca.input[lastToken.Pos:]
+			ctx.AttachedRevset = ca.input[lastToken.Pos:]
+			ctx.ExpectingRevset = true
+			ctx.Message = "Complete revision inside quoted string"
+			return ctx
+		}
 		if strings.HasPrefix(lastToken.Value, "unexpected") {
 			ctx.Type = CompletionTypeUnknown
 			ctx.IsValid = false
@@ -216,9 +223,9 @@ func (ca *completionAnalyzer) Analyze() CompletionContext {
 
 // analyzeSymbolCompletion handles completion for symbol tokens
 func (ca *completionAnalyzer) analyzeSymbolCompletion(ctx CompletionContext, tokens []Token, lastToken Token) CompletionContext {
-	ctx.Prefix = lastToken.Value
+	ctx.Prefix = ca.extractPrefix(lastToken)
 
-	isRevsetLike := lastToken.Type == TokenSymbol || lastToken.Type == TokenInteger
+	isRevsetLike := lastToken.Type == TokenSymbol || lastToken.Type == TokenInteger || lastToken.Type == TokenQuotedString
 
 	// Check if the token is directly attached to a preceding token
 	if len(tokens) >= 2 {
@@ -275,7 +282,10 @@ func (ca *completionAnalyzer) analyzeSymbolCompletion(ctx CompletionContext, tok
 	ctx.Type = CompletionTypeRevision
 	ctx.Message = fmt.Sprintf("Complete revision '%s' (branch, tag, commit ID, or alias)", ctx.Prefix)
 	if ctx.AttachedRevset == "" && isRevsetLike && !hasPrecedingOperatorOrParen(tokens) {
-		ctx.AttachedRevset = lastToken.Value
+		ctx.AttachedRevset = ca.extractPrefix(lastToken)
+	}
+	if lastToken.Type == TokenQuotedString {
+		ctx.ExpectingRevset = true
 	}
 	return ctx
 }
@@ -455,8 +465,11 @@ func (ca *completionAnalyzer) findTopLevelFunctionName(tokens []Token) *Token {
 }
 
 func (ca *completionAnalyzer) extractPrefix(lastToken Token) string {
-	if lastToken.Type == TokenSymbol || lastToken.Type == TokenQuotedString || lastToken.Type == TokenInteger {
+	if lastToken.Type == TokenSymbol || lastToken.Type == TokenInteger {
 		return lastToken.Value
+	}
+	if lastToken.Type == TokenQuotedString {
+		return `"` + lastToken.Value + `"`
 	}
 	return ""
 }
