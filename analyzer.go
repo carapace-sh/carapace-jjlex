@@ -253,6 +253,9 @@ func (ca *completionAnalyzer) analyzeSymbolCompletion(ctx CompletionContext, tok
 			ctx.Type = CompletionTypeFunctionArg
 			ctx.ArgumentIndex = argCount
 			ctx.ExpectingRevset = ca.expectsRevsetArgument(funcNameToken.Value, argCount)
+			if !ctx.ExpectingRevset {
+				ctx.AttachedRevset = ""
+			}
 			ctx.Message = fmt.Sprintf("Complete argument for function '%s'", funcNameToken.Value)
 			return ctx
 		}
@@ -539,8 +542,12 @@ func (ca *completionAnalyzer) expectsRevsetArgument(funcName string, argIndex in
 		return false
 	}
 
-	if revsetOnlyFuncs[funcName] || revsetFirstFuncs[funcName] {
+	if revsetOnlyFuncs[funcName] {
 		return true
+	}
+
+	if revsetFirstFuncs[funcName] {
+		return argIndex == 0
 	}
 
 	if patternFuncs[funcName] {
