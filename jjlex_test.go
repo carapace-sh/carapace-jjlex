@@ -74,6 +74,8 @@ func TestSplit(t *testing.T) {
 		"description(":            {IsValid: true, Prefix: "", Type: CompletionTypeFunctionArg, FunctionName: "description", ArgumentIndex: 0},
 		"description(a":           {IsValid: true, Prefix: "a", Type: CompletionTypeFunctionArg, FunctionName: "description", ArgumentIndex: 0},
 		"description(a,err":       {IsValid: false},
+		"\"parents(":              {IsValid: true, Prefix: "\"parents(", Type: CompletionTypeRevision, AttachedRevset: "\"parents(", ExpectingRevset: true},
+		"\"parents(\"":            {IsValid: true, Prefix: "\"parents(\"", Type: CompletionTypeRevision, AttachedRevset: "\"parents(\"", ExpectingRevset: true},
 	} {
 		t.Run(revset, func(t *testing.T) {
 			actual := Split(revset)
