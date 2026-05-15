@@ -252,11 +252,22 @@ func (ca *completionAnalyzer) analyzeSymbolCompletion(ctx CompletionContext, tok
 			ctx.FunctionName = funcNameToken.Value
 			ctx.Type = CompletionTypeFunctionArg
 			ctx.ArgumentIndex = argCount
+			ctx.IsValid = ca.isValidArgumentCount(funcNameToken.Value, argCount)
 			ctx.ExpectingRevset = ca.expectsRevsetArgument(funcNameToken.Value, argCount)
 			if !ctx.ExpectingRevset {
 				ctx.AttachedRevset = ""
 			}
-			ctx.Message = fmt.Sprintf("Complete argument for function '%s'", funcNameToken.Value)
+			if !ctx.IsValid {
+				ctx.Prefix = ""
+				ctx.Type = CompletionTypeUnknown
+				ctx.FunctionName = ""
+				ctx.ArgumentIndex = 0
+				ctx.ExpectingRevset = false
+				ctx.AttachedRevset = ""
+				ctx.Message = fmt.Sprintf("function '%s' has too many arguments", funcNameToken.Value)
+			} else {
+				ctx.Message = fmt.Sprintf("Complete argument for function '%s'", funcNameToken.Value)
+			}
 			return ctx
 		}
 	}
@@ -288,7 +299,16 @@ func (ca *completionAnalyzer) analyzeFunctionArgument(ctx CompletionContext, tok
 
 	ctx.ExpectingRevset = ca.expectsRevsetArgument(funcNameToken.Value, argCount)
 
-	if ctx.ExpectingRevset {
+	if !ca.isValidArgumentCount(funcNameToken.Value, argCount) {
+		ctx.IsValid = false
+		ctx.Prefix = ""
+		ctx.Type = CompletionTypeUnknown
+		ctx.FunctionName = ""
+		ctx.ArgumentIndex = 0
+		ctx.ExpectingRevset = false
+		ctx.AttachedRevset = ""
+		ctx.Message = fmt.Sprintf("function '%s' has too many arguments", funcNameToken.Value)
+	} else if ctx.ExpectingRevset {
 		ctx.Message = fmt.Sprintf("Complete revset argument %d for function '%s'", argCount+1, funcNameToken.Value)
 	} else {
 		ctx.Message = fmt.Sprintf("Complete string pattern for function '%s'", funcNameToken.Value)
@@ -565,5 +585,48 @@ func (ca *completionAnalyzer) expectsRevsetArgument(funcName string, argIndex in
 	}
 
 	// Default: assume revset
+	return true
+}
+
+func maxFunctionArguments(funcName string) (int, bool) {
+	maxArgs := map[string]int{
+		"all":             0,
+		"none":            0,
+		"tags":            0,
+		"git_refs":        0,
+		"git_head":        0,
+		"visible_heads":   0,
+		"root":            0,
+		"merges":          0,
+		"empty":           0,
+		"conflict":        0,
+		"mine":            0,
+		"parents":         2,
+		"children":        2,
+		"ancestors":       2,
+		"descendants":     2,
+		"connected":       1,
+		"heads":           1,
+		"roots":           1,
+		"latest":          2,
+		"present":         1,
+		"branches":        1,
+		"remote_branches": 2,
+		"description":     1,
+		"author":          1,
+		"committer":       1,
+		"file":            1,
+		"bookmark":        0,
+	}
+	if max, ok := maxArgs[funcName]; ok {
+		return max, true
+	}
+	return 0, false
+}
+
+func (ca *completionAnalyzer) isValidArgumentCount(funcName string, argCount int) bool {
+	if max, known := maxFunctionArguments(funcName); known {
+		return argCount < max
+	}
 	return true
 }
