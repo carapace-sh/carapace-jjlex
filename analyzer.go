@@ -182,22 +182,32 @@ func (ca *completionAnalyzer) Analyze() CompletionContext {
 		return ctx
 
 	case TokenMinus, TokenPlus:
-		// Check if minus/plus is a suffix attached to a quoted string revision
-		// e.g. parents("parents("- where - is a suffix of the revision "parents("
 		if len(tokens) >= 2 {
-			prevToken := tokens[len(tokens)-2]
-			if prevToken.Type == TokenQuotedString {
-				quotedWithSuffix := ca.input[prevToken.Pos:]
+			// Scan backwards past consecutive Minus/Plus tokens to find a QuotedString
+			// e.g. parents("parents("---- where ---- is a suffix of the revision "parents("
+			quotedIdx := -1
+			for i := len(tokens) - 2; i >= 0; i-- {
+				if tokens[i].Type == TokenMinus || tokens[i].Type == TokenPlus {
+					continue
+				}
+				if tokens[i].Type == TokenQuotedString {
+					quotedIdx = i
+				}
+				break
+			}
+
+			if quotedIdx >= 0 {
+				quotedWithSuffix := ca.input[tokens[quotedIdx].Pos:]
 				ctx.Type = CompletionTypeRevision
 				ctx.Prefix = quotedWithSuffix
 				ctx.AttachedRevset = quotedWithSuffix
 				ctx.ExpectingRevset = true
 
 				// Check if we're inside a function call
-				if len(tokens) >= 3 && (tokens[len(tokens)-3].Type == TokenLParen || tokens[len(tokens)-3].Type == TokenComma) {
-					funcNameToken := ca.findFunctionName(tokens, len(tokens)-3)
+				if quotedIdx >= 1 && (tokens[quotedIdx-1].Type == TokenLParen || tokens[quotedIdx-1].Type == TokenComma) {
+					funcNameToken := ca.findFunctionName(tokens, quotedIdx-1)
 					if funcNameToken != nil {
-						argCount := ca.countFunctionArguments(tokens, len(tokens)-3)
+						argCount := ca.countFunctionArguments(tokens, quotedIdx-1)
 						ctx.FunctionName = funcNameToken.Value
 						ctx.ArgumentIndex = argCount
 						ctx.IsValid = ca.isValidArgumentCount(funcNameToken.Value, argCount)
@@ -207,10 +217,8 @@ func (ca *completionAnalyzer) Analyze() CompletionContext {
 				return ctx
 			}
 
+			prevToken := tokens[len(tokens)-2]
 			prevEnd := prevToken.Pos + len(prevToken.Value)
-			if prevToken.Type == TokenQuotedString {
-				prevEnd += 2
-			}
 			if lastToken.Pos == prevEnd {
 				ctx.Type = CompletionTypeOperator
 				ctx.Prefix = ""
