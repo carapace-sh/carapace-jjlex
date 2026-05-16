@@ -375,6 +375,9 @@ func (t *Tokenizer) readNumber() Token {
 	// If followed by symbol characters (e.g. "123a"), treat the whole thing as a symbol
 	if t.pos < len(t.input) && (isSymbolChar(t.current) || t.isSymbolDotChar()) {
 		for t.pos < len(t.input) && (isSymbolChar(t.current) || (t.current == '.' && t.isSymbolDotChar())) {
+			if t.current == '.' && !t.isSymbolDotChar() {
+				break
+			}
 			sb.WriteRune(t.current)
 			t.advance()
 		}

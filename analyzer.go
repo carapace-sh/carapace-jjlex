@@ -311,7 +311,9 @@ func (ca *completionAnalyzer) analyzeSymbolCompletion(ctx CompletionContext, tok
 				ctx.AttachedRevset = lastToken.Value
 			case TokenComma:
 				ctx.AttachedRevset = lastToken.Value
-			case TokenDotDot, TokenColonColon:
+			case TokenDotDot:
+				ctx.AttachedRevset = lastToken.Value
+			case TokenColonColon:
 				ctx.AttachedRevset = ca.input[prevToken.Pos:]
 			case TokenQuotedString:
 				// e.g. "parent("@git - quoted symbol followed by remote suffix
