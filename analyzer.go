@@ -239,6 +239,19 @@ func (ca *completionAnalyzer) Analyze() CompletionContext {
 			ctx.Message = "Complete after partial range operator"
 			return ctx
 		}
+		if lastToken.Value == ".." {
+			if ca.hasUnmatchedOpenParen(tokens) {
+				ctx.Type = CompletionTypeRevision
+				ctx.Prefix = ""
+				ctx.Message = "Complete a revision after range operator"
+				return ctx
+			}
+			ctx.Type = CompletionTypeOperator
+			ctx.Prefix = ""
+			ctx.AttachedRevset = ""
+			ctx.Message = "Complete after range operator"
+			return ctx
+		}
 		if lastToken.Type == TokenColonColon {
 			ctx.AttachedRevset = lastToken.Value
 		}
@@ -260,6 +273,8 @@ func (ca *completionAnalyzer) Analyze() CompletionContext {
 				}
 			} else if funcName := ca.findTopLevelFunctionName(tokens); funcName != nil {
 				ctx.AttachedRevset = ca.input[funcName.Pos:]
+			} else if parenIdx := ca.findMatchingOpenParen(tokens); parenIdx >= 0 {
+				ctx.AttachedRevset = ca.input[tokens[parenIdx].Pos:]
 			}
 		}
 		ctx.Type = CompletionTypeOperator
@@ -344,7 +359,7 @@ func (ca *completionAnalyzer) analyzeSymbolCompletion(ctx CompletionContext, tok
 			}
 		} else if prevToken.Type == TokenComma {
 			ctx.AttachedRevset = lastToken.Value
-		} else if isBinarySetOperator(prevToken.Type) && !ca.isInsideBareParens(tokens) {
+		} else if isBinarySetOperator(prevToken.Type) {
 			ctx.AttachedRevset = lastToken.Value
 		}
 	}
@@ -454,26 +469,33 @@ func (ca *completionAnalyzer) analyzePatternPrefix(ctx CompletionContext, tokens
 
 // Helper methods
 
-// isInsideBareParens checks if we're inside parentheses that are NOT a function call
-func (ca *completionAnalyzer) isInsideBareParens(tokens []Token) bool {
+func (ca *completionAnalyzer) findMatchingOpenParen(tokens []Token) int {
 	depth := 0
 	for i := len(tokens) - 1; i >= 0; i-- {
 		switch tokens[i].Type {
 		case TokenRParen:
 			depth++
 		case TokenLParen:
-			if depth > 0 {
-				depth--
-			} else {
-				// Check if this paren is part of a function call
-				if i > 0 && tokens[i-1].Type == TokenSymbol {
-					return false
-				}
-				return true
+			depth--
+			if depth == 0 {
+				return i
 			}
 		}
 	}
-	return false
+	return -1
+}
+
+func (ca *completionAnalyzer) hasUnmatchedOpenParen(tokens []Token) bool {
+	depth := 0
+	for i := len(tokens) - 1; i >= 0; i-- {
+		switch tokens[i].Type {
+		case TokenRParen:
+			depth++
+		case TokenLParen:
+			depth--
+		}
+	}
+	return depth < 0
 }
 
 func hasPrecedingOperatorOrParen(tokens []Token) bool {
