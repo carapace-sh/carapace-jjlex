@@ -10,4 +10,4 @@ Simple [Jujutsu Revset](https://docs.jj-vcs.dev/latest/revsets/) lexer aimed to 
 
 [carapace-bin]:https://github.com/carapace-sh/carapace-bin
 
-[![asciicast](https://asciinema.org/a/1051682.svg)](https://asciinema.org/a/1051682)
+[![asciicast](https://asciinema.org/a/1068778.svg)](https://asciinema.org/a/1068778)
