@@ -3,6 +3,7 @@ package jjlex
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 	"unicode"
 )
@@ -68,6 +69,52 @@ type CompletionContext struct {
 
 	// When completing an operator this completes the attached revset
 	AttachedRevset string
+}
+
+func (ctx CompletionContext) AllowedOperators() []string {
+	// TODO extend and handle `CompletionTypeFunctionArg` and `CompletionTypePattern`
+	result := []string{}
+	switch fullPrefix := strings.TrimSuffix(ctx.FullInput, ctx.Prefix); {
+	case ctx.AttachedRevset == "":
+		result = []string{
+			// prefixes
+			"::", // `::x`: Ancestors of x, including the commits in x itself
+			"..", // `..x`: Ancestors of x, including the commits in x itself
+			"~",  // `~x`: Revisions that are not in x
+
+			// delimiters
+			"&", // `x & y`: Revisions that are in both x and y,
+			"~", // `x ~ y`: Revisions that are in x but not in y,
+			"|", // `x | y`: Revisions that are in either x or y (or both),
+		}
+	case strings.HasSuffix(fullPrefix, "::"), strings.HasSuffix(fullPrefix, ".."):
+		// TODO is `~` here a prefix or a delimiter?
+		result = []string{
+			// prefixes
+			"~", // `~x`: Revisions that are not in x
+
+			// delimiters
+			"&", // `x & y`: Revisions that are in both x and y,
+			"~", // `x ~ y`: Revisions that are in x but not in y,
+			"|", // `x | y`: Revisions that are in either x or y (or both),
+		}
+	default:
+		result = []string{
+			// suffixes
+			"-",  // `x-`: Parents of x, can be empty
+			"+",  // `x+`: Children of x, can be empty
+			":",  // `p:x`: String/date pattern or pattern alias named p", // TODO not attached to revision but a string litera
+			"::", // `x::`: Descendants of x, including the commits in x itself
+			"..", // `x..`: Revisions that are not ancestors of x
+
+			// delimiters
+			"&", // `x & y`: Revisions that are in both x and y
+			"~", // `x ~ y`: Revisions that are in x but not in y
+			"|", // `x | y`: Revisions that are in either x or y (or both)
+		}
+	}
+	sort.Strings(result)
+	return result
 }
 
 // completionAnalyzer analyzes revset expressions for completion context
