@@ -19,7 +19,13 @@ var rootCmd = &cobra.Command{
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := jjlex.Split(args[0])
-		m, err := json.MarshalIndent(ctx, "", "  ")
+
+		var output any = ctx
+		if cmd.Flag("allowed-operators").Changed {
+			output = ctx.AllowedOperators()
+		}
+
+		m, err := json.MarshalIndent(output, "", "  ")
 		if err != nil {
 			return err
 		}
@@ -35,6 +41,7 @@ func Execute(version string) error {
 }
 
 func init() {
+	rootCmd.Flags().Bool("allowed-operators", false, "list of allowed operators at this point")
 	carapace.Gen(rootCmd).PositionalCompletion(
 		jj.ActionRevsets(jj.RevOption{}.Default()),
 	)

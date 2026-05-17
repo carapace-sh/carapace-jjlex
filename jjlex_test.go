@@ -1,6 +1,9 @@
 package jjlex
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
 func TestSplit(t *testing.T) {
 	for revset, expected := range map[string]CompletionContext{
@@ -117,5 +120,17 @@ func TestSplit(t *testing.T) {
 			}
 		})
 	}
+}
 
+func TestAllowedOperators(t *testing.T) {
+	for revset, expected := range map[string][]string{
+		"rev..": {"|", "&", "~"},
+	} {
+		t.Run(revset, func(t *testing.T) {
+			actual := Split(revset)
+			if actualAllowedOperators := actual.AllowedOperators(); !reflect.DeepEqual(actualAllowedOperators, expected) {
+				t.Fatalf("wrong allowed operators (expected: %#v, was: %#v)", expected, actualAllowedOperators)
+			}
+		})
+	}
 }
