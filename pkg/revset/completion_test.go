@@ -1,6 +1,7 @@
 package revset
 
 import (
+	"slices"
 	"testing"
 )
 
@@ -492,9 +493,9 @@ func TestCompletionMultipleArgsSpanAndContent(t *testing.T) {
 		t.Fatalf("expected 3 args, got %d", len(ctx.Function.Args))
 	}
 	for i, expected := range []struct {
-		name     string
-		spanS    int
-		spanE    int
+		name  string
+		spanS int
+		spanE int
 	}{
 		{"a", 5, 6},
 		{"b", 8, 9},
@@ -517,10 +518,8 @@ func TestCompletionMultipleArgsSpanAndContent(t *testing.T) {
 
 func assertHasExpected(t *testing.T, ctx *CompletionContext, expected ExpectedToken) {
 	t.Helper()
-	for _, tok := range ctx.ExpectedTokens {
-		if tok == expected {
-			return
-		}
+	if slices.Contains(ctx.ExpectedTokens, expected) {
+		return
 	}
 	t.Errorf("expected %s in ExpectedTokens, got %v", expected, ctx.ExpectedTokens)
 }

@@ -40,10 +40,7 @@ func Parse(input string) (*Expression, error) {
 		return nil, p.syntaxError("unexpected token")
 	}
 	// Use lastContent to avoid including trailing whitespace in span
-	contentEnd := p.lastContent
-	if contentEnd > len(p.input) {
-		contentEnd = len(p.input)
-	}
+	contentEnd := min(p.lastContent, len(p.input))
 	if expr.Span.End > contentEnd || expr.Span.Start < start {
 		expr.Span = Span{Start: start, End: contentEnd}
 	}
@@ -92,7 +89,7 @@ func (p *parser) syntaxError(msg string) *ParseError {
 	}
 }
 
-func (p *parser) syntaxErrorf(format string, args ...interface{}) *ParseError {
+func (p *parser) syntaxErrorf(format string, args ...any) *ParseError {
 	return &ParseError{
 		Message: fmt.Sprintf(format, args...),
 		Span:    Span{Start: p.pos, End: min(p.pos+1, len(p.input))},
