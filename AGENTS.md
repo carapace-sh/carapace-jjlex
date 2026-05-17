@@ -35,6 +35,7 @@ Both parsers implement the same operator precedence hierarchy (levels 0-6) but i
 | `pkg/revset/format.go` | AST → string formatting with precedence-aware parenthesization |
 | `pkg/revset/completion.go` | Completion context types: `CompletionContext`, `ExpectedToken`, `ValidOperator`, `FunctionContext` |
 | `pkg/revset/completion_parser.go` | Completion parser: `ParseForCompletion()`, `compParser` type, duplicate validation checks (`isFunctionNameCheck`, `isStrictIdentifierCheck`) |
+| `pkg/revset/revset.pest` | PEG grammar for jj revset expressions, sourced from the [Jujutsu VCS](https://github.com/jj-vcs/jj). **Read-only reference** |
 | `main/main.go` | CLI entrypoint (parses args, calls library, outputs JSON). No tests. |
 
 ## Key Patterns & Gotchas
