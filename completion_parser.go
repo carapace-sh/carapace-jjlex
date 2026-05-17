@@ -45,6 +45,12 @@ type compParser struct {
 
 	// innermostFunc is the deepest function context we've set
 	innermostFunc *FunctionContext
+
+	// lastExpr is the most recently parsed expression (set by parsePrimary)
+	lastExpr *Expression
+
+	// exprStart is the input position where the current expression started
+	exprStart int
 }
 
 type funcParseState struct {
@@ -259,6 +265,7 @@ func (p *compParser) parseRangeExpr() {
 		if p.atCursorOrEnd() || p.peek() == ')' || p.peek() == ',' || p.peek() == '|' || p.peek() == '&' || p.peek() == '~' {
 			// Nullary ::
 			p.consumed = true
+			p.lastExpr = &Expression{Kind: KindDagRangeAll, Span: Span{Start: saved, End: saved + 2}}
 			return
 		}
 		// Prefix :: (no whitespace allowed after)
@@ -276,6 +283,7 @@ func (p *compParser) parseRangeExpr() {
 		p.skipWS()
 		if p.atCursorOrEnd() || p.peek() == ')' || p.peek() == ',' || p.peek() == '|' || p.peek() == '&' || p.peek() == '~' {
 			p.consumed = true
+			p.lastExpr = &Expression{Kind: KindRangeAll, Span: Span{Start: saved, End: saved + 2}}
 			return
 		}
 		if saved+2 < len(p.input) && isWhitespace(rune(p.input[saved+2])) {
@@ -378,6 +386,8 @@ func (p *compParser) parsePostfixOps() {
 
 func (p *compParser) parsePrimary() {
 	p.skipWS()
+	start := p.pos
+	p.exprStart = start
 	if p.atCursorOrEnd() {
 		p.beforeExpression()
 		return
@@ -387,12 +397,18 @@ func (p *compParser) parsePrimary() {
 	switch {
 	case ch == '(':
 		p.parseParenthesized()
+		if p.lastExpr != nil {
+			p.lastExpr.Span = Span{Start: start, End: p.pos}
+		}
 	case ch == '"':
-		p.parseStringLiteralCompletion()
+		value := p.parseStringLiteralCompletion()
+		p.lastExpr = &Expression{Kind: KindString, Span: Span{Start: start, End: p.pos}, payload: &StringExpr{Value: value}}
 	case ch == '\'':
-		p.parseRawStringLiteralCompletion()
+		value := p.parseRawStringLiteralCompletion()
+		p.lastExpr = &Expression{Kind: KindString, Span: Span{Start: start, End: p.pos}, payload: &StringExpr{Value: value}}
 	case ch == '@':
 		p.advance()
+		p.lastExpr = &Expression{Kind: KindAtCurrentWorkspace, Span: Span{Start: start, End: p.pos}}
 	case isIdentifierStart(ch):
 		p.parseSymbolOrFunctionCompletion()
 	default:
@@ -419,7 +435,7 @@ func (p *compParser) parseParenthesized() {
 	}
 }
 
-func (p *compParser) parseStringLiteralCompletion() {
+func (p *compParser) parseStringLiteralCompletion() string {
 	p.advance() // consume opening "
 	var content []rune
 	for {
@@ -427,12 +443,12 @@ func (p *compParser) parseStringLiteralCompletion() {
 			p.ctx.PartialString = string(content)
 			p.ctx.StringQuote = '"'
 			p.addExpected(ExpectedStringClose)
-			return
+			return string(content)
 		}
 		ch := p.peek()
 		if ch == '"' {
 			p.advance()
-			return // complete string
+			return string(content) // complete string
 		}
 		if ch == '\\' {
 			p.advance()
@@ -440,7 +456,7 @@ func (p *compParser) parseStringLiteralCompletion() {
 				p.ctx.PartialString = string(content)
 				p.ctx.StringQuote = '"'
 				p.addExpected(ExpectedStringClose)
-				return
+				return string(content)
 			}
 			p.advance() // consume escaped char
 		} else {
@@ -450,7 +466,7 @@ func (p *compParser) parseStringLiteralCompletion() {
 	}
 }
 
-func (p *compParser) parseRawStringLiteralCompletion() {
+func (p *compParser) parseRawStringLiteralCompletion() string {
 	p.advance() // consume opening '
 	begin := p.pos
 	for {
@@ -458,11 +474,12 @@ func (p *compParser) parseRawStringLiteralCompletion() {
 			p.ctx.PartialString = p.input[begin:p.pos]
 			p.ctx.StringQuote = '\''
 			p.addExpected(ExpectedStringClose)
-			return
+			return p.input[begin:p.pos]
 		}
 		if p.peek() == '\'' {
+			value := p.input[begin:p.pos]
 			p.advance()
-			return
+			return value
 		}
 		p.advance()
 	}
@@ -476,6 +493,7 @@ func (p *compParser) parseSymbolOrFunctionCompletion() {
 	// Check if cursor is within or right after the identifier
 	if p.pos >= p.cursor && identStart < p.cursor {
 		p.ctx.PartialIdent = p.input[identStart:p.cursor]
+		p.lastExpr = &Expression{Kind: KindIdentifier, Span: Span{Start: identStart, End: p.cursor}, payload: &IdentifierExpr{Name: p.ctx.PartialIdent}}
 		p.beforeExpression()
 		return
 	}
@@ -485,6 +503,7 @@ func (p *compParser) parseSymbolOrFunctionCompletion() {
 	p.skipWS()
 	if p.atCursorOrEnd() {
 		// After a complete identifier, could continue with operators or become function call
+		p.lastExpr = &Expression{Kind: KindIdentifier, Span: Span{Start: identStart, End: identEnd}, payload: &IdentifierExpr{Name: ident}}
 		p.afterExpression()
 		return
 	}
@@ -504,6 +523,7 @@ func (p *compParser) parseSymbolOrFunctionCompletion() {
 				p.ctx.PatternName = ident
 				p.addExpected(ExpectedPatternValue)
 				p.beforeExpression()
+				p.lastExpr = &Expression{Kind: KindPattern, Span: Span{Start: identStart, End: p.pos}, payload: &PatternExpr{Name: ident}}
 				return
 			}
 			p.pos = identEnd
@@ -511,6 +531,7 @@ func (p *compParser) parseSymbolOrFunctionCompletion() {
 			p.ctx.InPattern = true
 			p.ctx.PatternName = ident
 			p.parsePatternValueCompletion()
+			p.lastExpr = &Expression{Kind: KindPattern, Span: Span{Start: identStart, End: p.pos}, payload: &PatternExpr{Name: ident, Value: p.lastExpr}}
 			return
 		}
 	}
@@ -522,23 +543,31 @@ func (p *compParser) parseSymbolOrFunctionCompletion() {
 		p.skipWS()
 		if p.atCursorOrEnd() {
 			p.beforeExpression()
+			p.lastExpr = &Expression{Kind: KindAtWorkspace, Span: Span{Start: identStart, End: p.pos}, payload: &AtWorkspaceExpr{Name: ident}}
 			return
 		}
 		// Parse remote part
 		ch := p.peek()
+		var remote string
 		if ch == '"' {
-			p.parseStringLiteralCompletion()
+			remote = p.parseStringLiteralCompletion()
 		} else if ch == '\'' {
-			p.parseRawStringLiteralCompletion()
+			remote = p.parseRawStringLiteralCompletion()
 		} else if isIdentifierStart(ch) {
 			remoteStart := p.pos
 			p.scanIdentifierCompletion()
 			if p.pos >= p.cursor && remoteStart < p.cursor {
 				p.ctx.PartialIdent = p.input[remoteStart:p.cursor]
+				remote = p.ctx.PartialIdent
+			} else {
+				remote = p.input[remoteStart:p.pos]
 			}
 		}
+		p.lastExpr = &Expression{Kind: KindRemoteSymbol, Span: Span{Start: identStart, End: p.pos}, payload: &RemoteSymbolExpr{Name: ident, Remote: remote}}
 		return
 	}
+
+	p.lastExpr = &Expression{Kind: KindIdentifier, Span: Span{Start: identStart, End: identEnd}, payload: &IdentifierExpr{Name: ident}}
 }
 
 func (p *compParser) parsePatternValueCompletion() {
@@ -553,6 +582,7 @@ func (p *compParser) parsePatternValueCompletion() {
 
 func (p *compParser) parseFunctionCallCompletion(name string) {
 	fs := &funcParseState{name: name}
+	funcStart := p.exprStart
 	p.funcStack = append(p.funcStack, fs)
 	defer func() {
 		p.funcStack = p.funcStack[:len(p.funcStack)-1]
@@ -564,6 +594,7 @@ func (p *compParser) parseFunctionCallCompletion(name string) {
 		p.setFunctionContext(fs, 0)
 		p.beforeExpression()
 		p.addExpected(ExpectedClosingParen)
+		p.lastExpr = &Expression{Kind: KindFunctionCall, Span: Span{Start: funcStart, End: p.pos}, payload: &FunctionCallExpr{Name: name}}
 		return
 	}
 
@@ -574,6 +605,7 @@ func (p *compParser) parseFunctionCallCompletion(name string) {
 			p.setFunctionContext(fs, argIndex)
 			p.beforeExpression()
 			p.addExpected(ExpectedClosingParen)
+			p.lastExpr = &Expression{Kind: KindFunctionCall, Span: Span{Start: funcStart, End: p.pos}, payload: &FunctionCallExpr{Name: name, Args: fs.args, KeywordArgs: fs.keywordArgs}}
 			return
 		}
 
@@ -589,6 +621,7 @@ func (p *compParser) parseFunctionCallCompletion(name string) {
 				p.ctx.Function.IsKeywordArg = true
 				p.ctx.Function.KeywordArgName = p.input[kwIdentStart:min(p.pos, p.cursor)]
 				p.addExpected(ExpectedEquals)
+				p.lastExpr = &Expression{Kind: KindFunctionCall, Span: Span{Start: funcStart, End: p.pos}, payload: &FunctionCallExpr{Name: name, Args: fs.args, KeywordArgs: fs.keywordArgs}}
 				return
 			}
 			if p.peek() == '=' {
@@ -597,15 +630,17 @@ func (p *compParser) parseFunctionCallCompletion(name string) {
 				if p.atCursorOrEnd() {
 					p.setFunctionContext(fs, argIndex)
 					p.beforeExpression()
+					p.lastExpr = &Expression{Kind: KindFunctionCall, Span: Span{Start: funcStart, End: p.pos}, payload: &FunctionCallExpr{Name: name, Args: fs.args, KeywordArgs: fs.keywordArgs}}
 					return
 				}
 				p.parseExpr()
-				fs.keywordArgs = append(fs.keywordArgs, KeywordArg{Name: kwName})
+				fs.keywordArgs = append(fs.keywordArgs, KeywordArg{Name: kwName, Value: p.lastExpr})
 				p.skipWS()
 				if p.atCursorOrEnd() {
 					p.setFunctionContext(fs, argIndex+1)
 					p.addExpected(ExpectedClosingParen)
 					p.addExpected(ExpectedComma)
+					p.lastExpr = &Expression{Kind: KindFunctionCall, Span: Span{Start: funcStart, End: p.pos}, payload: &FunctionCallExpr{Name: name, Args: fs.args, KeywordArgs: fs.keywordArgs}}
 					return
 				}
 				if p.peek() == ',' {
@@ -620,7 +655,7 @@ func (p *compParser) parseFunctionCallCompletion(name string) {
 
 		// Regular positional argument
 		p.parseExpr()
-		fs.args = append(fs.args, nil) // placeholder to track arg count
+		fs.args = append(fs.args, p.lastExpr)
 		argIndex++
 
 		// If the parsed expression ended with a partial identifier, it might
@@ -634,6 +669,7 @@ func (p *compParser) parseFunctionCallCompletion(name string) {
 			p.addExpected(ExpectedClosingParen)
 			p.addExpected(ExpectedComma)
 			p.addExpected(ExpectedEquals)
+			p.lastExpr = &Expression{Kind: KindFunctionCall, Span: Span{Start: funcStart, End: p.pos}, payload: &FunctionCallExpr{Name: name, Args: fs.args, KeywordArgs: fs.keywordArgs}}
 			return
 		}
 
@@ -642,6 +678,7 @@ func (p *compParser) parseFunctionCallCompletion(name string) {
 			p.setFunctionContext(fs, argIndex)
 			p.addExpected(ExpectedClosingParen)
 			p.addExpected(ExpectedComma)
+			p.lastExpr = &Expression{Kind: KindFunctionCall, Span: Span{Start: funcStart, End: p.pos}, payload: &FunctionCallExpr{Name: name, Args: fs.args, KeywordArgs: fs.keywordArgs}}
 			return
 		}
 		if p.peek() == ',' {
@@ -651,6 +688,7 @@ func (p *compParser) parseFunctionCallCompletion(name string) {
 				p.setFunctionContext(fs, argIndex)
 				p.addExpected(ExpectedClosingParen)
 				p.beforeExpression()
+				p.lastExpr = &Expression{Kind: KindFunctionCall, Span: Span{Start: funcStart, End: p.pos}, payload: &FunctionCallExpr{Name: name, Args: fs.args, KeywordArgs: fs.keywordArgs}}
 				return
 			}
 		} else {
@@ -663,11 +701,13 @@ func (p *compParser) parseFunctionCallCompletion(name string) {
 		p.setFunctionContext(fs, argIndex)
 		p.addExpected(ExpectedClosingParen)
 		p.beforeExpression() // could add more args
+		p.lastExpr = &Expression{Kind: KindFunctionCall, Span: Span{Start: funcStart, End: p.pos}, payload: &FunctionCallExpr{Name: name, Args: fs.args, KeywordArgs: fs.keywordArgs}}
 		return
 	}
 	if p.peek() == ')' {
 		p.advance()
 	}
+	p.lastExpr = &Expression{Kind: KindFunctionCall, Span: Span{Start: funcStart, End: p.pos}, payload: &FunctionCallExpr{Name: name, Args: fs.args, KeywordArgs: fs.keywordArgs}}
 }
 
 // setFunctionContext populates the CompletionContext's Function field.
@@ -681,8 +721,9 @@ func (p *compParser) setFunctionContext(fs *funcParseState, argIndex int) {
 		KeywordArgs: fs.keywordArgs,
 		ArgIndex:    argIndex,
 	}
-	// Copy args count
+	// Copy args
 	ctx.Args = make([]*Expression, len(fs.args))
+	copy(ctx.Args, fs.args)
 	p.innermostFunc = ctx
 	p.ctx.Function = ctx
 }

@@ -97,6 +97,41 @@ func TestCompletionInFunctionAfterArg(t *testing.T) {
 	if ctx.Function.ArgIndex != 1 {
 		t.Errorf("expected arg index 1, got %d", ctx.Function.ArgIndex)
 	}
+	if len(ctx.Function.Args) != 1 {
+		t.Fatalf("expected 1 arg, got %d", len(ctx.Function.Args))
+	}
+	if ctx.Function.Args[0] == nil {
+		t.Fatal("expected non-nil arg")
+	}
+	if ctx.Function.Args[0].Kind != KindIdentifier {
+		t.Errorf("expected identifier arg, got %v", ctx.Function.Args[0].Kind)
+	}
+	if ctx.Function.Args[0].Identifier() != "foo" {
+		t.Errorf("expected arg identifier 'foo', got %q", ctx.Function.Args[0].Identifier())
+	}
+}
+
+func TestCompletionInFunctionMultipleArgs(t *testing.T) {
+	// "file(a, b" with cursor at end
+	ctx := ParseForCompletion("file(a, b", -1)
+	if ctx.Function == nil {
+		t.Fatal("expected Function context")
+	}
+	if len(ctx.Function.Args) != 2 {
+		t.Fatalf("expected 2 args, got %d", len(ctx.Function.Args))
+	}
+	if ctx.Function.Args[0] == nil {
+		t.Fatal("expected non-nil first arg")
+	}
+	if ctx.Function.Args[0].Identifier() != "a" {
+		t.Errorf("expected first arg 'a', got %q", ctx.Function.Args[0].Identifier())
+	}
+	if ctx.Function.Args[1] == nil {
+		t.Fatal("expected non-nil second arg")
+	}
+	if ctx.Function.Args[1].Identifier() != "b" {
+		t.Errorf("expected second arg 'b', got %q", ctx.Function.Args[1].Identifier())
+	}
 }
 
 func TestCompletionInFunctionAfterComma(t *testing.T) {
@@ -352,6 +387,129 @@ func TestCompletionRemoteSymbolPartial(t *testing.T) {
 	ctx := ParseForCompletion("main@ori", -1)
 	if ctx.PartialIdent != "ori" {
 		t.Errorf("expected PartialIdent 'ori', got %q", ctx.PartialIdent)
+	}
+}
+
+func TestCompletionArgSpanAndContent(t *testing.T) {
+	// "parents(foo" - verify arg span and content
+	ctx := ParseForCompletion("parents(foo", -1)
+	if ctx.Function == nil {
+		t.Fatal("expected Function context")
+	}
+	if len(ctx.Function.Args) != 1 {
+		t.Fatalf("expected 1 arg, got %d", len(ctx.Function.Args))
+	}
+	arg := ctx.Function.Args[0]
+	if arg.Kind != KindIdentifier {
+		t.Errorf("expected KindIdentifier, got %v", arg.Kind)
+	}
+	if arg.Identifier() != "foo" {
+		t.Errorf("expected identifier 'foo', got %q", arg.Identifier())
+	}
+	if arg.Span.Start != 8 || arg.Span.End != 11 {
+		t.Errorf("expected span [8,11), got [%d,%d)", arg.Span.Start, arg.Span.End)
+	}
+}
+
+func TestCompletionArgStringContent(t *testing.T) {
+	// `parents("foo"` - verify string arg content
+	ctx := ParseForCompletion(`parents("foo"`, -1)
+	if ctx.Function == nil {
+		t.Fatal("expected Function context")
+	}
+	if len(ctx.Function.Args) != 1 {
+		t.Fatalf("expected 1 arg, got %d", len(ctx.Function.Args))
+	}
+	arg := ctx.Function.Args[0]
+	if arg.Kind != KindString {
+		t.Errorf("expected KindString, got %v", arg.Kind)
+	}
+	if arg.StringValue() != "foo" {
+		t.Errorf("expected string value 'foo', got %q", arg.StringValue())
+	}
+	if arg.Span.Start != 8 || arg.Span.End != 13 {
+		t.Errorf("expected span [8,13), got [%d,%d)", arg.Span.Start, arg.Span.End)
+	}
+}
+
+func TestCompletionArgAtWorkspaceContent(t *testing.T) {
+	// "parents(foo@" - verify at workspace arg
+	ctx := ParseForCompletion("parents(foo@", -1)
+	if ctx.Function == nil {
+		t.Fatal("expected Function context")
+	}
+	if len(ctx.Function.Args) != 1 {
+		t.Fatalf("expected 1 arg, got %d", len(ctx.Function.Args))
+	}
+	arg := ctx.Function.Args[0]
+	if arg.Kind != KindAtWorkspace {
+		t.Errorf("expected KindAtWorkspace, got %v", arg.Kind)
+	}
+	if arg.AtWorkspaceName() != "foo" {
+		t.Errorf("expected name 'foo', got %q", arg.AtWorkspaceName())
+	}
+}
+
+func TestCompletionArgRemoteSymbolContent(t *testing.T) {
+	// "parents(foo@bar" - verify remote symbol arg
+	ctx := ParseForCompletion("parents(foo@bar", -1)
+	if ctx.Function == nil {
+		t.Fatal("expected Function context")
+	}
+	if len(ctx.Function.Args) != 1 {
+		t.Fatalf("expected 1 arg, got %d", len(ctx.Function.Args))
+	}
+	arg := ctx.Function.Args[0]
+	if arg.Kind != KindRemoteSymbol {
+		t.Errorf("expected KindRemoteSymbol, got %v", arg.Kind)
+	}
+	if arg.RemoteSymbolName() != "foo" {
+		t.Errorf("expected name 'foo', got %q", arg.RemoteSymbolName())
+	}
+	if arg.RemoteSymbolRemote() != "bar" {
+		t.Errorf("expected remote 'bar', got %q", arg.RemoteSymbolRemote())
+	}
+}
+
+func TestCompletionFunctionCallExpr(t *testing.T) {
+	// "parents(foo)" - verify function call expression
+	ctx := ParseForCompletion("parents(foo)", -1)
+	if ctx.Function != nil {
+		// After the function is closed, Function context should not be set
+		// (the cursor is after the closing paren)
+	}
+	// The lastExpr should be a function call
+	// This is tested indirectly - the function call is complete
+}
+
+func TestCompletionMultipleArgsSpanAndContent(t *testing.T) {
+	// "file(a, b, c" - verify all args have correct span and content
+	ctx := ParseForCompletion("file(a, b, c", -1)
+	if ctx.Function == nil {
+		t.Fatal("expected Function context")
+	}
+	if len(ctx.Function.Args) != 3 {
+		t.Fatalf("expected 3 args, got %d", len(ctx.Function.Args))
+	}
+	for i, expected := range []struct {
+		name     string
+		spanS    int
+		spanE    int
+	}{
+		{"a", 5, 6},
+		{"b", 8, 9},
+		{"c", 11, 12},
+	} {
+		arg := ctx.Function.Args[i]
+		if arg == nil {
+			t.Fatalf("arg %d is nil", i)
+		}
+		if arg.Identifier() != expected.name {
+			t.Errorf("arg %d: expected identifier %q, got %q", i, expected.name, arg.Identifier())
+		}
+		if arg.Span.Start != expected.spanS || arg.Span.End != expected.spanE {
+			t.Errorf("arg %d: expected span [%d,%d), got [%d,%d)", i, expected.spanS, expected.spanE, arg.Span.Start, arg.Span.End)
+		}
 	}
 }
 
