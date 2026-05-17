@@ -6,7 +6,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/carapace-sh/revset"
+	"github.com/carapace-sh/carapace-jjlex/pkg/revset"
 )
 
 func main() {
