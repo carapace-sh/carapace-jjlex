@@ -1,9 +1,9 @@
 module github.com/carapace-sh/carapace-jjlex/cmd
 
-go 1.26.1
+go 1.26.2
 
 require (
-	github.com/carapace-sh/carapace v1.11.5
+	github.com/carapace-sh/carapace v1.11.6
 	github.com/carapace-sh/carapace-bin v1.6.6
 	github.com/carapace-sh/carapace-jjlex v1.1.1
 	github.com/spf13/cobra v1.10.2
