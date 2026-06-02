@@ -533,3 +533,75 @@ func assertHasOperator(t *testing.T, ctx *CompletionContext, op string) {
 	}
 	t.Errorf("expected operator %q in ValidOperators, got %v", op, ctx.ValidOperators)
 }
+
+func TestCompletionNullaryRange(t *testing.T) {
+	// ".." with cursor at end (nullary range)
+	ctx := ParseForCompletion("..", -1)
+	assertHasExpected(t, ctx, ExpectedOperator)
+}
+
+func TestCompletionPrefixRange(t *testing.T) {
+	// "..foo" with cursor at end (prefix range)
+	ctx := ParseForCompletion("..foo", -1)
+	assertHasExpected(t, ctx, ExpectedOperator)
+}
+
+func TestCompletionInfixRange(t *testing.T) {
+	// "foo..bar" with cursor at end
+	ctx := ParseForCompletion("foo..bar", -1)
+	assertHasExpected(t, ctx, ExpectedOperator)
+}
+
+func TestCompletionInfixRangeNeedsRight(t *testing.T) {
+	// "foo.." with cursor at end - could be postfix or infix needing RHS
+	ctx := ParseForCompletion("foo..", -1)
+	assertHasExpected(t, ctx, ExpectedOperator)
+}
+
+func TestCompletionPatternKinds(t *testing.T) {
+	// "exact:" — already tested in TestCompletionInPattern, verify other kinds
+
+	// "glob:" — pattern
+	ctx := ParseForCompletion("glob:", -1)
+	if !ctx.InPattern {
+		t.Error("expected InPattern for glob:")
+	}
+	if ctx.PatternName != "glob" {
+		t.Errorf("expected PatternName 'glob', got %q", ctx.PatternName)
+	}
+
+	// "substring:" — pattern
+	ctx = ParseForCompletion("substring:", -1)
+	if !ctx.InPattern {
+		t.Error("expected InPattern for substring:")
+	}
+
+	// "regex:" — pattern
+	ctx = ParseForCompletion("regex:", -1)
+	if !ctx.InPattern {
+		t.Error("expected InPattern for regex:")
+	}
+}
+
+func TestCompletionPatternCaseInsensitive(t *testing.T) {
+	// "glob-i:" — case-insensitive pattern
+	ctx := ParseForCompletion("glob-i:", -1)
+	if !ctx.InPattern {
+		t.Error("expected InPattern")
+	}
+	if ctx.PatternName != "glob-i" {
+		t.Errorf("expected PatternName 'glob-i', got %q", ctx.PatternName)
+	}
+}
+
+func TestCompletionKeywordArgEqualsExpr(t *testing.T) {
+	// "remote_bookmarks(remote=" with cursor at end — should expect expression
+	ctx := ParseForCompletion("remote_bookmarks(remote=", -1)
+	assertHasExpected(t, ctx, ExpectedExpression)
+	if ctx.Function == nil {
+		t.Fatal("expected Function context")
+	}
+	if ctx.Function.Name != "remote_bookmarks" {
+		t.Errorf("expected function name 'remote_bookmarks', got %q", ctx.Function.Name)
+	}
+}

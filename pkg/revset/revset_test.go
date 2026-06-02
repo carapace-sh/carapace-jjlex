@@ -709,3 +709,163 @@ func testParseError(t *testing.T, input string) {
 		t.Errorf("expected error for %q", input)
 	}
 }
+
+func TestParseRangeOps(t *testing.T) {
+	// Infix range (x..y)
+	testParseBinaryOp(t, "foo..bar", Range)
+
+	// Nullary .. (KindRangeAll) already tested in TestParseRevset
+
+	// x.. is postfix range (not ancestors-of-x)
+	testParseUnaryOp(t, "foo..", RangePost)
+
+	// ..x is prefix range (ancestors excluding root)
+	testParseUnaryOp(t, "..foo", RangePre)
+
+	// Range operators don't nest without parens
+	testParseError(t, "foo::bar::")
+	testParseError(t, "foo..bar..")
+
+	// x..y semantics: ancestors of y not ancestors of x
+	// (verified via Format output, not set evaluation)
+	testParseEqual(t, "foo..bar", "foo..bar")
+
+	// ..x precedence: ..x then & is (..x)&y, not ..(x&y)
+	testParseEqual(t, "..x|y", "(..x)|y")
+	testParseEqual(t, "..x&y", "(..x)&y")
+}
+
+func TestParseAtSuffixVariants(t *testing.T) {
+	// Quoted name in at-suffix
+	expr, err := Parse(`"foo bar"@`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if expr.Kind != KindAtWorkspace {
+		t.Fatalf("expected KindAtWorkspace, got %v", expr.Kind)
+	}
+	if expr.AtWorkspaceName() != "foo bar" {
+		t.Errorf("expected 'foo bar', got %q", expr.AtWorkspaceName())
+	}
+
+	// Quoted remote in at-suffix
+	expr, err = Parse(`main@"foo bar"`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if expr.Kind != KindRemoteSymbol {
+		t.Fatalf("expected KindRemoteSymbol, got %v", expr.Kind)
+	}
+	if expr.RemoteSymbolName() != "main" {
+		t.Errorf("expected 'main', got %q", expr.RemoteSymbolName())
+	}
+	if expr.RemoteSymbolRemote() != "foo bar" {
+		t.Errorf("expected 'foo bar', got %q", expr.RemoteSymbolRemote())
+	}
+
+	// Single-quoted remote
+	expr, err = Parse(`main@'bar baz'`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if expr.RemoteSymbolRemote() != "bar baz" {
+		t.Errorf("expected 'bar baz', got %q", expr.RemoteSymbolRemote())
+	}
+
+	// @ inside quoted string is NOT workspace syntax
+	testParseKind(t, `"@"`, KindString)
+	testParseKind(t, `"main@"`, KindString)
+	testParseKind(t, `"main@origin"`, KindString)
+}
+
+func TestParseKeywordArgs(t *testing.T) {
+	// Keyword arg with strict identifier
+	expr, err := Parse("remote_bookmarks(remote=foo)")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if expr.FunctionName() != "remote_bookmarks" {
+		t.Errorf("expected 'remote_bookmarks', got %q", expr.FunctionName())
+	}
+	if len(expr.FunctionArgs()) != 0 {
+		t.Errorf("expected 0 positional args, got %d", len(expr.FunctionArgs()))
+	}
+	if len(expr.FunctionKeywordArgs()) != 1 {
+		t.Fatalf("expected 1 keyword arg, got %d", len(expr.FunctionKeywordArgs()))
+	}
+	kw := expr.FunctionKeywordArgs()[0]
+	if kw.Name != "remote" {
+		t.Errorf("expected keyword arg name 'remote', got %q", kw.Name)
+	}
+	if kw.Value.Identifier() != "foo" {
+		t.Errorf("expected keyword arg value 'foo', got %q", kw.Value.Identifier())
+	}
+
+	// Mix of positional and keyword args
+	expr, err = Parse("remote_bookmarks(bookmark1, remote=origin)")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(expr.FunctionArgs()) != 1 {
+		t.Errorf("expected 1 positional arg, got %d", len(expr.FunctionArgs()))
+	}
+	if len(expr.FunctionKeywordArgs()) != 1 {
+		t.Errorf("expected 1 keyword arg, got %d", len(expr.FunctionKeywordArgs()))
+	}
+
+	// Keyword arg with string value
+	expr, err = Parse(`remote_bookmarks(remote="origin"`)
+	_ = expr // just verifying it parses without panic
+	_ = err
+}
+
+func TestParsePatternWithPostfixOps(t *testing.T) {
+	// Pattern value can have postfix ops
+	testParseEqual(t, "x:@-+", "x:((@-)+)")
+	testParseEqual(t, "x:@", "x:@")
+
+	// Pattern value is neighbors_expression (no ranges)
+	testParseEqual(t, "x:y::z", "(x:y)::z")
+	testParseEqual(t, "x:y&z", "(x:y)&z")
+
+	// Pattern is right-associative
+	testParseEqual(t, "x:y:z", "x:(y:z)")
+}
+
+func TestParseUnionFlattening(t *testing.T) {
+	// Union flattens into a single node
+	expr, err := Parse("a | b | c | d")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if expr.Kind != KindUnionAll {
+		t.Fatalf("expected KindUnionAll, got %v", expr.Kind)
+	}
+	if len(expr.UnionNodes()) != 4 {
+		t.Errorf("expected 4 nodes, got %d", len(expr.UnionNodes()))
+	}
+
+	// Two-element union
+	expr, err = Parse("a | b")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(expr.UnionNodes()) != 2 {
+		t.Errorf("expected 2 nodes, got %d", len(expr.UnionNodes()))
+	}
+}
+
+func TestParseDifferencePrecedence(t *testing.T) {
+	// ~ binds tighter than | but same level as &
+	testParseEqual(t, "x & ~y", "x&(~y)")
+
+	// & and ~ have same precedence, left-associative
+	// a & b ~ c = (a & b) ~ c since & and ~ are left-assoc at same level
+	expr, err := Parse("a & b ~ c")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if expr.Kind != KindBinary || expr.BinaryOp() != Difference {
+		t.Fatalf("expected Difference at top, got %v", expr.Kind)
+	}
+}
