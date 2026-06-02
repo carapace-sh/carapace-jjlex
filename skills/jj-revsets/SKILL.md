@@ -158,7 +158,7 @@ Function argument notation: `[arg]` = optional. Named arguments can be specified
 | `bisect` | `bisect(x)` | Commits where about half the input set are descendants. Handles non-linear history imperfectly |
 | `exactly` | `exactly(x, count)` | Returns `x` if exactly `count` commits, otherwise errors. Useful with `count=1` |
 | `present` | `present(x)` | Same as `x`, but evaluates to `none()` if any commit in `x` doesn't exist |
-| `coalesce` | `coalesce(revsets...)` | Commits in the first revset that doesn't evaluate to `none()` |
+| `coalesce` | `coalesce([revsets...])` | Commits in the first revset that doesn't evaluate to `none()`. Zero args returns `none()`. At least one argument is recommended |
 
 ### Identity
 
@@ -309,48 +309,58 @@ Alias functions can be overloaded by parameter count. Built-in functions are sha
 Derived from the Pest grammar (`lib/src/revset.pest`):
 
 ```
-expression     = (negate_op ~ whitespace*)* ~ range_expression
-                 ~ (whitespace* ~ infix_op ~ whitespace* ~ (negate_op ~ whitespace*)* ~ range_expression)*
+expression       = (negate_op ~ whitespace*)* ~ range_expression
+                   ~ (whitespace* ~ infix_op ~ whitespace* ~ (negate_op ~ whitespace*)* ~ range_expression)*
 range_expression = neighbors_expression ~ range_ops ~ neighbors_expression
                  | neighbors_expression ~ range_post_ops
                  | range_pre_ops ~ neighbors_expression
                  | neighbors_expression
                  | range_all_ops
 neighbors_expression = primary ~ (parents_op | children_op)*
-primary        = "(" ~ expression ~ ")"
-               | function
-               | pattern
-               | symbol ~ at_op ~ symbol    # name@remote
-               | symbol ~ at_op             # name@  (workspace)
-               | symbol
-               | at_op                      # @ (current workspace)
-pattern        = strict_identifier ~ ":" ~ pattern_value_expression
-function       = function_name ~ "(" ~ [argument ~ ("," ~ argument)* ~ [","]] ~ ")"
-argument       = keyword_argument | expression
-keyword_argument = strict_identifier ~ "=" ~ expression
-symbol         = identifier | string_literal | raw_string_literal
+primary          = "(" ~ whitespace* ~ expression ~ whitespace* ~ ")"
+                 | function
+                 | pattern
+                 | symbol ~ at_op ~ symbol    # name@remote
+                 | symbol ~ at_op             # name@  (workspace)
+                 | symbol
+                 | at_op                      # @ (current workspace)
+pattern          = strict_identifier ~ ":" ~ pattern_value_expression
+pattern_value_expression = neighbors_expression    # no ranges allowed in pattern value
+function         = function_name ~ "(" ~ whitespace* ~ function_arguments ~ whitespace* ~ ")"
+function_arguments = argument ~ (whitespace* ~ "," ~ whitespace* ~ argument)* ~ (whitespace* ~ ",")?
+                 | ""    # empty argument list
+argument         = keyword_argument | expression
+keyword_argument = strict_identifier ~ whitespace* ~ "=" ~ whitespace* ~ expression
+symbol           = identifier | string_literal | raw_string_literal
 
-identifier     = identifier_part ~ (("." | "-"+ | "+") ~ identifier_part)*
-identifier_part = (XID_CONTINUE | "_" | "*" | "/")+
+identifier       = identifier_part ~ (("." | "-"+ | "+") ~ identifier_part)*
+identifier_part  = (XID_CONTINUE | "_" | "*" | "/")+
 strict_identifier = strict_identifier_part ~ (("." | "-" | "+") ~ strict_identifier_part)*
 strict_identifier_part = (ASCII_ALPHANUMERIC | "_" | "/")+
-function_name  = (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")*
+function_name    = (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")*
 
-infix_op       = "|" | "&" | "~"
-negate_op      = "~"
-parents_op     = "-"
-children_op    = "+"
-range_ops      = "::" | ".."
-range_pre_ops  = "::" | ".."
-range_post_ops = "::" | ".."
-range_all_ops  = "::" | ".."
+infix_op         = union_op | intersection_op | difference_op
+                 # compat_add_op("+") and compat_sub_op("-") are in the grammar
+                 # but produce errors (suggest | and ~ respectively)
+negate_op        = "~"
+parents_op       = "-"
+children_op      = "+"
+                 # compat_parents_op("^") is in the grammar but produces an error (suggests -)
+range_ops        = "::" | ".."    # also compat_dag_range_op(":") — error, suggests ::
+range_pre_ops    = "::" | ".."    # also compat_dag_range_pre_op(":") — error
+range_post_ops  = "::" | ".."    # also compat_dag_range_post_op(":") — error
+range_all_ops    = "::" | ".."
 ```
 
 **Key grammar notes:**
 - `-` is postfix (parents), NOT infix — `foo - bar` is a syntax error (use `~`)
 - `+` is postfix (children), NOT infix — `foo + bar` is a syntax error (use `|`)
-- `^` is always a syntax error (suggests `-`)
-- `:` alone is always a syntax error (suggests `::`)
+- `^` is in the grammar as a compat postfix operator but always produces an error (suggests `-`)
+- `:` alone is in the grammar as a compat range operator but always produces an error (suggests `::`)
 - Pattern colon (`name:value`) requires no whitespace around `:`
+- Pattern value is `neighbors_expression` — postfix ops allowed but NO ranges: `x:y::z` parses as `(x:y)::z`, not `x:(y::z)`
 - String literals: `"..."` with escapes (`\t`, `\r`, `\n`, `\0`, `\e`, `\xHH`, `\"`, `\\`), `'...'` raw strings (no escape processing)
 - Trailing comma allowed in function calls: `bookmarks(a,)`
+- Empty function calls: `visible_heads()` (no args)
+- `function_name` uses strict identifier rules (ASCII alphanumeric + underscore, must start with letter or underscore)
+- Whitespace: space, tab, CR, LF, FF (`\x0c`)

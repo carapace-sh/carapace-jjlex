@@ -37,7 +37,6 @@ Both parsers implement the same operator precedence hierarchy (levels 0-6) but i
 | `pkg/revset/format.go` | AST → string formatting with precedence-aware parenthesization |
 | `pkg/revset/completion.go` | Completion context types: `CompletionContext`, `ExpectedToken`, `ValidOperator`, `FunctionContext` |
 | `pkg/revset/completion_parser.go` | Completion parser: `ParseForCompletion()`, `compParser` type, duplicate validation checks (`isFunctionNameCheck`, `isStrictIdentifierCheck`) |
-| `pkg/revset/revset.pest` | PEG grammar for jj revset expressions, sourced from the [Jujutsu VCS](https://github.com/jj-vcs/jj). **Read-only reference** |
 | `main/main.go` | CLI entrypoint (parses args, calls library, outputs JSON). No tests. |
 
 ## Key Patterns & Gotchas
@@ -118,3 +117,22 @@ The main parser has `matchString(s)` (checks at `p.pos`) and `matchStringAt(pos,
 - `main/main_test.go` — integration tests with realistic revset examples sourced from jj's source code (success and error cases). No unit tests for `main.go` itself.
 - No external dependencies (pure stdlib)
 - Passing `cursor=-1` to `ParseForCompletion` defaults to `len(input)` (end of input)
+
+## Syncing with jj Upstream
+
+When jj revset syntax changes, update three things in order:
+
+### 1. Skill (`skills/jj-revsets/SKILL.md`)
+
+Check these jj source files:
+- **`lib/src/revset.pest`** — grammar changes (new operators, precedence, identifier rules, new expression types, pattern rules, compat operators)
+- **`lib/src/revset.rs`** — search for `BUILTIN_FUNCTION_MAP` to find all built-in functions. Check `map.insert("name", ...)` lines for argument handling (`expect_no_arguments()`, `expect_exact_arguments()`, `expect_arguments()` with required/optional args, `expect_named_arguments()`, `expect_some_arguments()`). Add new functions, remove deprecated ones, update changed signatures.
+- **`docs/revsets.md`** or **`web/docs/src/content/docs/revsets.md`** — function descriptions, operator semantics, string patterns, date formats, built-in aliases, symbol resolution priority
+
+### 2. Parser (`pkg/revset/parser.go`)
+
+Mirror grammar changes: new operators, changed precedence, new expression types, identifier rules. This is the strict parser that builds a full AST.
+
+### 3. Completion parser (`pkg/revset/completion_parser.go`)
+
+Mirror the same grammar changes from `parser.go`. The two parsers share helper functions (`isWhitespace`, `isIdentifierPart`, `isStrictIdentifierPart`, `splitIdentifierParts`) but have independent parser types (`parser` vs `compParser`). The completion parser also duplicates `isFunctionName`/`isStrictIdentifier` as `isFunctionNameCheck`/`isStrictIdentifierCheck` — keep these in sync.
