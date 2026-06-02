@@ -7,9 +7,11 @@ Go library for parsing [jj (Jujutsu)](https://github.com/jj-vcs/jj) revset expre
 ## Commands
 
 ```sh
-go test ./...          # run all tests
-go test ./pkg/revset/ # run revset package tests only
-go build ./...         # build all packages
+# From repo root:
+go test ./...                              # run all tests
+go test ./pkg/revset/                      # run revset package tests only
+go test -run TestParseRevset ./pkg/revset/  # run specific test
+go build ./...                              # build all packages
 go run main/main.go "<expr>"                    # parse expression, output AST as JSON
 go run main/main.go --complete <cursor> "<expr>" # completion context as JSON
 ```
@@ -95,12 +97,24 @@ The `|` operator flattens into a single `KindUnionAll` node rather than creating
 
 `go.mod` requires `github.com/carapace-sh/revset` but gopls reports it's not used. Don't add dependencies to this — it may be intentional or a leftover.
 
+### Completion parser `consumed` flag
+
+The `compParser` has a `consumed` bool that tracks whether any input was consumed before reaching the cursor. This distinguishes "expecting first expression" from "after an expression, expecting operator" — critical for `afterExpression()` vs `beforeExpression()` reporting. If `consumed` is false when reaching cursor, it reports `ExpectedExpression`; if true, it reports `ExpectedOperator`.
+
+### Completion parser `innermostFunc` guard
+
+`setFunctionContext()` only sets `p.ctx.Function` if `p.innermostFunc` is nil. This means the *innermost* (deepest) function call wins — if you have `parents(file(`, only `file`'s context is reported. This is by design since shell completion cares about the innermost scope.
+
+### `matchString` vs `matchStringAt` / `matchStringAtFullInput`
+
+The main parser has `matchString(s)` (checks at `p.pos`) and `matchStringAt(pos, s)` (checks at arbitrary position). The completion parser has `matchString(s)` (checks within cursor bounds) and `matchStringAtFullInput(pos, s)` (checks against full input, ignoring cursor). Use the right one for the context — the completion parser needs `matchStringAtFullInput` when doing look-ahead past the cursor (e.g., pattern detection).
+
 ## Testing
 
 - Tests use standard `testing` package only (no testify or other deps)
 - `revset_test.go` — main parser tests using helpers: `testParseKind`, `testParseUnaryOp`, `testParseBinaryOp`, `testParseEqual`, `testParseString`, `testParseError`
 - `completion_test.go` — completion tests using `assertHasExpected`, `assertHasOperator`
 - Test helpers use `t.Helper()` and `t.Fatalf`/`t.Errorf` patterns
-- `main/` has no tests
+- `main/main_test.go` — integration tests with realistic revset examples sourced from jj's source code (success and error cases). No unit tests for `main.go` itself.
 - No external dependencies (pure stdlib)
 - Passing `cursor=-1` to `ParseForCompletion` defaults to `len(input)` (end of input)
