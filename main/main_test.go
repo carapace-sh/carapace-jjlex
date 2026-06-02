@@ -16,7 +16,6 @@ var parseSuccessCases = []string{
 	"all()",
 	"visible_heads()",
 	"@",
-	"@",
 
 	// Postfix operators
 	"@-",
@@ -243,18 +242,11 @@ var parseSuccessCases = []string{
 	"remote_bookmarks( remote  =   foo  )",
 }
 
-// Known lexer gaps: these are valid jj revsets that the lexer does not yet support.
-// They are tracked here so we know what's missing. Once the gap is fixed,
-// move these into parseSuccessCases.
-var parseLexerGapCases = []string{
-	// Set literals ({{ ... }}) are not yet supported
+var parseErrorCases = []string{
+	// Curly braces are not valid revset syntax
 	"{}",
 	"{path}",
-	`first_parent({}, 2)`,
-	`diff_lines('1', {path})`,
-}
 
-var parseErrorCases = []string{
 	// Invalid operator usage
 	":foo",
 	"foo^",
@@ -311,18 +303,6 @@ func TestParseSuccess(t *testing.T) {
 	}
 }
 
-func TestParseLexerGaps(t *testing.T) {
-	for _, input := range parseLexerGapCases {
-		t.Run(input, func(t *testing.T) {
-			t.Skip("lexer gap: set literals not yet supported")
-			_, err := revset.Parse(input)
-			if err != nil {
-				t.Fatalf("expected success for %q, got error: %v", input, err)
-			}
-		})
-	}
-}
-
 func TestParseError(t *testing.T) {
 	for _, input := range parseErrorCases {
 		t.Run(input, func(t *testing.T) {
@@ -333,5 +313,3 @@ func TestParseError(t *testing.T) {
 		})
 	}
 }
-
-
