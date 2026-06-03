@@ -203,16 +203,19 @@ func ActionRevsetAliases(includeDefaults bool) carapace.Action {
 //
 //	remote= (filter by remote name)
 func ActionRevsetKeywordArgs(funcName string) carapace.Action {
-	keywords := revsetKeywordArgs(funcName)
-	if len(keywords) == 0 {
-		return carapace.ActionValues()
-	}
-	vals := make([]string, 0, len(keywords)*2)
-	for _, kw := range keywords {
-		vals = append(vals, kw.name, kw.description)
-	}
-	return carapace.ActionValuesDescribed(vals...).Suffix("=").
-		Tag("keyword arguments").Uid("jj", "revset-keyword-arg", "fn", funcName)
+	return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
+		keywords := revsetKeywordArgs(funcName)
+		if len(keywords) == 0 {
+			return carapace.ActionValues()
+		}
+		vals := make([]string, 0, len(keywords)*2)
+		for _, kw := range keywords {
+			vals = append(vals, kw.name, kw.description)
+		}
+		return carapace.ActionValuesDescribed(vals...)
+	}).Tag("keyword arguments").
+		Uid("jj", "revset-keyword-arg", "fn", funcName).
+		Suffix("=")
 }
 
 type keywordArg struct {
