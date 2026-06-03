@@ -71,11 +71,11 @@ func ActionRevsets(opts RevOpts) carapace.Action {
 		}
 
 		if expectsToken(ctx, revset.ExpectedPatternValue) {
-			return ActionStringPatterns().NoSpace()
+			return ActionStringPatterns().Suffix(":").NoSpace()
 		}
 
 		if expectsToken(ctx, revset.ExpectedStringClose) && ctx.PartialString != "" {
-			return ActionStringPatterns().Prefix(ctx.PartialString)
+			return ActionStringPatterns().Suffix(":").Prefix(ctx.PartialString)
 		}
 
 		if expectsToken(ctx, revset.ExpectedExpression) {
@@ -115,7 +115,7 @@ func actionExpression(opts RevOpts, ctx *revset.CompletionContext) carapace.Acti
 	batch := carapace.Batch(
 		ActionRevs(opts),
 		ActionRevsetFunctions(),
-		ActionRevsetPatterns(),
+		ActionRevsetPatterns().Suffix(":"),
 		ActionSpecialSymbols(),
 		ActionRevsetAliases(true),
 	)
@@ -169,20 +169,20 @@ func actionForFunctionArg(ctx *revset.CompletionContext, opts RevOpts) carapace.
 	case "author", "author_name", "author_email",
 		"committer", "committer_name", "committer_email",
 		"description", "subject":
-		return ActionStringPatterns().NoSpace()
+		return ActionStringPatterns().Suffix(":").NoSpace()
 
 	case "author_date", "committer_date":
-		return ActionDatePatterns().NoSpace()
+		return ActionDatePatterns().Suffix(":").NoSpace()
 
 	case "files", "diff_lines", "diff_lines_added", "diff_lines_removed":
-		return ActionFilesetPatterns().NoSpace()
+		return ActionFilesetPatterns().Suffix(":").NoSpace()
 
 	case "bookmarks", "remote_bookmarks", "tracked_remote_bookmarks", "untracked_remote_bookmarks",
 		"tags", "remote_tags", "tracked_remote_tags", "untracked_remote_tags":
 		if fn.ArgIndex >= 1 && !fn.IsKeywordArg {
 			return ActionRemotes().NoSpace()
 		}
-		batch := carapace.Batch(ActionStringPatterns())
+		batch := carapace.Batch(ActionStringPatterns().Suffix(":"))
 		switch fn.Name {
 		case "bookmarks":
 			batch = append(batch, ActionLocalBookmarks())
@@ -212,13 +212,13 @@ func actionForFunctionArg(ctx *revset.CompletionContext, opts RevOpts) carapace.
 func actionForPatternValue(ctx *revset.CompletionContext) carapace.Action {
 	switch ctx.PatternName {
 	case "exact", "exact-i", "substring", "substring-i", "glob", "glob-i", "regex", "regex-i":
-		return ActionStringPatterns().NoSpace()
+		return ActionStringPatterns().Suffix(":").NoSpace()
 	case "after", "before":
-		return ActionDatePatterns().NoSpace()
+		return ActionDatePatterns().Suffix(":").NoSpace()
 	case "cwd", "cwd-file", "cwd-glob", "cwd-prefix-glob",
 		"root", "root-file", "root-glob", "root-prefix-glob",
 		"cwd-glob-i", "cwd-prefix-glob-i", "root-glob-i", "root-prefix-glob-i":
-		return ActionFilesetPatterns().NoSpace()
+		return ActionFilesetPatterns().Suffix(":").NoSpace()
 	default:
 		return carapace.ActionValues()
 	}

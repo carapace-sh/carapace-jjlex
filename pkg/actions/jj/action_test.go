@@ -30,7 +30,7 @@ func TestActionStringPatterns(t *testing.T) {
 			"glob-i", "Glob pattern match (case-insensitive)",
 			"regex", "Regular expression match",
 			"regex-i", "Regular expression match (case-insensitive)",
-		).Suffix(":").NoSpace().Tag("string patterns"))
+		).Tag("string patterns"))
 	})
 }
 
@@ -41,7 +41,7 @@ func TestActionDatePatterns(t *testing.T) {
 		s.Run("").Expect(carapace.ActionValuesDescribed(
 			"after", "Matches dates at or after the given date",
 			"before", "Matches dates before (not including) the given date",
-		).Suffix(":").NoSpace().Tag("date patterns"))
+		).Tag("date patterns"))
 	})
 }
 
@@ -58,7 +58,7 @@ func TestActionRevsetPatterns(t *testing.T) {
 			"glob-i", "Glob pattern match (case-insensitive)",
 			"regex", "Regular expression match",
 			"regex-i", "Regular expression match (case-insensitive)",
-		).Suffix(":").NoSpace().Tag("string patterns"))
+		).Tag("string patterns"))
 	})
 }
 
@@ -79,7 +79,7 @@ func TestActionFilesetPatterns(t *testing.T) {
 			"cwd-prefix-glob-i", "Cwd-relative prefix-glob pattern (case-insensitive)",
 			"root-glob-i", "Workspace-relative glob pattern (case-insensitive)",
 			"root-prefix-glob-i", "Workspace-relative prefix-glob pattern (case-insensitive)",
-		).Suffix(":").NoSpace().Tag("fileset patterns"))
+		).Tag("fileset patterns"))
 	})
 }
 

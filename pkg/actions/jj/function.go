@@ -122,7 +122,7 @@ func ActionRevsetPatterns() carapace.Action {
 		"glob-i", "Glob pattern match (case-insensitive)",
 		"regex", "Regular expression match",
 		"regex-i", "Regular expression match (case-insensitive)",
-	).Uid("jj", "revset-pattern").Suffix(":").NoSpace().Tag("string patterns")
+	).Uid("jj", "revset-pattern").Tag("string patterns")
 }
 
 // ActionStringPatterns completes string pattern prefixes for revset functions.
@@ -139,7 +139,7 @@ func ActionStringPatterns() carapace.Action {
 		"glob-i", "Glob pattern match (case-insensitive)",
 		"regex", "Regular expression match",
 		"regex-i", "Regular expression match (case-insensitive)",
-	).Uid("jj", "revset-string-pattern").Suffix(":").NoSpace().Tag("string patterns")
+	).Uid("jj", "revset-string-pattern").Tag("string patterns")
 }
 
 // ActionDatePatterns completes date pattern prefixes for date-matching revset functions.
@@ -150,7 +150,7 @@ func ActionDatePatterns() carapace.Action {
 	return carapace.ActionValuesDescribed(
 		"after", "Matches dates at or after the given date",
 		"before", "Matches dates before (not including) the given date",
-	).Uid("jj", "revset-date-pattern").Suffix(":").NoSpace().Tag("date patterns")
+	).Uid("jj", "revset-date-pattern").Tag("date patterns")
 }
 
 // ActionFilesetPatterns completes fileset pattern prefixes.
@@ -171,7 +171,7 @@ func ActionFilesetPatterns() carapace.Action {
 		"cwd-prefix-glob-i", "Cwd-relative prefix-glob pattern (case-insensitive)",
 		"root-glob-i", "Workspace-relative glob pattern (case-insensitive)",
 		"root-prefix-glob-i", "Workspace-relative prefix-glob pattern (case-insensitive)",
-	).Uid("jj", "fileset-pattern").Suffix(":").NoSpace().Tag("fileset patterns")
+	).Uid("jj", "fileset-pattern").Tag("fileset patterns")
 }
 
 // ActionSpecialSymbols completes revset special symbols.
