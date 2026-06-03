@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Go library for parsing [jj (Jujutsu)](https://github.com/jj-vcs/jj) revset expressions into an AST, with completion support. Part of the [carapace-sh](https://github.com/carapace-sh) ecosystem (shell completion framework). The module path is `github.com/carapace-sh/carapace-jjlex`.
+Go library for parsing [jj (Jujutsu)](https://github.com/jj-vcs/jj) revset and fileset expressions into ASTs, with completion support. Part of the [carapace-sh](https://github.com/carapace-sh) ecosystem (shell completion framework). The module path is `github.com/carapace-sh/carapace-jjlex`.
 
 ## Commands
 
@@ -10,34 +10,62 @@ Go library for parsing [jj (Jujutsu)](https://github.com/jj-vcs/jj) revset expre
 # From repo root:
 go test ./...                              # run all tests
 go test ./pkg/revset/                      # run revset package tests only
+go test ./pkg/fileset/                      # run fileset package tests only
 go test -run TestParseRevset ./pkg/revset/  # run specific test
 go build ./...                              # build all packages
-go run main/main.go "<expr>"                    # parse expression, output AST as JSON
-go run main/main.go --complete <cursor> "<expr>" # completion context as JSON
+go run main/main.go revset "<expr>"                    # parse revset expression, output AST as JSON
+go run main/main.go revset-complete <cursor> "<expr>"  # revset completion context as JSON
+go run main/main.go fileset "<expr>"                   # parse fileset expression, output AST as JSON
+go run main/main.go fileset-complete <cursor> "<expr>" # fileset completion context as JSON
+go run main/main.go fileset-bare "<expr>"              # parse fileset with bare string fallback
 ```
 
 No Makefile, no linter config, no CI config present.
 
 ## Architecture
 
-Two independent recursive-descent parsers in `pkg/revset/`:
+Two pairs of independent recursive-descent parsers:
+
+### Revset (`pkg/revset/`)
 
 - **`parser.go`** — Full parser. `Parse()` → `*Expression` AST with spans. Strict: rejects partial/invalid input.
 - **`completion_parser.go`** — Completion parser. `ParseForCompletion(input, cursor)` → `*CompletionContext` describing what tokens are valid at the cursor position. Tolerant: recovers from errors at cursor to report expectations.
 
 Both parsers implement the same operator precedence hierarchy (levels 0-6) but independently. The completion parser mirrors the main parser's structure but stops at the cursor and records expectations instead of building a full AST.
 
+### Fileset (`pkg/fileset/`)
+
+- **`parser.go`** — Full parser. `Parse()` → `*Expression` AST with spans. Also `ParseProgramOrBareString()` for bare string/pattern fallback (matching jj's `program_or_bare_string` rule).
+- **`completion_parser.go`** — Completion parser. `ParseForCompletion(input, cursor)` → `*CompletionContext`.
+
+Fileset grammar is simpler than revset: no `::`, `..`, `-`, `+` operators; no `@` workspace syntax; no remote symbols. Operators are `|` (union), `&` (intersection), `~` (negate/difference). Precedence: `|` < `&`/`~` (infix) < `~` (prefix) < `p:x` (pattern) < primary.
+
 ### File responsibilities
 
 | File | Purpose |
 |---|---|
-| `pkg/revset/ast.go` | AST node types (`Expression`, `UnaryOp`, `BinaryOp`, `ExpressionKind`), payload structs (`IdentifierExpr`, `BinaryExpr`, etc.), type-erased accessor methods |
+| `pkg/revset/ast.go` | Revset AST node types, payload structs, accessor methods |
 | `pkg/revset/span.go` | `Span` (Start/End byte offsets) and `Pos` types |
-| `pkg/revset/parser.go` | Main parser + public API: `Parse()`, `IsIdentifier()`, `ParseSymbol()`, `Format()`. Also contains shared helper functions used by both parsers. |
-| `pkg/revset/format.go` | AST → string formatting with precedence-aware parenthesization |
-| `pkg/revset/completion.go` | Completion context types: `CompletionContext`, `ExpectedToken`, `ValidOperator`, `FunctionContext` |
-| `pkg/revset/completion_parser.go` | Completion parser: `ParseForCompletion()`, `compParser` type, duplicate validation checks (`isFunctionNameCheck`, `isStrictIdentifierCheck`) |
-| `main/main.go` | CLI entrypoint (parses args, calls library, outputs JSON). No tests. |
+| `pkg/revset/parser.go` | Revset main parser + public API: `Parse()`, `IsIdentifier()`, `ParseSymbol()`, `Format()`. Shared helper functions. |
+| `pkg/revset/format.go` | Revset AST → string formatting with precedence-aware parenthesization |
+| `pkg/revset/completion.go` | Revset completion context types: `CompletionContext`, `ExpectedToken`, `ValidOperator`, `FunctionContext` |
+| `pkg/revset/completion_parser.go` | Revset completion parser |
+| `pkg/revset/revset_test.go` | Revset parser tests |
+| `pkg/revset/completion_test.go` | Revset completion tests |
+| `pkg/fileset/ast.go` | Fileset AST node types (includes `KindBareString`, `KindBareStringPattern` not in revset) |
+| `pkg/fileset/span.go` | `Span` and `Pos` types (same structure as revset) |
+| `pkg/fileset/parser.go` | Fileset main parser + `Parse()`, `ParseProgramOrBareString()`, `IsIdentifier()` |
+| `pkg/fileset/parser_helpers.go` | Fileset parser helper methods (`parseSymbolOrFunctionOrPattern`, `parseFunctionCall`, `tryBareStringPattern`, `tryBareString`, `isFunctionName`, `isStrictIdentifier`) |
+| `pkg/fileset/scanner.go` | Fileset scanner methods (`scanIdentifier`, `scanStrictIdentifier`, `scanBareString`, string literal parsing, `unionNodes`) |
+| `pkg/fileset/helpers.go` | Shared helper functions: `isWhitespace`, `isFilesetIdentifierPart`, `isFilesetIdentifierStart`, `isStrictIdentifierPart`, `isBareStringPart`, `isHexDigit`, `hexVal`, `splitIdentifierParts`, `containsRune` |
+| `pkg/fileset/format.go` | Fileset AST → string formatting with precedence-aware parenthesization |
+| `pkg/fileset/completion.go` | Fileset completion context types (same structure as revset, no keyword args) |
+| `pkg/fileset/completion_parser.go` | Fileset completion parser |
+| `pkg/fileset/completion_helpers.go` | Fileset completion parser helper methods and dedup functions |
+| `pkg/fileset/fileset_test.go` | Fileset parser tests |
+| `pkg/fileset/completion_test.go` | Fileset completion tests |
+| `main/main.go` | CLI entrypoint with subcommands for revset and fileset |
+| `main/main_test.go` | Integration tests with realistic examples from jj source |
 
 ## Key Patterns & Gotchas
 
@@ -45,94 +73,97 @@ Both parsers implement the same operator precedence hierarchy (levels 0-6) but i
 
 `Expression.payload` is `any`; accessors (`.Identifier()`, `.UnaryOp()`, `.BinaryLHS()`, etc.) do type checks and return zero values on kind mismatch. Always check `Kind` before calling accessors.
 
-### Two parsers must stay in sync
+### Two parsers must stay in sync (both packages)
 
-When modifying operator precedence or parsing rules in `parser.go`, the same changes must be mirrored in `completion_parser.go`. They share helper functions (`isWhitespace`, `isIdentifierPart`, `isStrictIdentifierPart`, `splitIdentifierParts`) but have independent parser types (`parser` vs `compParser`). The completion parser also duplicates `isFunctionName` and `isStrictIdentifier` as `isFunctionNameCheck` and `isStrictIdentifierCheck` — keep these in sync.
+When modifying operator precedence or parsing rules in `parser.go`, the same changes must be mirrored in `completion_parser.go`. They share helper functions but have independent parser types. The completion parsers also duplicate `isFunctionName`/`isStrictIdentifier` as `isFunctionNameCheck`/`isStrictIdentifierCheck` — keep these in sync.
 
-### Identifier rules are non-obvious
+### Revset identifier rules
 
 - Identifiers allow internal `.`, `-`, `+` as connectors (e.g. `foo.bar-v1+7`)
 - Multiple consecutive `-` are allowed (`foo--bar`), but `+` and `.` are not repeatable
 - `*` and `/` are valid identifier characters (for glob patterns)
-- `isIdentifierPart` uses Unicode categories (XID_CONTINUE); `isStrictIdentifierPart` is ASCII-only (used for pattern names, keyword args, and function names)
-- Function names require standard identifier syntax (alphanumeric + underscore, must start with letter or underscore)
-- Identifiers cannot start or end with `.`; `+` and `-` cannot appear at edges of parts
+- `isIdentifierPart` uses Unicode categories (XID_CONTINUE); `isStrictIdentifierPart` is ASCII-only
 
-### Operator ambiguity
+### Fileset identifier rules
+
+- Fileset identifiers include `+`, `-`, `.`, `@`, `_`, `*`, `?`, `[`, `]`, `/`, `\` plus XID_CONTINUE
+- This is broader than revset identifiers (e.g., `+` is a regular char, not a postfix operator)
+- `isFilesetIdentifierPart` checks for these characters
+- Bare strings (`bare_string`) allow spaces and even more characters — used in `ParseProgramOrBareString` fallback
+- Strict identifiers (for pattern names and function names) are ASCII alphanumeric + `_` + `-` separators
+
+### Fileset bare string and bare string pattern
+
+- `ParseProgramOrBareString()` tries expression parsing first, then falls back to `bare_string_pattern` (strict_identifier:bare_string) and `bare_string`
+- Bare strings allow spaces, `+`, `-`, `.`, `@`, `_`, `*`, `?`, `[`, `]`, `/`, `\`, and non-ASCII
+- This matches jj's `program_or_bare_string` grammar rule for user-friendly input
+
+### Revset operator ambiguity
 
 - `~` is both prefix (negate) and infix (difference) — context-dependent
 - `-` is postfix (parents) but NOT infix — `foo - bar` is an error (suggests `~`)
 - `+` is postfix (children) but NOT infix — `foo + bar` is an error (suggests `|`)
 - `:` alone is always an error (suggests `::`)
-- `^` is always an error (suggests `-`)
 - Range operators (`::`, `..`) cannot be nested without parentheses
-- Prefix `::` and `..` do not allow whitespace between operator and operand — `":: foo"` is a syntax error
+- Prefix `::` and `..` do not allow whitespace between operator and operand
+
+### Fileset operator simplicity
+
+- `~` is both prefix (negate) and infix (difference) — same as revset
+- No `::`, `..`, `-`, `+` postfix operators
+- No `@` workspace/remote syntax
+- No keyword arguments in function calls
+- Only built-in functions: `all()` and `none()`
 
 ### Pattern syntax (`name:value`)
 
-No whitespace allowed around the `:` in patterns. `exact: foo` is an error. The pattern name must be a strict identifier; the value is parsed as a `neighbors_expression` (postfix ops only, no ranges). Pattern is right-associative: `x:y:z` = `x:(y:z)`.
-
-### `@` suffix parsing
-
-After an identifier or string, `@` triggers workspace/remote symbol parsing:
-- `main@` → `KindAtWorkspace` (workspace with no remote)
-- `main@origin` → `KindRemoteSymbol` (name + remote)
-- Both name and remote parts can be quoted strings
-- `"@"` inside quotes is NOT interpreted as workspace syntax — it's `KindString`
+No whitespace allowed around the `:` in patterns. `exact: foo` is an error. The pattern name must be a strict identifier; the value is parsed as a primary expression. Pattern is right-associative: `x:y:z` = `x:(y:z)`.
 
 ### Span tracking
 
-Spans exclude trailing whitespace. The parser tracks `lastContent` (position after last non-whitespace) and clips expression spans accordingly. Parenthesized expressions include the parens in their span.
+Spans exclude trailing whitespace. The parser tracks `lastContent` and clips expression spans accordingly.
 
 ### Union flattening
 
-The `|` operator flattens into a single `KindUnionAll` node rather than creating nested binary trees. `foo | bar | baz` produces one `UnionAllExpr` with 3 nodes.
-
-### ParseError chaining
-
-`ParseError` has an unexported `origin` field accessible via `.Origin()`. This is for error chaining but the field is not set in current code.
-
-### go.mod has unused dependency
-
-`go.mod` requires `github.com/carapace-sh/revset` but gopls reports it's not used. Don't add dependencies to this — it may be intentional or a leftover.
+The `|` operator flattens into a single `KindUnionAll` node rather than creating nested binary trees.
 
 ### Completion parser `consumed` flag
 
-The `compParser` has a `consumed` bool that tracks whether any input was consumed before reaching the cursor. This distinguishes "expecting first expression" from "after an expression, expecting operator" — critical for `afterExpression()` vs `beforeExpression()` reporting. If `consumed` is false when reaching cursor, it reports `ExpectedExpression`; if true, it reports `ExpectedOperator`.
+Tracks whether any input was consumed before reaching the cursor. Distinguishes "expecting first expression" from "after an expression, expecting operator".
 
 ### Completion parser `innermostFunc` guard
 
-`setFunctionContext()` only sets `p.ctx.Function` if `p.innermostFunc` is nil. This means the *innermost* (deepest) function call wins — if you have `parents(file(`, only `file`'s context is reported. This is by design since shell completion cares about the innermost scope.
-
-### `matchString` vs `matchStringAt` / `matchStringAtFullInput`
-
-The main parser has `matchString(s)` (checks at `p.pos`) and `matchStringAt(pos, s)` (checks at arbitrary position). The completion parser has `matchString(s)` (checks within cursor bounds) and `matchStringAtFullInput(pos, s)` (checks against full input, ignoring cursor). Use the right one for the context — the completion parser needs `matchStringAtFullInput` when doing look-ahead past the cursor (e.g., pattern detection).
+`setFunctionContext()` only sets `p.ctx.Function` if `p.innermostFunc` is nil. The innermost (deepest) function call wins.
 
 ## Testing
 
 - Tests use standard `testing` package only (no testify or other deps)
-- `revset_test.go` — main parser tests using helpers: `testParseKind`, `testParseUnaryOp`, `testParseBinaryOp`, `testParseEqual`, `testParseString`, `testParseError`
-- `completion_test.go` — completion tests using `assertHasExpected`, `assertHasOperator`
-- Test helpers use `t.Helper()` and `t.Fatalf`/`t.Errorf` patterns
-- `main/main_test.go` — integration tests with realistic revset examples sourced from jj's source code (success and error cases). No unit tests for `main.go` itself.
+- `revset_test.go` / `fileset_test.go` — parser tests using helpers
+- `completion_test.go` (both packages) — completion tests using `assertHasExpected`, `assertHasOperator`
+- `main/main_test.go` — integration tests with realistic examples from jj source code
 - No external dependencies (pure stdlib)
 - Passing `cursor=-1` to `ParseForCompletion` defaults to `len(input)` (end of input)
 
 ## Syncing with jj Upstream
 
-When jj revset syntax changes, update three things in order:
+### Revset
 
-### 1. Skill (`skills/jj-revsets/SKILL.md`)
+When jj revset syntax changes, update:
+1. Skill (`skills/jj-revsets/SKILL.md`)
+2. Parser (`pkg/revset/parser.go`)
+3. Completion parser (`pkg/revset/completion_parser.go`)
 
-Check these jj source files:
-- **`lib/src/revset.pest`** — grammar changes (new operators, precedence, identifier rules, new expression types, pattern rules, compat operators)
-- **`lib/src/revset.rs`** — search for `BUILTIN_FUNCTION_MAP` to find all built-in functions. Check `map.insert("name", ...)` lines for argument handling (`expect_no_arguments()`, `expect_exact_arguments()`, `expect_arguments()` with required/optional args, `expect_named_arguments()`, `expect_some_arguments()`). Add new functions, remove deprecated ones, update changed signatures.
-- **`docs/revsets.md`** or **`web/docs/src/content/docs/revsets.md`** — function descriptions, operator semantics, string patterns, date formats, built-in aliases, symbol resolution priority
+Check: `lib/src/revset.pest`, `lib/src/revset.rs` (BUILTIN_FUNCTION_MAP), `docs/revsets.md`
 
-### 2. Parser (`pkg/revset/parser.go`)
+### Fileset
 
-Mirror grammar changes: new operators, changed precedence, new expression types, identifier rules. This is the strict parser that builds a full AST.
+When jj fileset syntax changes, update:
+1. Parser (`pkg/fileset/parser.go`, `parser_helpers.go`, `scanner.go`, `helpers.go`)
+2. Completion parser (`pkg/fileset/completion_parser.go`, `completion_helpers.go`)
+3. AST (`pkg/fileset/ast.go`)
 
-### 3. Completion parser (`pkg/revset/completion_parser.go`)
+Check: `lib/src/fileset.pest`, `lib/src/fileset.rs` (BUILTIN_FUNCTION_MAP), `docs/filesets.md`
 
-Mirror the same grammar changes from `parser.go`. The two parsers share helper functions (`isWhitespace`, `isIdentifierPart`, `isStrictIdentifierPart`, `splitIdentifierParts`) but have independent parser types (`parser` vs `compParser`). The completion parser also duplicates `isFunctionName`/`isStrictIdentifier` as `isFunctionNameCheck`/`isStrictIdentifierCheck` — keep these in sync.
+### go.mod has unused dependency
+
+`go.mod` requires `github.com/carapace-sh/revset` but gopls reports it's not used. Don't add dependencies to this — it may be intentional or a leftover.

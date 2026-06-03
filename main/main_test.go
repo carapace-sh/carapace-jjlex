@@ -3,6 +3,7 @@ package main
 import (
 	"testing"
 
+	"github.com/carapace-sh/carapace-jjlex/pkg/fileset"
 	"github.com/carapace-sh/carapace-jjlex/pkg/revset"
 )
 
@@ -307,6 +308,97 @@ func TestParseError(t *testing.T) {
 	for _, input := range parseErrorCases {
 		t.Run(input, func(t *testing.T) {
 			_, err := revset.Parse(input)
+			if err == nil {
+				t.Fatalf("expected error for %q, got success", input)
+			}
+		})
+	}
+}
+
+// Fileset integration tests sourced from jj's documentation and source code
+
+var filesetSuccessCases = []string{
+	// Primitives
+	"all()",
+	"none()",
+
+	// File patterns
+	`glob:"*.rs"`,
+	`glob:"**/*.rs"`,
+	`exact:foo`,
+	`cwd:"src/lib.rs"`,
+	`root:"src/lib.rs"`,
+	`root-file:"src/lib.rs"`,
+	`root-glob:"*.rs"`,
+	`cwd-file:"src/lib.rs"`,
+	`cwd-glob:"*.rs"`,
+	`prefix-glob:"*.d"`,
+	`cwd-prefix-glob:"*.d"`,
+	`root-prefix-glob:"src"`,
+
+	// Case-insensitive patterns
+	`glob-i:"*.TXT"`,
+	`cwd-glob-i:"*.txt"`,
+	`prefix-glob-i:"*.d"`,
+	`root-glob-i:"*.rs"`,
+	`root-prefix-glob-i:"src"`,
+
+	// Operators
+	"foo | bar",
+	"foo & bar",
+	"foo ~ bar",
+	"~foo",
+	"~~foo",
+
+	// Precedence
+	"foo | bar & baz",
+	"foo & bar ~ baz",
+
+	// Parenthesized
+	"(foo | bar) & baz",
+	"~(foo | bar)",
+
+	// String literals
+	`"src/lib.rs"`,
+	`'src/lib.rs'`,
+
+	// Identifiers with special chars (path separators, glob chars)
+	"src/lib.rs",
+	"*.rs",
+	"**/*.txt",
+	"foo-bar",
+	"foo+bar",
+
+	// Function calls in expressions
+	"all() | none()",
+	"~all()",
+	"all() & none()",
+}
+
+var filesetErrorCases = []string{
+	// Incomplete expression
+	"foo | ~",
+	"all(",
+	")",
+	"foo &",
+	"foo |",
+}
+
+func TestFilesetParseSuccess(t *testing.T) {
+	for _, input := range filesetSuccessCases {
+		t.Run(input, func(t *testing.T) {
+			_, err := fileset.Parse(input)
+			if err != nil {
+				t.Fatalf("expected success for %q, got error: %v", input, err)
+			}
+		})
+	}
+}
+
+func TestFilesetParseError(t *testing.T) {
+	for _, input := range filesetErrorCases {
+		t.Run(input, func(t *testing.T) {
+			_, err := fileset.Parse(input)
 			if err == nil {
 				t.Fatalf("expected error for %q, got success", input)
 			}
