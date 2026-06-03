@@ -100,6 +100,13 @@ Available as the context object in `jj log`, `jj show`, `jj obslog`.
 | `.files([files])` | List\<TreeEntry\> | Files in commit |
 | `.conflicted_files()` | List\<TreeEntry\> | Conflicted files |
 | `.signature()` | Option\<CryptographicSignature\> | Cryptographic signature |
+| `.working_copies()` | List\<WorkspaceRef\> | Working copies of this commit |
+| `.current_working_copy()` | Boolean | True if this is the current working-copy commit |
+| `.local_tags()` | List\<CommitRef\> | Local tags pointing to this commit |
+| `.remote_tags()` | List\<CommitRef\> | Remote tags pointing to this commit |
+| `.change_offset()` | Option\<Integer\> | Offset for hidden/divergent change IDs |
+| `.immutable()` | Boolean | True if commit is immutable |
+| `.contained_in(revset)` | Boolean | True if commit is in the given revset |
 
 ### ChangeId
 
@@ -108,6 +115,15 @@ Available as the context object in `jj log`, `jj show`, `jj obslog`.
 | `.short([len])` | String | Short hex representation (default 12) |
 | `.shortest([min_len])` | ShortestIdPrefix | Shortest unique prefix |
 | `.normal_hex()` | String | Normal hex (0-9a-f) instead of reversed (z-k) |
+
+### ShortestIdPrefix
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `.prefix()` | String | The shortest unique prefix string |
+| `.rest()` | String | The remaining characters after the prefix |
+| `.upper()` | ShortestIdPrefix | Uppercase variant |
+| `.lower()` | ShortestIdPrefix | Lowercase variant |
 
 ### CommitId
 
@@ -128,6 +144,8 @@ Available as the context object in `jj log`, `jj show`, `jj obslog`.
 | `.remove_prefix(needle)` | String | Remove prefix if present |
 | `.remove_suffix(needle)` | String | Remove suffix if present |
 | `.trim()` | String | Remove leading/trailing whitespace |
+| `.trim_start()` | String | Remove leading whitespace |
+| `.trim_end()` | String | Remove trailing whitespace |
 | `.upper()` | String | Uppercase |
 | `.lower()` | String | Lowercase |
 | `.substr(start, [end])` | String | Extract substring (byte indices) |
@@ -154,6 +172,10 @@ Available as the context object in `jj log`, `jj show`, `jj obslog`.
 | `.skip(count)` | List | Skip first N elements |
 | `.take(count)` | List | Take first N elements |
 
+**Type-specific list methods:**
+
+- `List<Trailer>.contains_key(key)` — True if any trailer has the given key
+
 ### Timestamp
 
 | Method | Returns | Description |
@@ -164,6 +186,15 @@ Available as the context object in `jj log`, `jj show`, `jj obslog`.
 | `.local()` | Timestamp | Convert to local timezone |
 | `.after(date)` | Boolean | Date comparison |
 | `.before(date)` | Boolean | Date comparison |
+| `.since(start)` | TimestampRange | Duration since start timestamp |
+
+### TimestampRange
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `.start()` | Timestamp | Start of the range |
+| `.end()` | Timestamp | End of the range |
+| `.duration()` | String | Duration as human-readable string |
 
 ### Signature
 
@@ -172,6 +203,13 @@ Available as the context object in `jj log`, `jj show`, `jj obslog`.
 | `.name()` | String | Author/committer name |
 | `.email()` | Email | Email info |
 | `.timestamp()` | Timestamp | Timestamp |
+
+### Email
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `.local()` | String | Local part (before @) |
+| `.domain()` | String | Domain part (after @) |
 
 ### TreeDiff
 
@@ -213,7 +251,127 @@ Available as the context object in `jj log`, `jj show`, `jj obslog`.
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `.status()` | String | Signature verification status |
+| `.status()` | String | Signature status: `good`, `bad`, `unknown`, or `invalid` |
+| `.key()` | String | Key identifier |
+| `.display()` | String | Display string |
+
+### CommitRef
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `.name()` | RefSymbol | Bookmark or tag name |
+| `.remote()` | Option\<RefSymbol\> | Remote name (if remote bookmark/tag) |
+| `.present()` | Boolean | True if the ref is present (not a conflict) |
+| `.conflict()` | Boolean | True if the ref is conflicted |
+| `.normal_target()` | Option\<Commit\> | The target commit (if not conflicted) |
+| `.removed_targets()` | List\<Commit\> | Removed targets (in a conflict) |
+| `.added_targets()` | List\<Commit\> | Added targets (in a conflict) |
+| `.tracked()` | Boolean | True if the remote ref is tracked |
+| `.tracking_present()` | Boolean | True if the local tracking ref exists |
+| `.tracking_ahead_count()` | SizeHint | How many local commits ahead of remote |
+| `.tracking_behind_count()` | SizeHint | How many remote commits ahead of local |
+| `.synced()` | Boolean | True if local and remote are in sync |
+
+### TreeEntry
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `.path()` | RepoPath | File path |
+| `.conflict()` | Boolean | True if the file has conflicts |
+| `.conflict_side_count()` | Integer | Number of sides in the merge conflict |
+| `.file_type()` | String | `file`, `symlink`, `tree`, `git-submodule`, or `conflict` |
+| `.executable()` | Boolean | True if the file is executable |
+
+### TreeDiffEntry
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `.path()` | RepoPath | File path |
+| `.display_diff_path()` | String | Display path (accounts for copy/rename) |
+| `.status()` | String | `modified`, `added`, `removed`, `copied`, or `renamed` |
+| `.status_char()` | String | `M`, `A`, `D`, `C`, or `R` |
+| `.source()` | TreeEntry | Source file entry |
+| `.target()` | TreeEntry | Target file entry |
+
+### RepoPath
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `.absolute()` | String | Absolute path |
+| `.display()` | String | Path relative to current working directory |
+| `.parent()` | Option\<RepoPath\> | Parent directory path |
+
+### SizeHint
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `.lower()` | Integer | Minimum count |
+| `.upper()` | Option\<Integer\> | Maximum count (None if unknown) |
+| `.exact()` | Option\<Integer\> | Exact count (None if approximate) |
+| `.zero()` | Boolean | True if count is definitely zero |
+
+### ConfigValue
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `.as_boolean()` | Boolean | Convert to boolean |
+| `.as_integer()` | Integer | Convert to integer |
+| `.as_string()` | String | Convert to string |
+| `.as_string_list()` | List\<String\> | Convert to string list |
+
+### AnnotationLine
+
+Available as context in `jj file annotate -T`.
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `.commit()` | Commit | Commit that authored this line |
+| `.content()` | ByteString | Line content |
+| `.line_number()` | Integer | Line number |
+| `.original_line_number()` | Integer | Original line number |
+| `.first_line_in_hunk()` | Boolean | True if this is the first line in a hunk |
+
+### Operation
+
+Available as context in `jj op log -T`.
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `.current_operation()` | Boolean | True if this is the current operation |
+| `.description()` | String | Operation description |
+| `.id()` | OperationId | Operation ID |
+| `.attributes()` | String | Operation attributes |
+| `.time()` | TimestampRange | Time range |
+| `.user()` | String | Username |
+| `.snapshot()` | Boolean | True if this is a snapshot operation |
+| `.workspace_name()` | String | Workspace name |
+| `.root()` | Boolean | True if this is the root operation |
+| `.parents()` | List\<Operation\> | Parent operations |
+
+### OperationId
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `.short([len])` | String | Short hex representation |
+
+### CommitEvolutionEntry
+
+Available as context in `jj evolog -T`.
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `.commit()` | Commit | The commit at this evolution step |
+| `.operation()` | Operation | The operation that created this step |
+| `.predecessors()` | List\<Commit\> | Predecessor commits |
+| `.inter_diff([files])` | TreeDiff | Diff from predecessor to this commit |
+
+### WorkspaceRef
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `.name()` | RefSymbol | Workspace name |
+| `.target()` | Commit | Working-copy commit for this workspace |
+| `.root()` | Template | Workspace root path |
 
 ---
 
@@ -253,6 +411,7 @@ Available as the context object in `jj log`, `jj show`, `jj obslog`.
 | `separate(separator, content...)` | Template | Insert separator between non-empty items |
 | `surround(prefix, suffix, content)` | Template | Wrap non-empty content |
 | `config(name)` | Option\<ConfigValue\> | Look up config value |
+| `git_web_url([remote])` | String | Convert git URL to HTTPS browse URL |
 
 ### Replace Function
 

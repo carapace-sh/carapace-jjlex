@@ -63,8 +63,8 @@ Command-line reference for jj (Jujutsu VCS). Argument types: **REVSET** = revisi
 | Command | Description |
 |---------|-------------|
 | `jj new [REVSETS]...` | Create a new empty change |
-| `jj commit [FILESETS]...` | Describe working copy and create new change on top |
-| `jj describe [REVSETS]...` | Update commit message |
+| `jj commit [FILESETS]...` / `jj ci` | Describe working copy and create new change on top |
+| `jj describe [REVSETS]...` / `jj desc` | Update commit message |
 | `jj edit <REVSET>` | Set a revision as the working-copy revision |
 | `jj duplicate [REVSETS]...` | Create new changes with the same content |
 | `jj abandon [REVSETS]...` | Abandon a revision |
@@ -207,7 +207,7 @@ See `jj-config` for all config sections and settings.
 | `jj util markdown-help` | Print CLI help in Markdown |
 | `jj util snapshot` | Snapshot working copy if needed |
 | `jj arrange [REVSETS]` | Interactively arrange the commit graph |
-| `jj evolog` | Show how a change has evolved over time |
+| `jj evolog` / `jj evolution-log` | Show how a change has evolved over time |
 ---
 
 ## Detailed Command Flags

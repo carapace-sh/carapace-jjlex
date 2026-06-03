@@ -78,8 +78,8 @@ conflict-marker-style = "diff"            # "diff", "snapshot", "git"
 
 ```toml
 [revsets]
-log = "main@origin.."                     # Default revset for jj log
-short-prefixes = "(main..@)::"           # For short ID disambiguation
+log = "present(@) | ancestors(immutable_heads().., 2) | trunk()"  # Default revset for jj log
+short-prefixes = "<revsets.log>"  # Defaults to same as revsets.log
 bookmark-advance-from = "heads(::to & bookmarks())"
 bookmark-advance-to = "@"
 op-diff-changes-in = "mutable() | trunk()"

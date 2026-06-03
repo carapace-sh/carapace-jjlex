@@ -130,7 +130,7 @@ Unlike Git, jj considers changes in merge commits to be first-class. There's no 
 jj protects certain revisions from accidental modification (describe, edit, rebase, etc.). The default immutable set is:
 
 ```
-::trunk() | tags() | untracked_remote_bookmarks()
+present(trunk()) | tags() | untracked_remote_bookmarks()
 ```
 
 Override with the `immutable_heads()` revset alias in config:
