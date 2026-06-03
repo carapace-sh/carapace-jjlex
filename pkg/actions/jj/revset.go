@@ -1,0 +1,212 @@
+package jj
+
+import (
+	"strings"
+
+	"github.com/carapace-sh/carapace"
+	"github.com/carapace-sh/carapace-jjlex/pkg/revset"
+)
+
+// RevOpts configures which revision sources to include in completions.
+type RevOpts struct {
+	LocalBookmarks  bool
+	RemoteBookmarks bool
+	Commits         int
+	Tags            bool
+	ChangeIds       bool
+}
+
+func (o RevOpts) Default() RevOpts {
+	o.LocalBookmarks = true
+	o.RemoteBookmarks = true
+	o.Commits = 100
+	o.Tags = true
+	o.ChangeIds = true
+	return o
+}
+
+// ActionRevs completes revision references (bookmarks, tags, commits, change IDs).
+//
+//	main (last commit message)
+//	abc123 (another message)
+func ActionRevs(opts RevOpts) carapace.Action {
+	return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
+		batch := carapace.Batch()
+
+		if opts.LocalBookmarks {
+			batch = append(batch, ActionLocalBookmarks())
+		}
+		if opts.RemoteBookmarks {
+			batch = append(batch, ActionRemoteBookmarks())
+		}
+		if opts.Commits > 0 {
+			batch = append(batch, ActionRecentCommits(opts.Commits))
+		}
+		if opts.Tags {
+			batch = append(batch, ActionTags())
+		}
+		if opts.ChangeIds {
+			batch = append(batch, ActionChangeIds())
+		}
+
+		return batch.ToA()
+	})
+}
+
+// ActionRevsets completes revset expressions with full context-awareness
+// using the revset completion parser to determine what is expected at the cursor.
+//
+//	all()
+//	trunk() | @-
+func ActionRevsets(opts RevOpts) carapace.Action {
+	return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
+		ctx := revset.ParseForCompletion(c.Value, len(c.Value))
+
+		if ctx.InPattern {
+			return actionForPatternValue(ctx)
+		}
+
+		if ctx.Function != nil {
+			return actionForFunctionArg(ctx, opts)
+		}
+
+		if expectsToken(ctx, revset.ExpectedPatternValue) {
+			return ActionStringPatterns().NoSpace()
+		}
+
+		if expectsToken(ctx, revset.ExpectedStringClose) && ctx.PartialString != "" {
+			return ActionStringPatterns().Prefix(ctx.PartialString)
+		}
+
+		if expectsToken(ctx, revset.ExpectedExpression) {
+			return actionExpression(opts, ctx)
+		}
+
+		if expectsToken(ctx, revset.ExpectedOperator) {
+			return actionOperator(opts, ctx)
+		}
+
+		if expectsToken(ctx, revset.ExpectedClosingParen) {
+			return carapace.ActionValues(")")
+		}
+
+		if expectsToken(ctx, revset.ExpectedComma) {
+			return carapace.ActionValues(",")
+		}
+
+		if expectsToken(ctx, revset.ExpectedEquals) {
+			return carapace.ActionValues("=")
+		}
+
+		return actionExpression(opts, ctx)
+	})
+}
+
+func expectsToken(ctx *revset.CompletionContext, token revset.ExpectedToken) bool {
+	for _, t := range ctx.ExpectedTokens {
+		if t == token {
+			return true
+		}
+	}
+	return false
+}
+
+func actionExpression(opts RevOpts, ctx *revset.CompletionContext) carapace.Action {
+	batch := carapace.Batch(
+		ActionRevs(opts),
+		ActionRevsetFunctions(true),
+		ActionRevsetPatterns(),
+		ActionSpecialSymbols(),
+		ActionRevsetAliases(true),
+	)
+
+	result := batch.ToA()
+
+	if ctx.PartialIdent != "" {
+		result = result.Filter(ctx.PartialIdent).Prefix(ctx.PartialIdent)
+	}
+
+	return result.NoSpace()
+}
+
+func actionOperator(opts RevOpts, ctx *revset.CompletionContext) carapace.Action {
+	batch := carapace.Batch(
+		ActionRevsetOperators(true),
+	)
+
+	for _, op := range ctx.ValidOperators {
+		switch op.Op {
+		case "-", "+":
+			batch = append(batch,
+				ActionAncestors(strings.TrimSuffix(ctx.PartialIdent, "-")).Suppress("doesn't exist"),
+				ActionDescendants(strings.TrimSuffix(ctx.PartialIdent, "+")).Suppress("doesn't exist"),
+			)
+		}
+	}
+
+	return batch.ToA().NoSpace()
+}
+
+func actionForFunctionArg(ctx *revset.CompletionContext, opts RevOpts) carapace.Action {
+	fn := ctx.Function
+
+	if fn.IsKeywordArg && fn.KeywordArgName != "" && !strings.Contains(fn.KeywordArgName, "=") {
+		return ActionRevsetKeywordArgs(fn.Name)
+	}
+
+	switch fn.Name {
+	case "parents", "children", "ancestors", "descendants",
+		"first_parent", "first_ancestors",
+		"heads", "roots", "latest", "fork_point", "bisect",
+		"present", "connected", "exactly", "reachable", "coalesce":
+		return carapace.Batch(
+			ActionRevs(opts),
+			ActionRevsetFunctions(true),
+			ActionSpecialSymbols(),
+			ActionRevsetAliases(true),
+		).ToA().NoSpace()
+
+	case "author", "author_name", "author_email",
+		"committer", "committer_name", "committer_email",
+		"description", "subject":
+		return ActionStringPatterns().NoSpace()
+
+	case "author_date", "committer_date":
+		return ActionDatePatterns().NoSpace()
+
+	case "files", "diff_lines", "diff_lines_added", "diff_lines_removed":
+		return ActionFilesetPatterns().NoSpace()
+
+	case "bookmarks", "remote_bookmarks", "tracked_remote_bookmarks", "untracked_remote_bookmarks",
+		"tags", "remote_tags", "tracked_remote_tags", "untracked_remote_tags":
+		if fn.ArgIndex >= 1 && !fn.IsKeywordArg {
+			return ActionRemotes().NoSpace()
+		}
+		return ActionStringPatterns().NoSpace()
+
+	case "at_operation":
+		return ActionOperations().NoSpace()
+
+	case "change_id", "commit_id":
+		return ActionRevs(opts).NoSpace()
+
+	default:
+		return carapace.Batch(
+			ActionRevs(opts),
+			ActionRevsetFunctions(true),
+			ActionSpecialSymbols(),
+			ActionRevsetAliases(true),
+		).ToA().NoSpace()
+	}
+}
+
+func actionForPatternValue(ctx *revset.CompletionContext) carapace.Action {
+	switch ctx.PatternName {
+	case "exact", "exact-i", "substring", "substring-i", "glob", "glob-i", "regex", "regex-i":
+		return ActionStringPatterns().NoSpace()
+	case "after", "before":
+		return ActionDatePatterns().NoSpace()
+	default:
+		return carapace.ActionValues()
+	}
+}
