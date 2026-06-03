@@ -87,14 +87,14 @@ func ActionRevsetOperators(attached bool) carapace.Action {
 			batch = append(batch, carapace.ActionValuesDescribed(
 				"-", "x-: Parents of x (repeatable)",
 				"+", "x+: Children of x (repeatable)",
-				"::", "x::: Descendants of x (inclusive); x::y: Ancestors of y reachable from x",
-				"..", "x..: Non-ancestors of x; x..y: Ancestors of y not ancestors of x",
+				"::", "x::: Descendants of x; x::y: Ancestors of y reachable from x; :: All visible commits",
+				"..", "x..: Non-ancestors of x; x..y: Ancestors of y not ancestors of x; .. All visible commits excluding root",
 			))
 		} else {
 			batch = append(batch, carapace.ActionValuesDescribed(
-				"::", "::x: Ancestors of x (inclusive); prefix DAG range",
-				"..", "..x: Ancestors of x excluding root; prefix range",
-				"~", "~x: Revisions not in x; prefix negate",
+				"::", "::x: Ancestors of x; :: All visible commits",
+				"..", "..x: Ancestors of x excluding root; .. All visible commits excluding root",
+				"~", "~x: Revisions not in x",
 			))
 		}
 

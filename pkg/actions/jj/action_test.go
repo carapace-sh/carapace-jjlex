@@ -109,8 +109,8 @@ func TestActionRevsetOperatorsAttached(t *testing.T) {
 			carapace.ActionValuesDescribed(
 				"-", "x-: Parents of x (repeatable)",
 				"+", "x+: Children of x (repeatable)",
-				"::", "x::: Descendants of x (inclusive); x::y: Ancestors of y reachable from x",
-				"..", "x..: Non-ancestors of x; x..y: Ancestors of y not ancestors of x",
+				"::", "x::: Descendants of x; x::y: Ancestors of y reachable from x; :: All visible commits",
+				"..", "x..: Non-ancestors of x; x..y: Ancestors of y not ancestors of x; .. All visible commits excluding root",
 			),
 			carapace.ActionValuesDescribed(
 				"&", "x & y: Intersection (both x and y)",
@@ -127,9 +127,9 @@ func TestActionRevsetOperatorsDetached(t *testing.T) {
 	})(func(s *sandbox.Sandbox) {
 		s.Run("").Expect(carapace.Batch(
 			carapace.ActionValuesDescribed(
-				"::", "::x: Ancestors of x (inclusive); prefix DAG range",
-				"..", "..x: Ancestors of x excluding root; prefix range",
-				"~", "~x: Revisions not in x; prefix negate",
+				"::", "::x: Ancestors of x; :: All visible commits",
+				"..", "..x: Ancestors of x excluding root; .. All visible commits excluding root",
+				"~", "~x: Revisions not in x",
 			),
 			carapace.ActionValuesDescribed(
 				"&", "x & y: Intersection (both x and y)",
