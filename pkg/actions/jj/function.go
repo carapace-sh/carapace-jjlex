@@ -26,7 +26,7 @@ func ActionRevsetFunctions() carapace.Action {
 			"signed", "Cryptographically signed commits",
 			"visible_heads", "All visible heads (same as heads(all()))",
 			"working_copies", "Working copy commits across all workspaces",
-		).Uid("jj", "revset-function-noargs")
+		).Uid("jj", "revset-function", "args", "false")
 
 		withArgs := carapace.ActionValuesDescribed(
 			"ancestors", "Ancestors of x, optionally limited by depth",
@@ -69,7 +69,7 @@ func ActionRevsetFunctions() carapace.Action {
 			"tracked_remote_tags", "Targets of tracked remote tags",
 			"untracked_remote_bookmarks", "Targets of untracked remote bookmarks",
 			"untracked_remote_tags", "Targets of untracked remote tags",
-		).Uid("jj", "revset-function-withargs")
+		).Uid("jj", "revset-function", "args", "true")
 
 		return carapace.Batch(noArgs, withArgs).ToA()
 	}).Tag("revset functions")
