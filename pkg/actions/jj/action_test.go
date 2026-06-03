@@ -67,14 +67,18 @@ func TestActionFilesetPatterns(t *testing.T) {
 		return ActionFilesetPatterns()
 	})(func(s *sandbox.Sandbox) {
 		s.Run("").Expect(carapace.ActionValuesDescribed(
-			"exact", "Exact match",
-			"exact-i", "Exact match (case-insensitive)",
-			"substring", "Substring match",
-			"substring-i", "Substring match (case-insensitive)",
-			"glob", "Glob pattern match",
-			"glob-i", "Glob pattern match (case-insensitive)",
-			"regex", "Regular expression match",
-			"regex-i", "Regular expression match (case-insensitive)",
+			"cwd", "Cwd-relative path prefix (file or directory)",
+			"cwd-file", "Cwd-relative exact file path",
+			"cwd-glob", "Cwd-relative glob pattern",
+			"cwd-prefix-glob", "Cwd-relative prefix-glob pattern",
+			"root", "Workspace-relative path prefix (file or directory)",
+			"root-file", "Workspace-relative exact file path",
+			"root-glob", "Workspace-relative glob pattern",
+			"root-prefix-glob", "Workspace-relative prefix-glob pattern",
+			"cwd-glob-i", "Cwd-relative glob pattern (case-insensitive)",
+			"cwd-prefix-glob-i", "Cwd-relative prefix-glob pattern (case-insensitive)",
+			"root-glob-i", "Workspace-relative glob pattern (case-insensitive)",
+			"root-prefix-glob-i", "Workspace-relative prefix-glob pattern (case-insensitive)",
 		).Suffix(":").NoSpace().Tag("fileset patterns"))
 	})
 }

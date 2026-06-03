@@ -215,6 +215,10 @@ func actionForPatternValue(ctx *revset.CompletionContext) carapace.Action {
 		return ActionStringPatterns().NoSpace()
 	case "after", "before":
 		return ActionDatePatterns().NoSpace()
+	case "cwd", "cwd-file", "cwd-glob", "cwd-prefix-glob",
+		"root", "root-file", "root-glob", "root-prefix-glob",
+		"cwd-glob-i", "cwd-prefix-glob-i", "root-glob-i", "root-prefix-glob-i":
+		return ActionFilesetPatterns().NoSpace()
 	default:
 		return carapace.ActionValues()
 	}
