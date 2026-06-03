@@ -196,7 +196,7 @@ func ActionRevsetAliases(includeDefaults bool) carapace.Action {
 		return actionExecJJ(args...)(func(output []byte) carapace.Action {
 			return parseTomlAliases(output, "revset-aliases")
 		})
-	}).Tag("revset aliases").UidF(Uid("revset"))
+	}).Tag("revset aliases").NoSpace().UidF(Uid("revset"))
 }
 
 // ActionRevsetKeywordArgs completes keyword argument names for revset functions.
@@ -214,8 +214,7 @@ func ActionRevsetKeywordArgs(funcName string) carapace.Action {
 		}
 		return carapace.ActionValuesDescribed(vals...)
 	}).Tag("keyword arguments").
-		Uid("jj", "revset-keyword-arg", "fn", funcName).
-		Suffix("=")
+		Uid("jj", "revset-keyword-arg", "fn", funcName)
 }
 
 type keywordArg struct {
@@ -247,7 +246,7 @@ func parseTomlAliases(output []byte, topLevelKey string) carapace.Action {
 		displayName := cleanAliasName(name)
 		vals = append(vals, displayName, val)
 	}
-	return carapace.ActionValuesDescribed(vals...).NoSpace()
+	return carapace.ActionValuesDescribed(vals...)
 }
 
 func cleanAliasName(name string) string {

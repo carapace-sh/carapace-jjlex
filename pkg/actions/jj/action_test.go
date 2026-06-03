@@ -89,7 +89,7 @@ func TestActionRevsetKeywordArgs(t *testing.T) {
 	})(func(s *sandbox.Sandbox) {
 		s.Run("").Expect(carapace.ActionValuesDescribed(
 			"remote", "Filter by remote name",
-		).Suffix("=").Tag("keyword arguments"))
+		).Tag("keyword arguments"))
 	})
 }
 
@@ -235,7 +235,7 @@ func TestParseTomlAliases(t *testing.T) {
 			"HEAD", "@-",
 			"trunk", "main@origin",
 			"grep", "description(regex:x)",
-		).NoSpace())
+		))
 	})
 }
 

@@ -151,7 +151,7 @@ func actionForFunctionArg(ctx *revset.CompletionContext, opts RevOpts) carapace.
 	fn := ctx.Function
 
 	if fn.IsKeywordArg && fn.KeywordArgName != "" && !strings.Contains(fn.KeywordArgName, "=") {
-		return ActionRevsetKeywordArgs(fn.Name)
+		return ActionRevsetKeywordArgs(fn.Name).Suffix("=")
 	}
 
 	switch fn.Name {
