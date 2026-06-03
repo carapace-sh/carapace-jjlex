@@ -94,21 +94,6 @@ func (p *parser) scanPatternIdentifierSuffix() {
 	}
 }
 
-func (p *parser) scanPatternIdentifier() bool {
-	if p.atEnd() {
-		return false
-	}
-	start := p.pos
-	if !isPatternIdentifierStart(p.peek()) {
-		return false
-	}
-	p.advance()
-	for !p.atEnd() && isPatternIdentifierPart(p.peek()) {
-		p.advance()
-	}
-	return p.pos > start
-}
-
 func (p *parser) parseStringLiteralValue() (string, error) {
 	if p.peek() != '"' {
 		return "", p.syntaxError("expected string literal")
@@ -234,7 +219,9 @@ const (
 	precPattern    = 8
 	precPrefix     = 9
 	precMethod     = 10
-	precPrimary    = 11
+	precCall       = 11 // function/method calls (lower than primary for formatting)
+	precLambda     = 12 // lambda expressions (lower than primary for formatting)
+	precPrimary    = 13
 )
 
 func peekInfixOp(input string, pos int) (op string, prec int, rightAssoc bool) {
@@ -310,10 +297,4 @@ func infixOpStringToBinaryOp(op string) BinaryOp {
 		return Rem
 	}
 	return -1
-}
-
-func isInfixOpChar(ch rune) bool {
-	return ch == '|' || ch == '&' || ch == '=' || ch == '!' ||
-		ch == '>' || ch == '<' || ch == '+' || ch == '-' ||
-		ch == '*' || ch == '/' || ch == '%'
 }

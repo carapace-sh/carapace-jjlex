@@ -389,7 +389,9 @@ func (p *compParser) parseLambdaComp() {
 func (p *compParser) parseIdentFuncOrPatternComp() {
 	identStart := p.pos
 	p.scanIdentifierCompletion()
+	baseIdentEnd := p.pos
 	// Extend for pattern identifier suffix (dashes like "regex-i")
+	// Save position so we can backtrack if pattern doesn't match
 	p.scanPatternIdentifierSuffixComp()
 	identEnd := p.pos
 
@@ -421,9 +423,11 @@ func (p *compParser) parseIdentFuncOrPatternComp() {
 		return
 	}
 
-	// Function call
-	if p.peek() == '(' && isFunctionName(ident) {
-		p.parseFunctionCallComp(ident, false, nil)
+	// Function call (function names cannot contain dashes)
+	baseIdent := p.input[identStart:baseIdentEnd]
+	if p.peek() == '(' && isFunctionName(baseIdent) {
+		p.pos = baseIdentEnd
+		p.parseFunctionCallComp(baseIdent, false, nil)
 		return
 	}
 
@@ -446,6 +450,10 @@ func (p *compParser) parseIdentFuncOrPatternComp() {
 			}
 		}
 	}
+
+	// Not a pattern — backtrack to base identifier (without dash suffix)
+	// so that "x-y" becomes identifier "x" with "-y" parsed as infix subtraction
+	p.pos = baseIdentEnd
 }
 
 func (p *compParser) scanIdentifierCompletion() {

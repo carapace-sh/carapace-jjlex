@@ -98,6 +98,10 @@ func exprPrec(e *Expression) int {
 		return precPattern
 	case KindMethodCall:
 		return precMethod
+	case KindFunctionCall:
+		return precCall
+	case KindLambda:
+		return precLambda
 	default:
 		return precPrimary
 	}
@@ -138,7 +142,7 @@ func formatExprInner(e *Expression) string {
 		return formatFunctionCall(f)
 	case KindMethodCall:
 		m := e.payload.(*MethodCallExpr)
-		obj := formatExpression(m.Object, precMethod+1)
+		obj := formatExpression(m.Object, precPrimary)
 		method := formatFunctionCall(m.Function)
 		return obj + "." + method
 	case KindLambda:
@@ -156,59 +160,45 @@ func formatExprInner(e *Expression) string {
 func formatUnaryInner(u *UnaryExpr) string {
 	switch u.Op {
 	case LogicalNot:
-		return fmt.Sprintf("!%s", formatExpression(u.Arg, precPrefix+1))
+		return fmt.Sprintf("!%s", formatExpression(u.Arg, precPrimary))
 	case Negate:
-		return fmt.Sprintf("-%s", formatExpression(u.Arg, precPrefix+1))
+		return fmt.Sprintf("-%s", formatExpression(u.Arg, precPrimary))
 	}
 	return ""
 }
 
 func formatBinaryInner(b *BinaryExpr) string {
 	var opStr string
-	var prec int
 	switch b.Op {
 	case LogicalOr:
 		opStr = " || "
-		prec = precLogicalOr
 	case LogicalAnd:
 		opStr = " && "
-		prec = precLogicalAnd
 	case Equal:
 		opStr = " == "
-		prec = precEqual
 	case NotEqual:
 		opStr = " != "
-		prec = precEqual
 	case GreaterEqual:
 		opStr = " >= "
-		prec = precCompare
 	case Greater:
 		opStr = " > "
-		prec = precCompare
 	case LessEqual:
 		opStr = " <= "
-		prec = precCompare
 	case Less:
 		opStr = " < "
-		prec = precCompare
 	case Add:
 		opStr = " + "
-		prec = precAddSub
 	case Sub:
 		opStr = " - "
-		prec = precAddSub
 	case Mul:
 		opStr = " * "
-		prec = precMulDiv
 	case Div:
 		opStr = " / "
-		prec = precMulDiv
 	case Rem:
 		opStr = " % "
-		prec = precMulDiv
 	}
-	lhs := formatExpression(b.LHS, prec)
-	rhs := formatExpression(b.RHS, prec+1)
+	lhs := formatExpression(b.LHS, precPrimary)
+	rhs := formatExpression(b.RHS, precPrimary)
 	return lhs + opStr + rhs
 }
 

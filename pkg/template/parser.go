@@ -438,8 +438,10 @@ func (p *parser) parseIdentFuncOrPattern(start int) (*Expression, error) {
 	if !p.scanIdentifier() {
 		return nil, p.syntaxError("expected identifier")
 	}
+	baseIdentEnd := p.pos
 	// Extend identifier to include pattern_identifier (with dashes) if followed by dash
 	// Pattern names like "regex-i" include dashes before the colon
+	// Save position so we can backtrack if pattern doesn't match
 	p.scanPatternIdentifierSuffix()
 	ident := p.input[identStart:p.pos]
 	identEnd := p.pos
@@ -462,8 +464,11 @@ func (p *parser) parseIdentFuncOrPattern(start int) (*Expression, error) {
 	}
 
 	// Check for function call: identifier(
+	// Function names cannot contain dashes, so use baseIdentEnd
 	p.skipWhitespace()
-	if p.peek() == '(' && isFunctionName(ident) {
+	if p.peek() == '(' && isFunctionName(p.input[identStart:baseIdentEnd]) {
+		// Backtrack to base identifier for function call
+		p.pos = baseIdentEnd
 		args, keywordArgs, err := p.parseFunctionArgs()
 		if err != nil {
 			return nil, err
@@ -472,7 +477,7 @@ func (p *parser) parseIdentFuncOrPattern(start int) (*Expression, error) {
 			Kind: KindFunctionCall,
 			Span: Span{Start: start, End: p.pos},
 			payload: &FunctionCallExpr{
-				Name:        ident,
+				Name:        p.input[identStart:baseIdentEnd],
 				Args:        args,
 				KeywordArgs: keywordArgs,
 			},
@@ -498,6 +503,11 @@ func (p *parser) parseIdentFuncOrPattern(start int) (*Expression, error) {
 			}, nil
 		}
 	}
+
+	// Not a pattern — backtrack to base identifier (without dash suffix)
+	// so that "x-y" becomes identifier "x" with "-y" parsed as infix subtraction
+	p.pos = baseIdentEnd
+	ident = p.input[identStart:baseIdentEnd]
 
 	// Plain identifier
 	return &Expression{
@@ -531,7 +541,9 @@ func (p *parser) parseFunctionArgs() ([]*Expression, []KeywordArg, error) {
 		}
 
 		// Check for keyword argument: identifier = expression
-		if kwName, isKw := p.tryParseKeywordArg(); isKw {
+		if kwName, isKw, err := p.tryParseKeywordArg(); err != nil {
+			return nil, nil, err
+		} else if isKw {
 			p.skipWhitespace()
 			p.advance() // consume =
 			p.skipWhitespace()
@@ -577,17 +589,26 @@ func (p *parser) parseFunctionArgs() ([]*Expression, []KeywordArg, error) {
 	return args, keywordArgs, nil
 }
 
-func (p *parser) tryParseKeywordArg() (string, bool) {
+func (p *parser) tryParseKeywordArg() (string, bool, error) {
 	saved := p.save()
 	start := p.pos
 	if !p.scanIdentifier() {
-		return "", false
+		return "", false, nil
 	}
 	name := p.input[start:p.pos]
 	nameEnd := p.pos
 	if name == "true" || name == "false" {
+		// Check if this boolean is followed by = (keyword arg syntax)
+		// If so, return an error — boolean literals cannot be keyword arg names
+		pos := nameEnd
+		for pos < len(p.input) && isWhitespace(rune(p.input[pos])) {
+			pos++
+		}
+		if pos < len(p.input) && p.input[pos] == '=' {
+			return "", false, p.syntaxErrorf("keyword %q cannot be used as function parameter name", name)
+		}
 		p.restore(saved)
-		return "", false
+		return "", false, nil
 	}
 
 	// Skip whitespace and check for =
@@ -597,11 +618,11 @@ func (p *parser) tryParseKeywordArg() (string, bool) {
 	}
 	if pos < len(p.input) && p.input[pos] == '=' {
 		p.pos = nameEnd
-		return name, true
+		return name, true, nil
 	}
 
 	p.restore(saved)
-	return "", false
+	return "", false, nil
 }
 
 func (p *parser) matchStringAt(pos int, s string) bool {

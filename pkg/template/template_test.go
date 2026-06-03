@@ -431,3 +431,204 @@ func TestParseWhitespace(t *testing.T) {
 	testParseEqual(t, ` " " `, `" "`)
 	testParseEqual(t, " ' ' ", `" "`)
 }
+
+func TestParseStringEscapeValues(t *testing.T) {
+	expr, err := Parse(`"\t\r\n\"\\\0\e"`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if expr.StringValue() != "\t\r\n\"\\\x00\x1b" {
+		t.Errorf("expected escaped string, got %q", expr.StringValue())
+	}
+
+	// Hex escapes
+	expr, err = Parse(`"\x61\x65\x69\x6f\x75"`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if expr.StringValue() != "aeiou" {
+		t.Errorf("expected hex-decoded string, got %q", expr.StringValue())
+	}
+
+	// Invalid escapes
+	testParseError(t, `"\y"`)
+	testParseError(t, `"\x"`)
+	testParseError(t, `"\xf"`)
+	testParseError(t, `"\xgg"`)
+}
+
+func TestParseRawStringLiterals(t *testing.T) {
+	// Raw strings don't process escapes
+	expr, err := Parse(`'a\n'`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if expr.StringValue() != `a\n` {
+		t.Errorf("expected raw a\\n, got %q", expr.StringValue())
+	}
+
+	// Backslash in raw string
+	expr, err = Parse(`'\'`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if expr.StringValue() != `\` {
+		t.Errorf("expected backslash, got %q", expr.StringValue())
+	}
+
+	// Double quote inside raw string
+	expr, err = Parse(`'"'`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if expr.StringValue() != `"` {
+		t.Errorf("expected double quote, got %q", expr.StringValue())
+	}
+}
+
+func TestParseFormatOperatorPrecedence(t *testing.T) {
+	// jj-style fully parenthesized formatting for binary/unary operators
+	testParseEqual(t, "!!x", "!(!x)")
+	testParseEqual(t, "x && y ++ z", "(x && y) ++ z")
+	testParseEqual(t, "x ++ y || z", "x ++ (y || z)")
+	testParseEqual(t, "x == y ++ z", "(x == y) ++ z")
+	testParseEqual(t, "x != y ++ z", "(x != y) ++ z")
+	// Method call binds tighter than prefix
+	testParseEqual(t, "!x.f()", "!(x.f())")
+	// Chained method calls
+	testParseEqual(t, "x.f().g()", "(x.f()).g()")
+	// Complex precedence
+	testParseEqual(t, "a + b * c / d % e - -f == g", "((a + (((b * c) / d) % e)) - (-f)) == g")
+}
+
+func TestParseLambdaVsLogicalOr(t *testing.T) {
+	// || can be zero-arg lambda in primary position
+	testParseEqual(t, "x||||y", "x || (|| y)")
+	testParseEqual(t, "||||x", "|| (|| x)")
+	// Lambda binding: body extends to end of template
+	testParseEqual(t, "|| x ++ y", "|| (x ++ y)")
+	testParseEqual(t, "|| x ++ || y", "|| (x ++ (|| y))")
+	// Lambdas as function arguments get parens
+	testParseEqual(t, "f(|| x, || y)", "f((|| x), (|| y))")
+}
+
+func TestParsePatternDashName(t *testing.T) {
+	// Pattern names with dash followed by : are valid pattern identifiers
+	testParseEqual(t, "regex-i:'test'", "regex-i:\"test\"")
+	testParseEqual(t, "glob-i:foo", "glob-i:foo")
+}
+
+func TestParsePatternValueTypes(t *testing.T) {
+	// Boolean as pattern value
+	expr, err := Parse("regex:false")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if expr.Kind != KindPattern || expr.PatternName() != "regex" {
+		t.Fatalf("expected pattern regex, got %v", expr.Kind)
+	}
+	if expr.PatternValue().Kind != KindBoolean {
+		t.Errorf("expected boolean pattern value, got %v", expr.PatternValue().Kind)
+	}
+
+	// Integer as pattern value
+	expr, err = Parse("regex:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if expr.PatternValue().Kind != KindInteger {
+		t.Errorf("expected integer pattern value, got %v", expr.PatternValue().Kind)
+	}
+
+	// Raw string as pattern value
+	expr, err = Parse(`regex:'\r\n'`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if expr.PatternValue().Kind != KindString || expr.PatternValue().StringValue() != `\r\n` {
+		t.Errorf("expected raw string pattern value, got %v", expr.PatternValue())
+	}
+}
+
+func TestParsePatternWithInfixOps(t *testing.T) {
+	// Pattern binds tighter than * and +
+	testParseEqual(t, "x:y*z", "(x:y) * z")
+	testParseEqual(t, "x:y++z", "(x:y) ++ z")
+	// Pattern with function/method value
+	testParseEqual(t, "x:f(y)", "x:(f(y))")
+	testParseEqual(t, "x:y.f(z)", "x:(y.f(z))")
+	// Pattern with prefix ops
+	testParseEqual(t, "x:-y", "x:(-y)")
+	testParseEqual(t, "x:!y", "x:(!y)")
+	// Right-associative patterns
+	testParseEqual(t, "x:y:z", "x:(y:z)")
+	testParseEqual(t, "x:y:-z", "x:(y:(-z))")
+	testParseEqual(t, "x:-y:z", "x:(-(y:z))")
+	testParseEqual(t, "!x:y:z", "!(x:(y:z))")
+}
+
+func TestParseDashInIdentVsPattern(t *testing.T) {
+	// x-y is parsed as identifier x then infix - y when not followed by :
+	testParseEqual(t, "x-y+z:a", "(x - y) + (z:a)")
+	// y-z:a IS a valid pattern because y-z is followed by :
+	testParseEqual(t, "x+y-z:a", "x + (y-z:a)")
+}
+
+func TestParseFunctionCallTrailingComma(t *testing.T) {
+	// No trailing comma for empty args
+	testParseError(t, "f(,)")
+	// Trailing comma for one arg is ok
+	_, err := Parse(`f(a,)`)
+	if err != nil {
+		t.Errorf("expected trailing comma to be ok: %v", err)
+	}
+	// Leading comma is not ok
+	testParseError(t, "f(,a)")
+	// Double comma is not ok
+	testParseError(t, "f(a,,b)")
+}
+
+func TestParseBooleanKeywordArg(t *testing.T) {
+	// Boolean as positional arg is fine
+	_, err := Parse("f(true)")
+	if err != nil {
+		t.Fatalf("expected success for f(true), got %v", err)
+	}
+	// Boolean as keyword arg name is an error
+	testParseError(t, "f(true=0)")
+	testParseError(t, "f(false=0)")
+}
+
+func TestParseFormatRoundTrip(t *testing.T) {
+	cases := []string{
+		"x||||y",
+		"||||x",
+		"!x.f()",
+		"x.f().g()",
+		"x:y:z",
+		"|| x",
+		"|a| a",
+		"if(true, x, y)",
+		`exact:foo`,
+		`regex-i:'test'`,
+		"x + y * z",
+		"x || y && z",
+		"(x || y) && z",
+		`commit_id.short() ++ "\n"`,
+	}
+	for _, input := range cases {
+		expr, err := Parse(input)
+		if err != nil {
+			t.Fatalf("parse %q: %v", input, err)
+		}
+		formatted := Format(expr)
+		expr2, err := Parse(formatted)
+		if err != nil {
+			t.Fatalf("re-parse %q (formatted as %q): %v", input, formatted, err)
+		}
+		formatted2 := Format(expr2)
+		if formatted != formatted2 {
+			t.Errorf("round-trip %q: got %q then %q", input, formatted, formatted2)
+		}
+	}
+}

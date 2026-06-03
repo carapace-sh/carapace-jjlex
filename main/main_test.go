@@ -490,11 +490,28 @@ var templateSuccessCases = []string{
 	"if(true, x, y)",
 	"if(false, x, y)",
 
+	// Pattern value types: boolean, integer
+	"regex:false",
+	"regex:0",
+
+	// Pattern with dash name and infix operators
+	"x+y-z:a",
+	"x-y+z:a",
+
+	// Lambda vs logical operator
+	"x||||y",
+	"||||x",
+
+	// Lambda binding
+	"|| x ++ y",
+	"f(|| x, || y)",
+
 	// Complex expressions
 	"change_id.short()",
 	"commit_id.short()",
 	"description ++ '\\n'",
 	"if(divergent, label('divergent', 'D'), '')",
+	"parents.map(|c| c.commit_id().short()).join(\",\")",
 }
 
 var templateErrorCases = []string{
@@ -510,6 +527,10 @@ var templateErrorCases = []string{
 	"true(",
 	"false(",
 	"true:foo",
+
+	// Boolean as keyword arg name
+	"f(true=0)",
+	"f(false=0)",
 
 	// Invalid string escapes in double quotes
 	`"\y"`,
