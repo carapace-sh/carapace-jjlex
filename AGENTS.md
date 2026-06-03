@@ -95,8 +95,18 @@ Template grammar uses a Pratt parser for infix operators (precedence from weakes
 | `pkg/template/completion_test.go` | Template completion tests |
 | `main/main.go` | CLI entrypoint with subcommands for revset, fileset, and template |
 | `main/main_test.go` | Integration tests with realistic examples from jj source |
+| `pkg/actions/jj/function.go` | Completion action definitions: revset/fileset/string/date patterns, operators, functions, keyword args, special symbols |
+| `pkg/actions/jj/revset.go` | Revset completion wiring: maps CompletionContext to carapace actions using function arg dispatch and pattern value dispatch |
+| `pkg/actions/jj/revision.go` | Dynamic completion actions (bookmarks, tags, remotes, commits, operations, workspaces) that shell out to `jj` |
+| `pkg/actions/jj/helpers.go` | Parsing helpers for `jj` CLI output (bookmarks, lines, toml aliases) |
+| `pkg/actions/jj/exec.go` | `actionExecJJ` helper to run `jj` commands and process output |
+| `pkg/actions/jj/uid.go` | UID generation helper for action deduplication |
 
 ## Key Patterns & Gotchas
+
+### Completion actions return pure value lists
+
+Action functions in `pkg/actions/jj/function.go` return raw value lists without formatting modifiers (`.Suffix`, `.NoSpace`, `.Prefix`). These are applied at call sites in `pkg/actions/jj/revset.go` where context determines what suffix/no-space behavior is needed. This keeps actions reusable.
 
 ### Expression uses a type-erased payload pattern
 
@@ -217,6 +227,7 @@ When jj revset syntax changes, update:
 1. Skill (`skills/jj-revsets/SKILL.md`)
 2. Parser (`pkg/revset/parser.go`)
 3. Completion parser (`pkg/revset/completion_parser.go`)
+4. Completion actions (`pkg/actions/jj/function.go`, `pkg/actions/jj/revset.go`)
 
 Check: `lib/src/revset.pest`, `lib/src/revset.rs` (BUILTIN_FUNCTION_MAP), `docs/revsets.md`
 
@@ -227,6 +238,7 @@ When jj fileset syntax changes, update:
 2. Parser (`pkg/fileset/parser.go`, `parser_helpers.go`, `scanner.go`, `helpers.go`)
 3. Completion parser (`pkg/fileset/completion_parser.go`, `completion_helpers.go`)
 4. AST (`pkg/fileset/ast.go`)
+5. Completion actions (`pkg/actions/jj/function.go`, `pkg/actions/jj/revset.go`)
 
 Check: `lib/src/fileset.pest`, `lib/src/fileset.rs` (BUILTIN_FUNCTION_MAP), `docs/filesets.md`
 
