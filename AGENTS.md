@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Go library for parsing [jj (Jujutsu)](https://github.com/jj-vcs/jj) revset and fileset expressions into ASTs, with completion support. Part of the [carapace-sh](https://github.com/carapace-sh) ecosystem (shell completion framework). The module path is `github.com/carapace-sh/carapace-jjlex`.
+Go library for parsing [jj (Jujutsu)](https://github.com/jj-vcs/jj) revset, fileset, and template expressions into ASTs, with completion support. Part of the [carapace-sh](https://github.com/carapace-sh) ecosystem (shell completion framework). The module path is `github.com/carapace-sh/carapace-jjlex`.
 
 ## Commands
 
@@ -18,13 +18,15 @@ go run main/main.go revset-complete <cursor> "<expr>"  # revset completion conte
 go run main/main.go fileset "<expr>"                   # parse fileset expression, output AST as JSON
 go run main/main.go fileset-complete <cursor> "<expr>" # fileset completion context as JSON
 go run main/main.go fileset-bare "<expr>"              # parse fileset with bare string fallback
+go run main/main.go template "<expr>"                    # parse template expression, output AST as JSON
+go run main/main.go template-complete <cursor> "<expr>"  # template completion context as JSON
 ```
 
 No Makefile, no linter config, no CI config present.
 
 ## Architecture
 
-Two pairs of independent recursive-descent parsers:
+Three pairs of independent recursive-descent parsers:
 
 ### Revset (`pkg/revset/`)
 
@@ -39,6 +41,22 @@ Both parsers implement the same operator precedence hierarchy (levels 0-6) but i
 - **`completion_parser.go`** — Completion parser. `ParseForCompletion(input, cursor)` → `*CompletionContext`.
 
 Fileset grammar is simpler than revset: no `::`, `..`, `-`, `+` operators; no `@` workspace syntax; no remote symbols. Operators are `|` (union), `&` (intersection), `~` (negate/difference). Precedence: `|` < `&`/`~` (infix) < `~` (prefix) < `p:x` (pattern) < primary.
+
+### Template (`pkg/template/`)
+
+- **`parser.go`** — Full parser using Pratt parser for expression precedence. `Parse()` → `*Expression` AST with spans. `++` (concat) is handled at the template level, outside the Pratt parser.
+- **`completion_parser.go`** — Completion parser entry point. `ParseForCompletion(input, cursor)` → `*CompletionContext`.
+- **`completion_parser_impl.go`** — Completion parser implementation with cursor-aware scanning.
+- **`completion_helpers.go`** — Dedup helpers for tokens and operators.
+- **`parser_helpers.go`** — Shared helper functions: character classification (`isWhitespace`, `isIdentifierStart`, `isIdentifierPart`, `isFunctionName`, `isPatternIdentifierStart`, `isPatternIdentifierPart`, `isStrictIdentifierPart`), string/integer literal scanning, infix operator peeking.
+- **`ast.go`** — Template AST node types (`UnaryOp`, `BinaryOp`, `ExpressionKind`, payload types including `ConcatExpr`, `FunctionCallExpr`, `MethodCallExpr`, `LambdaExpr`, `KeywordArg`).
+- **`span.go`** — `Span` (Start/End byte offsets) and `Pos` types.
+- **`format.go`** — Template AST → string formatting with precedence-aware parenthesization.
+- **`completion.go`** — Template completion context types (`ExpectedToken`, `ValidOperator`, `FunctionContext`, `CompletionContext`).
+- **`template_test.go`** — Template parser tests.
+- **`completion_test.go`** — Template completion tests.
+
+Template grammar uses a Pratt parser for infix operators (precedence from weakest to strongest: `||`, `&&`, `==`/`!=`, comparisons, `+`/`-`, `*`/`/`/`%`), with `++` (concat) handled at the top template level. Prefix operators (`!`, `-`), method calls (`x.f()`), function calls (`f(x)`), patterns (`name:value`), lambdas (`|| expr`, `|x| expr`), and keyword arguments (`f(x, key=val)`) are also supported.
 
 ### File responsibilities
 
@@ -64,7 +82,18 @@ Fileset grammar is simpler than revset: no `::`, `..`, `-`, `+` operators; no `@
 | `pkg/fileset/completion_helpers.go` | Fileset completion parser helper methods and dedup functions |
 | `pkg/fileset/fileset_test.go` | Fileset parser tests |
 | `pkg/fileset/completion_test.go` | Fileset completion tests |
-| `main/main.go` | CLI entrypoint with subcommands for revset and fileset |
+| `pkg/template/ast.go` | Template AST node types (`UnaryOp`, `BinaryOp`, `ExpressionKind`, payload structs) |
+| `pkg/template/span.go` | `Span` and `Pos` types |
+| `pkg/template/parser.go` | Template main parser + `Parse()`, `IsIdentifier()`, `Format()`, `parseFunctionArgs()`, `tryParseKeywordArg()` |
+| `pkg/template/parser_helpers.go` | Template parser helpers: character classification, string/integer scanning, infix op peek/mapping, precedence constants |
+| `pkg/template/format.go` | Template AST → string formatting with precedence-aware parenthesization |
+| `pkg/template/completion.go` | Template completion context types (`ExpectedToken`, `ValidOperator`, `FunctionContext`, `CompletionContext`) |
+| `pkg/template/completion_parser.go` | Template completion parser entry point |
+| `pkg/template/completion_parser_impl.go` | Template completion parser implementation |
+| `pkg/template/completion_helpers.go` | Template completion parser dedup helpers |
+| `pkg/template/template_test.go` | Template parser tests |
+| `pkg/template/completion_test.go` | Template completion tests |
+| `main/main.go` | CLI entrypoint with subcommands for revset, fileset, and template |
 | `main/main_test.go` | Integration tests with realistic examples from jj source |
 
 ## Key Patterns & Gotchas
@@ -131,9 +160,21 @@ The `|` operator flattens into a single `KindUnionAll` node rather than creating
 
 Tracks whether any input was consumed before reaching the cursor. Distinguishes "expecting first expression" from "after an expression, expecting operator".
 
+### Template `++` is weakest binding operator
+
+The `++` (concatenation) operator is handled at the template level, outside the Pratt parser. This means all other binary operators (`||`, `&&`, `==`, `!=`, comparisons, `+`, `-`, `*`, `/`, `%`) bind tighter than `++`. So `x && y ++ z` parses as `(x && y) ++ z`. The format function uses `precPrimary` context for concat operands to force parentheses around any non-primary expression inside a concat.
+
+### Template pattern identifiers allow dashes
+
+Pattern names like `regex-i` include dashes before the colon. The parser uses `scanPatternIdentifierSuffix()` to extend identifiers after the initial scan. The completion parser mirrors this with `scanPatternIdentifierSuffixComp()`.
+
+### Template keyword arguments
+
+Template function calls support keyword arguments (`f(x, key=val)`). The parser's `tryParseKeywordArg()` checks for `identifier = expression` sequences. The completion parser handles keyword arg name completion.
+
 ### Completion parser `innermostFunc` guard
 
-`setFunctionContext()` only sets `p.ctx.Function` if `p.innermostFunc` is nil. The innermost (deepest) function call wins.
+`setFunctionContext()` always updates to the most recently entered function, so nested function calls correctly report the innermost function context.
 
 ## Testing
 
@@ -185,6 +226,17 @@ When jj fileset syntax changes, update:
 4. AST (`pkg/fileset/ast.go`)
 
 Check: `lib/src/fileset.pest`, `lib/src/fileset.rs` (BUILTIN_FUNCTION_MAP), `docs/filesets.md`
+
+### Template
+
+When jj template syntax changes, update:
+1. Skill (`skills/jj-templates/SKILL.md`)
+2. Parser (`pkg/template/parser.go`, `parser_helpers.go`)
+3. Completion parser (`pkg/template/completion_parser.go`, `completion_parser_impl.go`, `completion_helpers.go`)
+4. AST (`pkg/template/ast.go`)
+5. Format (`pkg/template/format.go`)
+
+Check: `lib/src/template.pest`, `lib/src/template_parser.rs`, `docs/templates.md`
 
 ### CLI, Concepts, Bookmarks, Operations, Config, Templates, Git Compat
 

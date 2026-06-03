@@ -5,6 +5,7 @@ import (
 
 	"github.com/carapace-sh/carapace-jjlex/pkg/fileset"
 	"github.com/carapace-sh/carapace-jjlex/pkg/revset"
+	"github.com/carapace-sh/carapace-jjlex/pkg/template"
 )
 
 // Realistic revset examples sourced from jj's source code
@@ -401,6 +402,181 @@ func TestFilesetParseError(t *testing.T) {
 			_, err := fileset.Parse(input)
 			if err == nil {
 				t.Fatalf("expected error for %q, got success", input)
+			}
+		})
+	}
+}
+
+// Template integration tests sourced from jj's documentation and template language
+
+var templateSuccessCases = []string{
+	// Literals
+	"true",
+	"false",
+	"42",
+	`"hello"`,
+	`'raw string'`,
+	`"escapes: \t\n\r\0\e\x41"`,
+	`"backslash: \\"`,
+
+	// Identifiers
+	"commit_id",
+	"change_id",
+	"author",
+	"description",
+
+	// Operators
+	"x && y",
+	"x || y",
+	"!x",
+	"-42",
+	"x == y",
+	"x != y",
+	"x > y",
+	"x < y",
+	"x >= y",
+	"x <= y",
+	"x + y",
+	"x - y",
+	"x * y",
+	"x / y",
+	"x % y",
+
+	// Concatenation
+	"x ++ y",
+	"x ++ y ++ z",
+
+	// Precedence
+	"!x.f()",
+	"x == y && z",
+	"x || y && z",
+	"(x || y) && z",
+	"x + y * z",
+
+	// Method calls
+	"x.f()",
+	"x.f().g()",
+	"x.f(a)",
+	"x.f(a, b)",
+
+	// Function calls
+	"if(true, x, y)",
+	"label(separate(' ', x, y))",
+	"coalesce(x, y, z)",
+
+	// Keyword arguments
+	"label(color='red', x)",
+
+	// Patterns
+	`exact:foo`,
+	`glob:"*.rs"`,
+	`regex:"pattern"`,
+	`substring:"bar"`,
+	`glob-i:"*.TXT"`,
+
+	// Nested patterns
+	`x:y:z`,
+
+	// Lambda expressions
+	"|| x",
+	"|a| x",
+	"|a, b| x + y",
+
+	// Parenthesized expressions
+	"(x || y)",
+	"(x + y) * z",
+
+	// Boolean literals in context
+	"if(true, x, y)",
+	"if(false, x, y)",
+
+	// Complex expressions
+	"change_id.short()",
+	"commit_id.short()",
+	"description ++ '\\n'",
+	"if(divergent, label('divergent', 'D'), '')",
+}
+
+var templateErrorCases = []string{
+	// Incomplete expressions
+	"foo ++",
+	"foo &&",
+	"foo ||",
+	"(",
+	")",
+	"if(",
+
+	// Invalid syntax
+	"true(",
+	"false(",
+	"true:foo",
+
+	// Invalid string escapes in double quotes
+	`"\y"`,
+
+	// Integer with leading zero
+	"042",
+}
+
+func TestTemplateParseSuccess(t *testing.T) {
+	for _, input := range templateSuccessCases {
+		t.Run(input, func(t *testing.T) {
+			_, err := template.Parse(input)
+			if err != nil {
+				t.Fatalf("expected success for %q, got error: %v", input, err)
+			}
+		})
+	}
+}
+
+func TestTemplateParseError(t *testing.T) {
+	for _, input := range templateErrorCases {
+		t.Run(input, func(t *testing.T) {
+			_, err := template.Parse(input)
+			if err == nil {
+				t.Fatalf("expected error for %q, got success", input)
+			}
+		})
+	}
+}
+
+func TestTemplateRoundTrip(t *testing.T) {
+	cases := []string{
+		"true",
+		"false",
+		"42",
+		`"hello"`,
+		"commit_id",
+		"x ++ y",
+		"x && y",
+		"x || y",
+		"!x",
+		"x == y",
+		"x != y",
+		"x > y",
+		"x + y",
+		"x - y",
+		"x * y",
+		"x.f()",
+		"if(true, x, y)",
+		`exact:foo`,
+		"|| x",
+		"|a| x",
+	}
+	for _, input := range cases {
+		t.Run(input, func(t *testing.T) {
+			expr, err := template.Parse(input)
+			if err != nil {
+				t.Fatalf("parse error for %q: %v", input, err)
+			}
+			formatted := template.Format(expr)
+			expr2, err := template.Parse(formatted)
+			if err != nil {
+				t.Fatalf("re-parse error for %q (formatted as %q): %v", input, formatted, err)
+			}
+			formatted2 := template.Format(expr2)
+			if formatted != formatted2 {
+				t.Errorf("round-trip mismatch for %q: got %q then %q", input, formatted, formatted2)
 			}
 		})
 	}
