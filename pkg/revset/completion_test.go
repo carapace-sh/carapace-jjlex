@@ -6,7 +6,7 @@ import (
 )
 
 func TestCompletionEmpty(t *testing.T) {
-	ctx := ParseForCompletion("", 0)
+	ctx := ParseForCompletion("")
 	assertHasExpected(t, ctx, ExpectedExpression)
 	// Prefix operators ~, ::, .. are also valid at the start
 	assertHasOperator(t, ctx, "~")
@@ -16,7 +16,7 @@ func TestCompletionEmpty(t *testing.T) {
 
 func TestCompletionAfterCompleteExpression(t *testing.T) {
 	// "foo" with cursor at end - operators or extending the identifier
-	ctx := ParseForCompletion("foo", -1)
+	ctx := ParseForCompletion("foo")
 	assertHasExpected(t, ctx, ExpectedOperator)
 	// PartialIdent is "foo" since cursor is at end of identifier
 	if ctx.PartialIdent != "foo" {
@@ -33,7 +33,7 @@ func TestCompletionAfterCompleteExpression(t *testing.T) {
 
 func TestCompletionPartialIdentifier(t *testing.T) {
 	// "par" with cursor at end - partial identifier
-	ctx := ParseForCompletion("par", -1)
+	ctx := ParseForCompletion("par")
 	if ctx.PartialIdent != "par" {
 		t.Errorf("expected PartialIdent 'par', got %q", ctx.PartialIdent)
 	}
@@ -42,25 +42,25 @@ func TestCompletionPartialIdentifier(t *testing.T) {
 
 func TestCompletionAfterOperator(t *testing.T) {
 	// "foo |" with cursor at end - expect expression
-	ctx := ParseForCompletion("foo | ", -1)
+	ctx := ParseForCompletion("foo | ")
 	assertHasExpected(t, ctx, ExpectedExpression)
 }
 
 func TestCompletionAfterAmpersand(t *testing.T) {
 	// "foo & " with cursor at end - expect expression
-	ctx := ParseForCompletion("foo & ", -1)
+	ctx := ParseForCompletion("foo & ")
 	assertHasExpected(t, ctx, ExpectedExpression)
 }
 
 func TestCompletionAfterTilde(t *testing.T) {
 	// "foo ~ " with cursor at end - expect expression
-	ctx := ParseForCompletion("foo ~ ", -1)
+	ctx := ParseForCompletion("foo ~ ")
 	assertHasExpected(t, ctx, ExpectedExpression)
 }
 
 func TestCompletionAfterUnion(t *testing.T) {
 	// "foo | bar" with cursor at end - expect operators
-	ctx := ParseForCompletion("foo | bar", -1)
+	ctx := ParseForCompletion("foo | bar")
 	assertHasExpected(t, ctx, ExpectedOperator)
 	// bar is a partial identifier that could be extended
 	if ctx.PartialIdent != "bar" {
@@ -70,7 +70,7 @@ func TestCompletionAfterUnion(t *testing.T) {
 
 func TestCompletionInFunctionEmpty(t *testing.T) {
 	// "parents(" with cursor at end - expect expression and )
-	ctx := ParseForCompletion("parents(", -1)
+	ctx := ParseForCompletion("parents(")
 	assertHasExpected(t, ctx, ExpectedExpression)
 	assertHasExpected(t, ctx, ExpectedClosingParen)
 	if ctx.Function == nil {
@@ -86,7 +86,7 @@ func TestCompletionInFunctionEmpty(t *testing.T) {
 
 func TestCompletionInFunctionAfterArg(t *testing.T) {
 	// "parents(foo" with cursor at end
-	ctx := ParseForCompletion("parents(foo", -1)
+	ctx := ParseForCompletion("parents(foo")
 	assertHasExpected(t, ctx, ExpectedClosingParen)
 	assertHasExpected(t, ctx, ExpectedComma)
 	if ctx.Function == nil {
@@ -114,7 +114,7 @@ func TestCompletionInFunctionAfterArg(t *testing.T) {
 
 func TestCompletionInFunctionMultipleArgs(t *testing.T) {
 	// "file(a, b" with cursor at end
-	ctx := ParseForCompletion("file(a, b", -1)
+	ctx := ParseForCompletion("file(a, b")
 	if ctx.Function == nil {
 		t.Fatal("expected Function context")
 	}
@@ -137,7 +137,7 @@ func TestCompletionInFunctionMultipleArgs(t *testing.T) {
 
 func TestCompletionInFunctionAfterComma(t *testing.T) {
 	// "file(a, " with cursor at end - expect next arg
-	ctx := ParseForCompletion("file(a, ", -1)
+	ctx := ParseForCompletion("file(a, ")
 	assertHasExpected(t, ctx, ExpectedExpression)
 	assertHasExpected(t, ctx, ExpectedClosingParen)
 	if ctx.Function == nil {
@@ -150,7 +150,7 @@ func TestCompletionInFunctionAfterComma(t *testing.T) {
 
 func TestCompletionInFunctionKeywordArg(t *testing.T) {
 	// "remote_bookmarks(remote" with cursor at end
-	ctx := ParseForCompletion("remote_bookmarks(remote", -1)
+	ctx := ParseForCompletion("remote_bookmarks(remote")
 	if ctx.Function == nil {
 		t.Fatal("expected Function context")
 	}
@@ -163,7 +163,7 @@ func TestCompletionInFunctionKeywordArg(t *testing.T) {
 
 func TestCompletionInFunctionAfterKeywordEquals(t *testing.T) {
 	// "remote_bookmarks(remote=" with cursor at end
-	ctx := ParseForCompletion("remote_bookmarks(remote=", -1)
+	ctx := ParseForCompletion("remote_bookmarks(remote=")
 	assertHasExpected(t, ctx, ExpectedExpression)
 	if ctx.Function == nil {
 		t.Fatal("expected Function context")
@@ -175,20 +175,20 @@ func TestCompletionInFunctionAfterKeywordEquals(t *testing.T) {
 
 func TestCompletionInParenthesized(t *testing.T) {
 	// "(foo" with cursor at end - expect )
-	ctx := ParseForCompletion("(foo", -1)
+	ctx := ParseForCompletion("(foo")
 	assertHasExpected(t, ctx, ExpectedClosingParen)
 }
 
 func TestCompletionInParenthesizedEmpty(t *testing.T) {
 	// "( " with cursor at end - expect expression and )
-	ctx := ParseForCompletion("( ", -1)
+	ctx := ParseForCompletion("( ")
 	assertHasExpected(t, ctx, ExpectedExpression)
 	assertHasExpected(t, ctx, ExpectedClosingParen)
 }
 
 func TestCompletionPartialString(t *testing.T) {
 	// `"fo` with cursor at end
-	ctx := ParseForCompletion(`"fo`, -1)
+	ctx := ParseForCompletion(`"fo`)
 	if ctx.PartialString != "fo" {
 		t.Errorf("expected PartialString 'fo', got %q", ctx.PartialString)
 	}
@@ -200,7 +200,7 @@ func TestCompletionPartialString(t *testing.T) {
 
 func TestCompletionPartialRawString(t *testing.T) {
 	// `'fo` with cursor at end
-	ctx := ParseForCompletion(`'fo`, -1)
+	ctx := ParseForCompletion(`'fo`)
 	if ctx.PartialString != "fo" {
 		t.Errorf("expected PartialString 'fo', got %q", ctx.PartialString)
 	}
@@ -212,7 +212,7 @@ func TestCompletionPartialRawString(t *testing.T) {
 
 func TestCompletionInPattern(t *testing.T) {
 	// "exact:" with cursor at end
-	ctx := ParseForCompletion("exact:", -1)
+	ctx := ParseForCompletion("exact:")
 	if !ctx.InPattern {
 		t.Error("expected InPattern")
 	}
@@ -225,62 +225,44 @@ func TestCompletionInPattern(t *testing.T) {
 
 func TestCompletionAfterAt(t *testing.T) {
 	// "main@" with cursor at end - completing remote name
-	ctx := ParseForCompletion("main@", -1)
+	ctx := ParseForCompletion("main@")
 	assertHasExpected(t, ctx, ExpectedExpression)
-}
-
-func TestCompletionAtCursorPosition(t *testing.T) {
-	// "foo | bar |" with cursor at position of second |
-	input := "foo | bar |"
-	cursor := len(input)
-	ctx := ParseForCompletion(input, cursor)
-	assertHasExpected(t, ctx, ExpectedExpression)
-}
-
-func TestCompletionCursorInMiddle(t *testing.T) {
-	// "foo | bar" with cursor after "foo " (before the |)
-	input := "foo | bar"
-	cursor := 4 // position after 'foo '
-	ctx := ParseForCompletion(input, cursor)
-	// At position 4 we're in whitespace before |
-	// After completing 'foo', operators are valid
-	assertHasExpected(t, ctx, ExpectedOperator)
 }
 
 func TestCompletionAfterDagRangePrefix(t *testing.T) {
 	// "::" with cursor at end (nullary)
-	ctx := ParseForCompletion("::", -1)
+	ctx := ParseForCompletion("::")
 	assertHasExpected(t, ctx, ExpectedOperator)
 }
 
 func TestCompletionAfterRangeAll(t *testing.T) {
 	// ".." with cursor at end (nullary)
-	ctx := ParseForCompletion("..", -1)
+	ctx := ParseForCompletion("..")
 	assertHasExpected(t, ctx, ExpectedOperator)
 }
 
 func TestCompletionNegatePrefix(t *testing.T) {
 	// "~" with cursor at end
-	ctx := ParseForCompletion("~", -1)
+	ctx := ParseForCompletion("~")
 	assertHasExpected(t, ctx, ExpectedExpression)
 }
 
 func TestCompletionAfterNegate(t *testing.T) {
 	// "~foo" with cursor at end
-	ctx := ParseForCompletion("~foo", -1)
+	ctx := ParseForCompletion("~foo")
 	assertHasExpected(t, ctx, ExpectedOperator)
 }
 
 func TestCompletionInfixDagRange(t *testing.T) {
 	// "foo::bar" with cursor at end
-	ctx := ParseForCompletion("foo::bar", -1)
+	ctx := ParseForCompletion("foo::bar")
 	assertHasExpected(t, ctx, ExpectedOperator)
 }
 
 func TestCompletionDagRangeNeedsRight(t *testing.T) {
 	// "foo::" with cursor at end (infix, needs RHS)
 	// This is actually a postfix ::, which means after-expression operators
-	ctx := ParseForCompletion("foo::", -1)
+	ctx := ParseForCompletion("foo::")
 	assertHasExpected(t, ctx, ExpectedOperator)
 }
 
@@ -290,19 +272,19 @@ func TestCompletionDagRangeInfixNeedsRight(t *testing.T) {
 
 func TestCompletionPostfixParents(t *testing.T) {
 	// "foo-" with cursor at end
-	ctx := ParseForCompletion("foo-", -1)
+	ctx := ParseForCompletion("foo-")
 	assertHasExpected(t, ctx, ExpectedOperator)
 }
 
 func TestCompletionPostfixChildren(t *testing.T) {
 	// "foo+" with cursor at end
-	ctx := ParseForCompletion("foo+", -1)
+	ctx := ParseForCompletion("foo+")
 	assertHasExpected(t, ctx, ExpectedOperator)
 }
 
 func TestCompletionNestedFunction(t *testing.T) {
 	// "parents(file(" with cursor at end
-	ctx := ParseForCompletion("parents(file(", -1)
+	ctx := ParseForCompletion("parents(file(")
 	if ctx.Function == nil {
 		t.Fatal("expected Function context")
 	}
@@ -315,7 +297,7 @@ func TestCompletionNestedFunction(t *testing.T) {
 
 func TestCompletionAfterKeywordArgValue(t *testing.T) {
 	// "remote_bookmarks(remote=foo" with cursor at end
-	ctx := ParseForCompletion("remote_bookmarks(remote=foo", -1)
+	ctx := ParseForCompletion("remote_bookmarks(remote=foo")
 	if ctx.Function == nil {
 		t.Fatal("expected Function context")
 	}
@@ -323,23 +305,15 @@ func TestCompletionAfterKeywordArgValue(t *testing.T) {
 	assertHasExpected(t, ctx, ExpectedComma)
 }
 
-func TestCompletionInfixDagRangeNeedsRight(t *testing.T) {
-	// "foo::" with cursor right after :: - needs RHS expression
-	input := "foo::bar"
-	cursor := 5 // position right after "foo::"
-	ctx := ParseForCompletion(input, cursor)
-	assertHasExpected(t, ctx, ExpectedExpression)
-}
-
 func TestCompletionAfterAtWorkspace(t *testing.T) {
 	// "@" with cursor at end
-	ctx := ParseForCompletion("@", -1)
+	ctx := ParseForCompletion("@")
 	assertHasExpected(t, ctx, ExpectedOperator)
 }
 
 func TestCompletionAtInFunction(t *testing.T) {
 	// "parents(@" with cursor at end
-	ctx := ParseForCompletion("parents(@", -1)
+	ctx := ParseForCompletion("parents(@")
 	if ctx.Function == nil {
 		t.Fatal("expected Function context")
 	}
@@ -350,7 +324,7 @@ func TestCompletionAtInFunction(t *testing.T) {
 
 func TestCompletionTrailingComma(t *testing.T) {
 	// "bookmarks(a," with cursor at end (trailing comma allowed)
-	ctx := ParseForCompletion("bookmarks(a,", -1)
+	ctx := ParseForCompletion("bookmarks(a,")
 	if ctx.Function == nil {
 		t.Fatal("expected Function context")
 	}
@@ -359,13 +333,13 @@ func TestCompletionTrailingComma(t *testing.T) {
 
 func TestCompletionEmptyFunctionCall(t *testing.T) {
 	// "visible_heads()" with cursor at end
-	ctx := ParseForCompletion("visible_heads()", -1)
+	ctx := ParseForCompletion("visible_heads()")
 	assertHasExpected(t, ctx, ExpectedOperator)
 }
 
 func TestCompletionInPatternWithPartialIdent(t *testing.T) {
 	// "exact:fo" with cursor at end - pattern value is partial identifier
-	ctx := ParseForCompletion("exact:fo", -1)
+	ctx := ParseForCompletion("exact:fo")
 	if !ctx.InPattern {
 		t.Error("expected InPattern")
 	}
@@ -376,7 +350,7 @@ func TestCompletionInPatternWithPartialIdent(t *testing.T) {
 
 func TestCompletionAfterDifferenceInFunction(t *testing.T) {
 	// "file(foo ~ " with cursor at end
-	ctx := ParseForCompletion("file(foo ~ ", -1)
+	ctx := ParseForCompletion("file(foo ~ ")
 	if ctx.Function == nil {
 		t.Fatal("expected Function context")
 	}
@@ -385,7 +359,7 @@ func TestCompletionAfterDifferenceInFunction(t *testing.T) {
 
 func TestCompletionRemoteSymbolPartial(t *testing.T) {
 	// "main@ori" with cursor at end - partial remote name
-	ctx := ParseForCompletion("main@ori", -1)
+	ctx := ParseForCompletion("main@ori")
 	if ctx.PartialIdent != "ori" {
 		t.Errorf("expected PartialIdent 'ori', got %q", ctx.PartialIdent)
 	}
@@ -393,7 +367,7 @@ func TestCompletionRemoteSymbolPartial(t *testing.T) {
 
 func TestCompletionArgSpanAndContent(t *testing.T) {
 	// "parents(foo" - verify arg span and content
-	ctx := ParseForCompletion("parents(foo", -1)
+	ctx := ParseForCompletion("parents(foo")
 	if ctx.Function == nil {
 		t.Fatal("expected Function context")
 	}
@@ -414,7 +388,7 @@ func TestCompletionArgSpanAndContent(t *testing.T) {
 
 func TestCompletionArgStringContent(t *testing.T) {
 	// `parents("foo"` - verify string arg content
-	ctx := ParseForCompletion(`parents("foo"`, -1)
+	ctx := ParseForCompletion(`parents("foo"`)
 	if ctx.Function == nil {
 		t.Fatal("expected Function context")
 	}
@@ -435,7 +409,7 @@ func TestCompletionArgStringContent(t *testing.T) {
 
 func TestCompletionArgAtWorkspaceContent(t *testing.T) {
 	// "parents(foo@" - verify at workspace arg
-	ctx := ParseForCompletion("parents(foo@", -1)
+	ctx := ParseForCompletion("parents(foo@")
 	if ctx.Function == nil {
 		t.Fatal("expected Function context")
 	}
@@ -453,7 +427,7 @@ func TestCompletionArgAtWorkspaceContent(t *testing.T) {
 
 func TestCompletionArgRemoteSymbolContent(t *testing.T) {
 	// "parents(foo@bar" - verify remote symbol arg
-	ctx := ParseForCompletion("parents(foo@bar", -1)
+	ctx := ParseForCompletion("parents(foo@bar")
 	if ctx.Function == nil {
 		t.Fatal("expected Function context")
 	}
@@ -474,7 +448,7 @@ func TestCompletionArgRemoteSymbolContent(t *testing.T) {
 
 func TestCompletionFunctionCallExpr(t *testing.T) {
 	// "parents(foo)" - verify function call expression
-	ctx := ParseForCompletion("parents(foo)", -1)
+	ctx := ParseForCompletion("parents(foo)")
 	if ctx.Function != nil {
 		// After the function is closed, Function context should not be set
 		// (the cursor is after the closing paren)
@@ -485,7 +459,7 @@ func TestCompletionFunctionCallExpr(t *testing.T) {
 
 func TestCompletionMultipleArgsSpanAndContent(t *testing.T) {
 	// "file(a, b, c" - verify all args have correct span and content
-	ctx := ParseForCompletion("file(a, b, c", -1)
+	ctx := ParseForCompletion("file(a, b, c")
 	if ctx.Function == nil {
 		t.Fatal("expected Function context")
 	}
@@ -536,25 +510,25 @@ func assertHasOperator(t *testing.T, ctx *CompletionContext, op string) {
 
 func TestCompletionNullaryRange(t *testing.T) {
 	// ".." with cursor at end (nullary range)
-	ctx := ParseForCompletion("..", -1)
+	ctx := ParseForCompletion("..")
 	assertHasExpected(t, ctx, ExpectedOperator)
 }
 
 func TestCompletionPrefixRange(t *testing.T) {
 	// "..foo" with cursor at end (prefix range)
-	ctx := ParseForCompletion("..foo", -1)
+	ctx := ParseForCompletion("..foo")
 	assertHasExpected(t, ctx, ExpectedOperator)
 }
 
 func TestCompletionInfixRange(t *testing.T) {
 	// "foo..bar" with cursor at end
-	ctx := ParseForCompletion("foo..bar", -1)
+	ctx := ParseForCompletion("foo..bar")
 	assertHasExpected(t, ctx, ExpectedOperator)
 }
 
 func TestCompletionInfixRangeNeedsRight(t *testing.T) {
 	// "foo.." with cursor at end - could be postfix or infix needing RHS
-	ctx := ParseForCompletion("foo..", -1)
+	ctx := ParseForCompletion("foo..")
 	assertHasExpected(t, ctx, ExpectedOperator)
 }
 
@@ -562,7 +536,7 @@ func TestCompletionPatternKinds(t *testing.T) {
 	// "exact:" — already tested in TestCompletionInPattern, verify other kinds
 
 	// "glob:" — pattern
-	ctx := ParseForCompletion("glob:", -1)
+	ctx := ParseForCompletion("glob:")
 	if !ctx.InPattern {
 		t.Error("expected InPattern for glob:")
 	}
@@ -571,13 +545,13 @@ func TestCompletionPatternKinds(t *testing.T) {
 	}
 
 	// "substring:" — pattern
-	ctx = ParseForCompletion("substring:", -1)
+	ctx = ParseForCompletion("substring:")
 	if !ctx.InPattern {
 		t.Error("expected InPattern for substring:")
 	}
 
 	// "regex:" — pattern
-	ctx = ParseForCompletion("regex:", -1)
+	ctx = ParseForCompletion("regex:")
 	if !ctx.InPattern {
 		t.Error("expected InPattern for regex:")
 	}
@@ -585,7 +559,7 @@ func TestCompletionPatternKinds(t *testing.T) {
 
 func TestCompletionPatternCaseInsensitive(t *testing.T) {
 	// "glob-i:" — case-insensitive pattern
-	ctx := ParseForCompletion("glob-i:", -1)
+	ctx := ParseForCompletion("glob-i:")
 	if !ctx.InPattern {
 		t.Error("expected InPattern")
 	}
@@ -596,7 +570,7 @@ func TestCompletionPatternCaseInsensitive(t *testing.T) {
 
 func TestCompletionKeywordArgEqualsExpr(t *testing.T) {
 	// "remote_bookmarks(remote=" with cursor at end — should expect expression
-	ctx := ParseForCompletion("remote_bookmarks(remote=", -1)
+	ctx := ParseForCompletion("remote_bookmarks(remote=")
 	assertHasExpected(t, ctx, ExpectedExpression)
 	if ctx.Function == nil {
 		t.Fatal("expected Function context")

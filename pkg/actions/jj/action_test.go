@@ -22,15 +22,15 @@ func TestActionStringPatterns(t *testing.T) {
 		return ActionStringPatterns()
 	})(func(s *sandbox.Sandbox) {
 		s.Run("").Expect(carapace.ActionValuesDescribed(
-			"exact:", "Exact match",
-			"exact-i:", "Exact match (case-insensitive)",
-			"substring:", "Substring match (default)",
-			"substring-i:", "Substring match (case-insensitive)",
-			"glob:", "Glob pattern match",
-			"glob-i:", "Glob pattern match (case-insensitive)",
-			"regex:", "Regular expression match",
-			"regex-i:", "Regular expression match (case-insensitive)",
-		).Suffix("").Tag("string patterns"))
+			"exact", "Exact match",
+			"exact-i", "Exact match (case-insensitive)",
+			"substring", "Substring match (default)",
+			"substring-i", "Substring match (case-insensitive)",
+			"glob", "Glob pattern match",
+			"glob-i", "Glob pattern match (case-insensitive)",
+			"regex", "Regular expression match",
+			"regex-i", "Regular expression match (case-insensitive)",
+		).Suffix(":").NoSpace().Tag("string patterns"))
 	})
 }
 
@@ -39,9 +39,9 @@ func TestActionDatePatterns(t *testing.T) {
 		return ActionDatePatterns()
 	})(func(s *sandbox.Sandbox) {
 		s.Run("").Expect(carapace.ActionValuesDescribed(
-			"after:", "Matches dates at or after the given date",
-			"before:", "Matches dates before (not including) the given date",
-		).Suffix("").Tag("date patterns"))
+			"after", "Matches dates at or after the given date",
+			"before", "Matches dates before (not including) the given date",
+		).Suffix(":").NoSpace().Tag("date patterns"))
 	})
 }
 
@@ -50,15 +50,15 @@ func TestActionRevsetPatterns(t *testing.T) {
 		return ActionRevsetPatterns()
 	})(func(s *sandbox.Sandbox) {
 		s.Run("").Expect(carapace.ActionValuesDescribed(
-			"exact:", "Exact match",
-			"exact-i:", "Exact match (case-insensitive)",
-			"substring:", "Substring match (default)",
-			"substring-i:", "Substring match (case-insensitive)",
-			"glob:", "Glob pattern match",
-			"glob-i:", "Glob pattern match (case-insensitive)",
-			"regex:", "Regular expression match",
-			"regex-i:", "Regular expression match (case-insensitive)",
-		).Suffix("").Tag("string patterns"))
+			"exact", "Exact match",
+			"exact-i", "Exact match (case-insensitive)",
+			"substring", "Substring match (default)",
+			"substring-i", "Substring match (case-insensitive)",
+			"glob", "Glob pattern match",
+			"glob-i", "Glob pattern match (case-insensitive)",
+			"regex", "Regular expression match",
+			"regex-i", "Regular expression match (case-insensitive)",
+		).Suffix(":").NoSpace().Tag("string patterns"))
 	})
 }
 
@@ -67,15 +67,15 @@ func TestActionFilesetPatterns(t *testing.T) {
 		return ActionFilesetPatterns()
 	})(func(s *sandbox.Sandbox) {
 		s.Run("").Expect(carapace.ActionValuesDescribed(
-			"exact:", "Exact match",
-			"exact-i:", "Exact match (case-insensitive)",
-			"substring:", "Substring match",
-			"substring-i:", "Substring match (case-insensitive)",
-			"glob:", "Glob pattern match",
-			"glob-i:", "Glob pattern match (case-insensitive)",
-			"regex:", "Regular expression match",
-			"regex-i:", "Regular expression match (case-insensitive)",
-		).Suffix("").Tag("fileset patterns"))
+			"exact", "Exact match",
+			"exact-i", "Exact match (case-insensitive)",
+			"substring", "Substring match",
+			"substring-i", "Substring match (case-insensitive)",
+			"glob", "Glob pattern match",
+			"glob-i", "Glob pattern match (case-insensitive)",
+			"regex", "Regular expression match",
+			"regex-i", "Regular expression match (case-insensitive)",
+		).Suffix(":").NoSpace().Tag("fileset patterns"))
 	})
 }
 
@@ -159,13 +159,13 @@ func TestRevsetKeywordArgsLogic(t *testing.T) {
 }
 
 func TestParseBookmarkOutput(t *testing.T) {
-	output := "main some commit\nfeature another commit\nmain@origin main commit\n"
+	output := "main: qvlkomxp 9a2e553b some commit message\nfeature: numonpmw ad5c8efd another commit\nmain@origin: qvlkomxp 9a2e553b main commit\n"
 	vals := parseBookmarkValues([]byte(output), false)
 	if len(vals) != 4 {
 		t.Fatalf("expected 4 values (2 name/desc pairs), got %d", len(vals))
 	}
-	if vals[0] != "main" || vals[1] != "some commit" {
-		t.Errorf("expected 'main'/'some commit', got %q/%q", vals[0], vals[1])
+	if vals[0] != "main" || vals[1] != "some commit message" {
+		t.Errorf("expected 'main'/'some commit message', got %q/%q", vals[0], vals[1])
 	}
 	if vals[2] != "feature" || vals[3] != "another commit" {
 		t.Errorf("expected 'feature'/'another commit', got %q/%q", vals[2], vals[3])
@@ -173,7 +173,7 @@ func TestParseBookmarkOutput(t *testing.T) {
 }
 
 func TestParseBookmarkOutputRemoteOnly(t *testing.T) {
-	output := "main@origin main commit\ndevelop@upstream dev commit\nlocal local commit\n"
+	output := "main: qvlkomxp 9a2e553b local commit\nmain@origin: qvlkomxp 9a2e553b main commit\ndevelop@upstream: numonpmw ad5c8efd dev commit\n"
 	vals := parseBookmarkValues([]byte(output), true)
 	if len(vals) != 4 {
 		t.Fatalf("expected 4 values (2 name/desc pairs), got %d", len(vals))
@@ -222,11 +222,17 @@ func TestParseLinesWithDescriptions(t *testing.T) {
 }
 
 func TestParseTomlAliases(t *testing.T) {
-	output := []byte("# revset aliases\nrevset-aliases.'HEAD' = '@-'\nrevset-aliases.trunk = 'main@origin'\nother.key = 'value'\n")
+	output := []byte("revset-aliases.'HEAD' = '@-'\nrevset-aliases.trunk = 'main@origin'\nrevset-aliases.'grep:x' = 'description(regex:x)'\nother.key = 'value'\n")
 	action := parseTomlAliases(output, "revset-aliases")
-	ctx := carapace.NewContext()
-	result := action.Invoke(ctx).ToA()
-	_ = result
+	sandbox.Action(t, func() carapace.Action {
+		return action
+	})(func(s *sandbox.Sandbox) {
+		s.Run("").Expect(carapace.ActionValuesDescribed(
+			"HEAD", "@-",
+			"trunk", "main@origin",
+			"grep", "description(regex:x)",
+		).NoSpace())
+	})
 }
 
 func TestParseTomlAliasesEmpty(t *testing.T) {
@@ -251,12 +257,3 @@ func TestParseLinesTrailingNewline(t *testing.T) {
 	}
 }
 
-func TestStringsContain(t *testing.T) {
-	s := []string{"a", "b", "c"}
-	if !stringsContain(s, "b") {
-		t.Error("expected to contain 'b'")
-	}
-	if stringsContain(s, "d") {
-		t.Error("expected not to contain 'd'")
-	}
-}

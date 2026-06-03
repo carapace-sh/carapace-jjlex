@@ -3,7 +3,6 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
 
 	"github.com/carapace-sh/carapace"
 	"github.com/carapace-sh/carapace-jjlex/pkg/actions/jj"
@@ -30,15 +29,11 @@ var revsetCmd = &cobra.Command{
 }
 
 var revsetCompleteCmd = &cobra.Command{
-	Use:   "revset-complete <cursor> <expression>",
+	Use:   "revset-complete <expression>",
 	Short: "Get completion context for a revset expression",
-	Args:  cobra.ExactArgs(2),
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cursor, err := strconv.Atoi(args[0])
-		if err != nil {
-			return fmt.Errorf("invalid cursor: %v", err)
-		}
-		ctx := revset.ParseForCompletion(args[1], cursor)
+		ctx := revset.ParseForCompletion(args[0])
 		m, err := json.Marshal(ctx)
 		if err != nil {
 			return err

@@ -3,7 +3,6 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
 
 	"github.com/carapace-sh/carapace-jjlex/pkg/fileset"
 	"github.com/spf13/cobra"
@@ -28,15 +27,11 @@ var filesetCmd = &cobra.Command{
 }
 
 var filesetCompleteCmd = &cobra.Command{
-	Use:   "fileset-complete <cursor> <expression>",
+	Use:   "fileset-complete <expression>",
 	Short: "Get completion context for a fileset expression",
-	Args:  cobra.ExactArgs(2),
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cursor, err := strconv.Atoi(args[0])
-		if err != nil {
-			return fmt.Errorf("invalid cursor: %v", err)
-		}
-		ctx := fileset.ParseForCompletion(args[1], cursor)
+		ctx := fileset.ParseForCompletion(args[0])
 		m, err := json.Marshal(ctx)
 		if err != nil {
 			return err
@@ -65,15 +60,11 @@ var filesetBareCmd = &cobra.Command{
 }
 
 var filesetBareCompleteCmd = &cobra.Command{
-	Use:   "fileset-bare-complete <cursor> <expression>",
+	Use:   "fileset-bare-complete <expression>",
 	Short: "Get completion context for a fileset expression with bare string fallback",
-	Args:  cobra.ExactArgs(2),
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cursor, err := strconv.Atoi(args[0])
-		if err != nil {
-			return fmt.Errorf("invalid cursor: %v", err)
-		}
-		ctx := fileset.ParseForCompletion(args[1], cursor)
+		ctx := fileset.ParseForCompletion(args[0])
 		m, err := json.Marshal(ctx)
 		if err != nil {
 			return err

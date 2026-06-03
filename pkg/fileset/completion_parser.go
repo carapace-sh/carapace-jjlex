@@ -5,12 +5,9 @@ import (
 )
 
 // ParseForCompletion parses a partial fileset expression and returns a
-// CompletionContext describing what is expected at the given cursor position.
-// If cursor is -1, it defaults to len(input).
-func ParseForCompletion(input string, cursor int) *CompletionContext {
-	if cursor < 0 {
-		cursor = len(input)
-	}
+// CompletionContext describing what is expected at the end of the input.
+func ParseForCompletion(input string) *CompletionContext {
+	cursor := len(input)
 	p := &compParser{
 		input:   input,
 		pos:     0,

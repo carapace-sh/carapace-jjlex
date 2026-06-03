@@ -19,7 +19,7 @@ func ActionLocalBookmarks() carapace.Action {
 			return carapace.ActionValues()
 		}
 		return carapace.ActionValuesDescribed(vals...).Tag("local bookmarks").Style(style.Blue)
-	})
+	}).UidF(Uid("bookmark"))
 }
 
 // ActionRemoteBookmarks completes remote bookmarks.
@@ -33,7 +33,7 @@ func ActionRemoteBookmarks() carapace.Action {
 			return carapace.ActionValues()
 		}
 		return carapace.ActionValuesDescribed(vals...).Tag("remote bookmarks").Style(style.Cyan)
-	})
+	}).UidF(Uid("remote-bookmark"))
 }
 
 // ActionTags completes tags.
@@ -41,13 +41,20 @@ func ActionRemoteBookmarks() carapace.Action {
 //	v1.0 (release message)
 //	v2.0 (another release)
 func ActionTags() carapace.Action {
-	return actionExecJJ("tag", "list")(func(output []byte) carapace.Action {
-		vals := parseDescribedLines(output)
+	return actionExecJJ("log", "--no-graph", "--revisions", "tags()", "--template", `tags ++ "\t" ++ description.first_line() ++ "\n"`)(func(output []byte) carapace.Action {
+		lines := strings.Split(string(output), "\n")
+		vals := make([]string, 0)
+		for _, line := range lines[:len(lines)-1] {
+			splitted := strings.SplitN(line, "\t", 2)
+			for tag := range strings.SplitSeq(splitted[0], " ") {
+				vals = append(vals, tag, splitted[1])
+			}
+		}
 		if len(vals) == 0 {
 			return carapace.ActionValues()
 		}
 		return carapace.ActionValuesDescribed(vals...).Tag("tags").Style(style.Yellow)
-	})
+	}).UidF(Uid("change"))
 }
 
 // ActionRecentCommits completes recent commits by commit ID.
@@ -61,7 +68,7 @@ func ActionRecentCommits(limit int) carapace.Action {
 			return carapace.ActionValues()
 		}
 		return carapace.ActionValuesDescribed(vals...).Tag("commits").Style(style.Dim)
-	})
+	}).UidF(Uid("commit"))
 }
 
 // ActionChangeIds completes change IDs.
@@ -75,7 +82,7 @@ func ActionChangeIds() carapace.Action {
 			return carapace.ActionValues()
 		}
 		return carapace.ActionValuesDescribed(vals...).Tag("change ids").Style(style.Magenta)
-	})
+	}).UidF(Uid("change-id"))
 }
 
 // ActionRemotes completes remote names.
@@ -94,7 +101,7 @@ func ActionRemotes() carapace.Action {
 			return carapace.ActionValues()
 		}
 		return carapace.ActionValues(names...).Tag("remotes")
-	})
+	}).UidF(Uid("remote"))
 }
 
 // ActionOperations completes operation IDs.
@@ -107,7 +114,7 @@ func ActionOperations() carapace.Action {
 			return carapace.ActionValues()
 		}
 		return carapace.ActionValuesDescribed(vals...).Tag("operations").Style(style.Dim)
-	})
+	}).UidF(Uid("operation"))
 }
 
 // ActionAncestors completes ancestor postfix operators for a given revset.
@@ -130,7 +137,7 @@ func ActionAncestors(revset string) carapace.Action {
 			}
 			return carapace.ActionValuesDescribed(vals...).Prefix(revset).Tag("ancestors")
 		})
-	}).Uid("jj", "revset", "ancestors")
+	}).UidF(Uid("revset"))
 }
 
 // ActionDescendants completes descendant postfix operators for a given revset.
@@ -155,5 +162,5 @@ func ActionDescendants(revset string) carapace.Action {
 			}).Invoke(c).ToA())
 		}
 		return batch.ToA().Tag("descendants")
-	}).Uid("jj", "revset", "descendants")
+	}).UidF(Uid("revset"))
 }

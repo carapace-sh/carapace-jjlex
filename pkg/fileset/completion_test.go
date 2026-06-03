@@ -5,13 +5,13 @@ import (
 )
 
 func TestCompletionEmpty(t *testing.T) {
-	ctx := ParseForCompletion("", 0)
+	ctx := ParseForCompletion("")
 	assertHasExpected(t, ctx, ExpectedExpression)
 	assertHasOperator(t, ctx, "~")
 }
 
 func TestCompletionAfterCompleteExpression(t *testing.T) {
-	ctx := ParseForCompletion("foo", -1)
+	ctx := ParseForCompletion("foo")
 	assertHasExpected(t, ctx, ExpectedOperator)
 	if ctx.PartialIdent != "foo" {
 		t.Errorf("expected PartialIdent 'foo', got %q", ctx.PartialIdent)
@@ -22,7 +22,7 @@ func TestCompletionAfterCompleteExpression(t *testing.T) {
 }
 
 func TestCompletionPartialIdentifier(t *testing.T) {
-	ctx := ParseForCompletion("al", -1)
+	ctx := ParseForCompletion("al")
 	if ctx.PartialIdent != "al" {
 		t.Errorf("expected PartialIdent 'al', got %q", ctx.PartialIdent)
 	}
@@ -30,22 +30,22 @@ func TestCompletionPartialIdentifier(t *testing.T) {
 }
 
 func TestCompletionAfterOperator(t *testing.T) {
-	ctx := ParseForCompletion("foo | ", -1)
+	ctx := ParseForCompletion("foo | ")
 	assertHasExpected(t, ctx, ExpectedExpression)
 }
 
 func TestCompletionAfterAmpersand(t *testing.T) {
-	ctx := ParseForCompletion("foo & ", -1)
+	ctx := ParseForCompletion("foo & ")
 	assertHasExpected(t, ctx, ExpectedExpression)
 }
 
 func TestCompletionAfterTilde(t *testing.T) {
-	ctx := ParseForCompletion("foo ~ ", -1)
+	ctx := ParseForCompletion("foo ~ ")
 	assertHasExpected(t, ctx, ExpectedExpression)
 }
 
 func TestCompletionAfterNegate(t *testing.T) {
-	ctx := ParseForCompletion("~foo", -1)
+	ctx := ParseForCompletion("~foo")
 	assertHasExpected(t, ctx, ExpectedOperator)
 	assertHasOperator(t, ctx, "|")
 	assertHasOperator(t, ctx, "&")
@@ -53,12 +53,12 @@ func TestCompletionAfterNegate(t *testing.T) {
 }
 
 func TestCompletionNegatePrefix(t *testing.T) {
-	ctx := ParseForCompletion("~", -1)
+	ctx := ParseForCompletion("~")
 	assertHasExpected(t, ctx, ExpectedExpression)
 }
 
 func TestCompletionAfterUnion(t *testing.T) {
-	ctx := ParseForCompletion("foo | bar", -1)
+	ctx := ParseForCompletion("foo | bar")
 	assertHasExpected(t, ctx, ExpectedOperator)
 	if ctx.PartialIdent != "bar" {
 		t.Errorf("expected PartialIdent 'bar', got %q", ctx.PartialIdent)
@@ -66,7 +66,7 @@ func TestCompletionAfterUnion(t *testing.T) {
 }
 
 func TestCompletionInFunctionEmpty(t *testing.T) {
-	ctx := ParseForCompletion("all(", -1)
+	ctx := ParseForCompletion("all(")
 	assertHasExpected(t, ctx, ExpectedExpression)
 	assertHasExpected(t, ctx, ExpectedClosingParen)
 	if ctx.Function == nil {
@@ -81,7 +81,7 @@ func TestCompletionInFunctionEmpty(t *testing.T) {
 }
 
 func TestCompletionInFunctionAfterArg(t *testing.T) {
-	ctx := ParseForCompletion("all(foo", -1)
+	ctx := ParseForCompletion("all(foo")
 	assertHasExpected(t, ctx, ExpectedClosingParen)
 	if ctx.Function == nil {
 		t.Fatal("expected Function context")
@@ -92,7 +92,7 @@ func TestCompletionInFunctionAfterArg(t *testing.T) {
 }
 
 func TestCompletionInFunctionMultipleArgs(t *testing.T) {
-	ctx := ParseForCompletion("all(a, b", -1)
+	ctx := ParseForCompletion("all(a, b")
 	if ctx.Function == nil {
 		t.Fatal("expected Function context")
 	}
@@ -102,7 +102,7 @@ func TestCompletionInFunctionMultipleArgs(t *testing.T) {
 }
 
 func TestCompletionInFunctionAfterComma(t *testing.T) {
-	ctx := ParseForCompletion("all(a, ", -1)
+	ctx := ParseForCompletion("all(a, ")
 	assertHasExpected(t, ctx, ExpectedExpression)
 	assertHasExpected(t, ctx, ExpectedClosingParen)
 	if ctx.Function != nil && ctx.Function.ArgIndex != 1 {
@@ -111,18 +111,18 @@ func TestCompletionInFunctionAfterComma(t *testing.T) {
 }
 
 func TestCompletionInParenthesized(t *testing.T) {
-	ctx := ParseForCompletion("(foo", -1)
+	ctx := ParseForCompletion("(foo")
 	assertHasExpected(t, ctx, ExpectedClosingParen)
 }
 
 func TestCompletionInParenthesizedEmpty(t *testing.T) {
-	ctx := ParseForCompletion("( ", -1)
+	ctx := ParseForCompletion("( ")
 	assertHasExpected(t, ctx, ExpectedExpression)
 	assertHasExpected(t, ctx, ExpectedClosingParen)
 }
 
 func TestCompletionPartialString(t *testing.T) {
-	ctx := ParseForCompletion(`"fo`, -1)
+	ctx := ParseForCompletion(`"fo`)
 	if ctx.PartialString != "fo" {
 		t.Errorf("expected PartialString 'fo', got %q", ctx.PartialString)
 	}
@@ -133,7 +133,7 @@ func TestCompletionPartialString(t *testing.T) {
 }
 
 func TestCompletionInPattern(t *testing.T) {
-	ctx := ParseForCompletion("glob:", -1)
+	ctx := ParseForCompletion("glob:")
 	if !ctx.InPattern {
 		t.Error("expected InPattern")
 	}
@@ -145,7 +145,7 @@ func TestCompletionInPattern(t *testing.T) {
 }
 
 func TestCompletionInPatternWithPartial(t *testing.T) {
-	ctx := ParseForCompletion("exact:fo", -1)
+	ctx := ParseForCompletion("exact:fo")
 	if !ctx.InPattern {
 		t.Error("expected InPattern")
 	}
@@ -155,17 +155,17 @@ func TestCompletionInPatternWithPartial(t *testing.T) {
 }
 
 func TestCompletionAfterDifference(t *testing.T) {
-	ctx := ParseForCompletion("foo ~ ", -1)
+	ctx := ParseForCompletion("foo ~ ")
 	assertHasExpected(t, ctx, ExpectedExpression)
 }
 
 func TestCompletionIntersection(t *testing.T) {
-	ctx := ParseForCompletion("foo & bar", -1)
+	ctx := ParseForCompletion("foo & bar")
 	assertHasExpected(t, ctx, ExpectedOperator)
 }
 
 func TestCompletionNestedFunction(t *testing.T) {
-	ctx := ParseForCompletion("all(all(", -1)
+	ctx := ParseForCompletion("all(all(")
 	if ctx.Function == nil {
 		t.Fatal("expected Function context")
 	}
@@ -177,12 +177,12 @@ func TestCompletionNestedFunction(t *testing.T) {
 }
 
 func TestCompletionEmptyFunctionCall(t *testing.T) {
-	ctx := ParseForCompletion("all()", -1)
+	ctx := ParseForCompletion("all()")
 	assertHasExpected(t, ctx, ExpectedOperator)
 }
 
 func TestCompletionTrailingComma(t *testing.T) {
-	ctx := ParseForCompletion("all(a,", -1)
+	ctx := ParseForCompletion("all(a,")
 	if ctx.Function == nil {
 		t.Fatal("expected Function context")
 	}

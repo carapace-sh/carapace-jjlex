@@ -6,14 +6,14 @@ import (
 )
 
 func TestCompletionEmpty(t *testing.T) {
-	ctx := ParseForCompletion("", 0)
+	ctx := ParseForCompletion("")
 	assertHasExpected(t, ctx, ExpectedExpression)
 	assertHasOperator(t, ctx, "!")
 	assertHasOperator(t, ctx, "-")
 }
 
 func TestCompletionAfterCompleteExpression(t *testing.T) {
-	ctx := ParseForCompletion("foo", -1)
+	ctx := ParseForCompletion("foo")
 	assertHasExpected(t, ctx, ExpectedOperator)
 	if ctx.PartialIdent != "foo" {
 		t.Errorf("expected PartialIdent 'foo', got %q", ctx.PartialIdent)
@@ -25,7 +25,7 @@ func TestCompletionAfterCompleteExpression(t *testing.T) {
 }
 
 func TestCompletionPartialIdentifier(t *testing.T) {
-	ctx := ParseForCompletion("commi", -1)
+	ctx := ParseForCompletion("commi")
 	if ctx.PartialIdent != "commi" {
 		t.Errorf("expected PartialIdent 'commi', got %q", ctx.PartialIdent)
 	}
@@ -33,22 +33,22 @@ func TestCompletionPartialIdentifier(t *testing.T) {
 }
 
 func TestCompletionAfterOperator(t *testing.T) {
-	ctx := ParseForCompletion("foo && ", -1)
+	ctx := ParseForCompletion("foo && ")
 	assertHasExpected(t, ctx, ExpectedExpression)
 }
 
 func TestCompletionAfterLogicalOr(t *testing.T) {
-	ctx := ParseForCompletion("foo || ", -1)
+	ctx := ParseForCompletion("foo || ")
 	assertHasExpected(t, ctx, ExpectedExpression)
 }
 
 func TestCompletionAfterConcat(t *testing.T) {
-	ctx := ParseForCompletion("foo ++ ", -1)
+	ctx := ParseForCompletion("foo ++ ")
 	assertHasExpected(t, ctx, ExpectedExpression)
 }
 
 func TestCompletionInFunctionEmpty(t *testing.T) {
-	ctx := ParseForCompletion("if(", -1)
+	ctx := ParseForCompletion("if(")
 	assertHasExpected(t, ctx, ExpectedExpression)
 	assertHasExpected(t, ctx, ExpectedClosingParen)
 	if ctx.Function == nil {
@@ -63,7 +63,7 @@ func TestCompletionInFunctionEmpty(t *testing.T) {
 }
 
 func TestCompletionInFunctionAfterArg(t *testing.T) {
-	ctx := ParseForCompletion("if(foo", -1)
+	ctx := ParseForCompletion("if(foo")
 	assertHasExpected(t, ctx, ExpectedClosingParen)
 	assertHasExpected(t, ctx, ExpectedComma)
 	if ctx.Function == nil {
@@ -75,7 +75,7 @@ func TestCompletionInFunctionAfterArg(t *testing.T) {
 }
 
 func TestCompletionInFunctionMultipleArgs(t *testing.T) {
-	ctx := ParseForCompletion("if(a, b", -1)
+	ctx := ParseForCompletion("if(a, b")
 	if ctx.Function == nil {
 		t.Fatal("expected Function context")
 	}
@@ -85,7 +85,7 @@ func TestCompletionInFunctionMultipleArgs(t *testing.T) {
 }
 
 func TestCompletionInFunctionAfterComma(t *testing.T) {
-	ctx := ParseForCompletion("if(a, ", -1)
+	ctx := ParseForCompletion("if(a, ")
 	assertHasExpected(t, ctx, ExpectedExpression)
 	assertHasExpected(t, ctx, ExpectedClosingParen)
 	if ctx.Function == nil {
@@ -97,7 +97,7 @@ func TestCompletionInFunctionAfterComma(t *testing.T) {
 }
 
 func TestCompletionInFunctionKeywordArg(t *testing.T) {
-	ctx := ParseForCompletion("label(foo", -1)
+	ctx := ParseForCompletion("label(foo")
 	if ctx.Function == nil {
 		t.Fatal("expected Function context")
 	}
@@ -107,7 +107,7 @@ func TestCompletionInFunctionKeywordArg(t *testing.T) {
 }
 
 func TestCompletionInFunctionAfterKeywordEquals(t *testing.T) {
-	ctx := ParseForCompletion("label(color=", -1)
+	ctx := ParseForCompletion("label(color=")
 	assertHasExpected(t, ctx, ExpectedExpression)
 	if ctx.Function == nil {
 		t.Fatal("expected Function context")
@@ -118,18 +118,18 @@ func TestCompletionInFunctionAfterKeywordEquals(t *testing.T) {
 }
 
 func TestCompletionInParenthesized(t *testing.T) {
-	ctx := ParseForCompletion("(foo", -1)
+	ctx := ParseForCompletion("(foo")
 	assertHasExpected(t, ctx, ExpectedClosingParen)
 }
 
 func TestCompletionInParenthesizedEmpty(t *testing.T) {
-	ctx := ParseForCompletion("( ", -1)
+	ctx := ParseForCompletion("( ")
 	assertHasExpected(t, ctx, ExpectedExpression)
 	assertHasExpected(t, ctx, ExpectedClosingParen)
 }
 
 func TestCompletionPartialString(t *testing.T) {
-	ctx := ParseForCompletion(`"fo`, -1)
+	ctx := ParseForCompletion(`"fo`)
 	if ctx.PartialString != "fo" {
 		t.Errorf("expected PartialString 'fo', got %q", ctx.PartialString)
 	}
@@ -140,7 +140,7 @@ func TestCompletionPartialString(t *testing.T) {
 }
 
 func TestCompletionPartialRawString(t *testing.T) {
-	ctx := ParseForCompletion(`'fo`, -1)
+	ctx := ParseForCompletion(`'fo`)
 	if ctx.PartialString != "fo" {
 		t.Errorf("expected PartialString 'fo', got %q", ctx.PartialString)
 	}
@@ -151,7 +151,7 @@ func TestCompletionPartialRawString(t *testing.T) {
 }
 
 func TestCompletionInPattern(t *testing.T) {
-	ctx := ParseForCompletion("exact:", -1)
+	ctx := ParseForCompletion("exact:")
 	if !ctx.InPattern {
 		t.Error("expected InPattern")
 	}
@@ -163,7 +163,7 @@ func TestCompletionInPattern(t *testing.T) {
 }
 
 func TestCompletionInPatternWithPartialIdent(t *testing.T) {
-	ctx := ParseForCompletion("exact:fo", -1)
+	ctx := ParseForCompletion("exact:fo")
 	if !ctx.InPattern {
 		t.Error("expected InPattern")
 	}
@@ -173,29 +173,29 @@ func TestCompletionInPatternWithPartialIdent(t *testing.T) {
 }
 
 func TestCompletionAfterNot(t *testing.T) {
-	ctx := ParseForCompletion("!", -1)
+	ctx := ParseForCompletion("!")
 	assertHasExpected(t, ctx, ExpectedExpression)
 }
 
 func TestCompletionAfterNegate(t *testing.T) {
-	ctx := ParseForCompletion("-", -1)
+	ctx := ParseForCompletion("-")
 	assertHasExpected(t, ctx, ExpectedExpression)
 }
 
 func TestCompletionAfterNegateExpression(t *testing.T) {
-	ctx := ParseForCompletion("-foo", -1)
+	ctx := ParseForCompletion("-foo")
 	assertHasExpected(t, ctx, ExpectedOperator)
 }
 
 func TestCompletionMethodCall(t *testing.T) {
-	ctx := ParseForCompletion("foo.", -1)
+	ctx := ParseForCompletion("foo.")
 	if ctx.PartialIdent != "" {
 		t.Errorf("expected empty PartialIdent, got %q", ctx.PartialIdent)
 	}
 }
 
 func TestCompletionNestedFunction(t *testing.T) {
-	ctx := ParseForCompletion("if(label(", -1)
+	ctx := ParseForCompletion("if(label(")
 	if ctx.Function == nil {
 		t.Fatal("expected Function context")
 	}
@@ -207,17 +207,17 @@ func TestCompletionNestedFunction(t *testing.T) {
 }
 
 func TestCompletionEmptyFunctionCall(t *testing.T) {
-	ctx := ParseForCompletion("if(true)", -1)
+	ctx := ParseForCompletion("if(true)")
 	assertHasExpected(t, ctx, ExpectedOperator)
 }
 
 func TestCompletionBooleanLiteral(t *testing.T) {
-	ctx := ParseForCompletion("true", -1)
+	ctx := ParseForCompletion("true")
 	assertHasExpected(t, ctx, ExpectedOperator)
 }
 
 func TestCompletionLambdaZeroArgs(t *testing.T) {
-	ctx := ParseForCompletion("|| ", -1)
+	ctx := ParseForCompletion("|| ")
 	assertHasExpected(t, ctx, ExpectedExpression)
 	if !ctx.InLambda {
 		t.Error("expected InLambda")
@@ -225,7 +225,7 @@ func TestCompletionLambdaZeroArgs(t *testing.T) {
 }
 
 func TestCompletionLambdaWithArgs(t *testing.T) {
-	ctx := ParseForCompletion("|x| ", -1)
+	ctx := ParseForCompletion("|x| ")
 	assertHasExpected(t, ctx, ExpectedExpression)
 	if !ctx.InLambda {
 		t.Error("expected InLambda")
@@ -236,7 +236,7 @@ func TestCompletionLambdaWithArgs(t *testing.T) {
 }
 
 func TestCompletionInLambdaParams(t *testing.T) {
-	ctx := ParseForCompletion("|x", -1)
+	ctx := ParseForCompletion("|x")
 	assertHasExpected(t, ctx, ExpectedLambdaClose)
 	if !ctx.InLambda {
 		t.Error("expected InLambda")
@@ -244,28 +244,28 @@ func TestCompletionInLambdaParams(t *testing.T) {
 }
 
 func TestCompletionConcatAfterExpression(t *testing.T) {
-	ctx := ParseForCompletion("foo ++ bar", -1)
+	ctx := ParseForCompletion("foo ++ bar")
 	assertHasExpected(t, ctx, ExpectedOperator)
 }
 
 func TestCompletionInConcatMiddle(t *testing.T) {
 	// "foo ++ " with cursor at end - expect expression
-	ctx := ParseForCompletion("foo ++ ", -1)
+	ctx := ParseForCompletion("foo ++ ")
 	assertHasExpected(t, ctx, ExpectedExpression)
 }
 
 func TestCompletionPrefixNot(t *testing.T) {
-	ctx := ParseForCompletion("!foo", -1)
+	ctx := ParseForCompletion("!foo")
 	assertHasExpected(t, ctx, ExpectedOperator)
 }
 
 func TestCompletionInfixOperator(t *testing.T) {
-	ctx := ParseForCompletion("foo && bar", -1)
+	ctx := ParseForCompletion("foo && bar")
 	assertHasExpected(t, ctx, ExpectedOperator)
 }
 
 func TestCompletionAfterKeywordArgValue(t *testing.T) {
-	ctx := ParseForCompletion("label(color=red", -1)
+	ctx := ParseForCompletion("label(color=red")
 	if ctx.Function == nil {
 		t.Fatal("expected Function context")
 	}
@@ -274,7 +274,7 @@ func TestCompletionAfterKeywordArgValue(t *testing.T) {
 }
 
 func TestCompletionMethodCallOnExpression(t *testing.T) {
-	ctx := ParseForCompletion("foo.bar(", -1)
+	ctx := ParseForCompletion("foo.bar(")
 	if ctx.Function == nil {
 		t.Fatal("expected Function context")
 	}
@@ -287,7 +287,7 @@ func TestCompletionMethodCallOnExpression(t *testing.T) {
 }
 
 func TestCompletionPatternCaseInsensitive(t *testing.T) {
-	ctx := ParseForCompletion("glob-i:", -1)
+	ctx := ParseForCompletion("glob-i:")
 	if !ctx.InPattern {
 		t.Error("expected InPattern")
 	}
@@ -297,19 +297,12 @@ func TestCompletionPatternCaseInsensitive(t *testing.T) {
 }
 
 func TestCompletionTrailingComma(t *testing.T) {
-	ctx := ParseForCompletion("if(a,", -1)
+	ctx := ParseForCompletion("if(a,")
 	if ctx.Function == nil {
 		t.Fatal("expected Function context")
 	}
 	assertHasExpected(t, ctx, ExpectedExpression)
 	assertHasExpected(t, ctx, ExpectedClosingParen)
-}
-
-func TestCompletionCursorPosition(t *testing.T) {
-	input := "foo ++ bar"
-	cursor := 4 // position after "foo "
-	ctx := ParseForCompletion(input, cursor)
-	assertHasExpected(t, ctx, ExpectedOperator)
 }
 
 // --- Helpers ---

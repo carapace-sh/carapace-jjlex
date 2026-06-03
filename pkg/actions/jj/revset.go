@@ -60,7 +60,7 @@ func ActionRevs(opts RevOpts) carapace.Action {
 //	trunk() | @-
 func ActionRevsets(opts RevOpts) carapace.Action {
 	return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
-		ctx := revset.ParseForCompletion(c.Value, len(c.Value))
+		ctx := revset.ParseForCompletion(c.Value)
 
 		if ctx.InPattern {
 			return actionForPatternValue(ctx)
@@ -114,7 +114,7 @@ func expectsToken(ctx *revset.CompletionContext, token revset.ExpectedToken) boo
 func actionExpression(opts RevOpts, ctx *revset.CompletionContext) carapace.Action {
 	batch := carapace.Batch(
 		ActionRevs(opts),
-		ActionRevsetFunctions(true),
+		ActionRevsetFunctions(),
 		ActionRevsetPatterns(),
 		ActionSpecialSymbols(),
 		ActionRevsetAliases(true),
@@ -161,7 +161,7 @@ func actionForFunctionArg(ctx *revset.CompletionContext, opts RevOpts) carapace.
 		"present", "connected", "exactly", "reachable", "coalesce":
 		return carapace.Batch(
 			ActionRevs(opts),
-			ActionRevsetFunctions(true),
+			ActionRevsetFunctions(),
 			ActionSpecialSymbols(),
 			ActionRevsetAliases(true),
 		).ToA().NoSpace()
@@ -182,7 +182,16 @@ func actionForFunctionArg(ctx *revset.CompletionContext, opts RevOpts) carapace.
 		if fn.ArgIndex >= 1 && !fn.IsKeywordArg {
 			return ActionRemotes().NoSpace()
 		}
-		return ActionStringPatterns().NoSpace()
+		batch := carapace.Batch(ActionStringPatterns())
+		switch fn.Name {
+		case "bookmarks":
+			batch = append(batch, ActionLocalBookmarks())
+		case "remote_bookmarks", "tracked_remote_bookmarks", "untracked_remote_bookmarks":
+			batch = append(batch, ActionRemoteBookmarks())
+		case "tags", "remote_tags", "tracked_remote_tags", "untracked_remote_tags":
+			batch = append(batch, ActionTags())
+		}
+		return batch.ToA().NoSpace()
 
 	case "at_operation":
 		return ActionOperations().NoSpace()
@@ -193,7 +202,7 @@ func actionForFunctionArg(ctx *revset.CompletionContext, opts RevOpts) carapace.
 	default:
 		return carapace.Batch(
 			ActionRevs(opts),
-			ActionRevsetFunctions(true),
+			ActionRevsetFunctions(),
 			ActionSpecialSymbols(),
 			ActionRevsetAliases(true),
 		).ToA().NoSpace()

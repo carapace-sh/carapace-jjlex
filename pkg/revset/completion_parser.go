@@ -5,14 +5,11 @@ import (
 )
 
 // ParseForCompletion parses a partial revset expression and returns a
-// CompletionContext describing what is expected at the given cursor position.
-// If cursor is -1, it defaults to len(input).
-// Partial expressions are allowed - the parser recovers from errors at the
-// cursor position to report what tokens would be valid there.
-func ParseForCompletion(input string, cursor int) *CompletionContext {
-	if cursor < 0 {
-		cursor = len(input)
-	}
+// CompletionContext describing what is expected at the end of the input.
+// Partial expressions are allowed - the parser recovers from errors to
+// report what tokens would be valid at the cursor position.
+func ParseForCompletion(input string) *CompletionContext {
+	cursor := len(input)
 	p := &compParser{
 		input:   input,
 		pos:    0,

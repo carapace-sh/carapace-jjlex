@@ -4,13 +4,15 @@ import (
 	"strings"
 
 	"github.com/carapace-sh/carapace"
+	"github.com/pelletier/go-toml/v2"
 )
 
 // ActionRevsetFunctions completes revset function names.
 //
 //	parents (Same as x-)
 //	children (Same as x+)
-func ActionRevsetFunctions(brackets bool) carapace.Action {
+//	all (All visible commits)
+func ActionRevsetFunctions() carapace.Action {
 	return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
 		noArgs := carapace.ActionValuesDescribed(
 			"all", "All visible commits and ancestors of explicitly mentioned commits",
@@ -69,9 +71,6 @@ func ActionRevsetFunctions(brackets bool) carapace.Action {
 			"untracked_remote_tags", "Targets of untracked remote tags",
 		).Uid("jj", "revset-function-withargs")
 
-		if brackets {
-			return carapace.Batch(noArgs.Suffix("()"), withArgs.Suffix("(")).ToA()
-		}
 		return carapace.Batch(noArgs, withArgs).ToA()
 	}).Tag("revset functions")
 }
@@ -115,15 +114,15 @@ func ActionRevsetOperators(attached bool) carapace.Action {
 //	glob: (glob pattern)
 func ActionRevsetPatterns() carapace.Action {
 	return carapace.ActionValuesDescribed(
-		"exact:", "Exact match",
-		"exact-i:", "Exact match (case-insensitive)",
-		"substring:", "Substring match (default)",
-		"substring-i:", "Substring match (case-insensitive)",
-		"glob:", "Glob pattern match",
-		"glob-i:", "Glob pattern match (case-insensitive)",
-		"regex:", "Regular expression match",
-		"regex-i:", "Regular expression match (case-insensitive)",
-	).Suffix("").Tag("string patterns").Uid("jj", "revset-pattern")
+		"exact", "Exact match",
+		"exact-i", "Exact match (case-insensitive)",
+		"substring", "Substring match (default)",
+		"substring-i", "Substring match (case-insensitive)",
+		"glob", "Glob pattern match",
+		"glob-i", "Glob pattern match (case-insensitive)",
+		"regex", "Regular expression match",
+		"regex-i", "Regular expression match (case-insensitive)",
+	).Uid("jj", "revset-pattern").Suffix(":").NoSpace().Tag("string patterns")
 }
 
 // ActionStringPatterns completes string pattern prefixes for revset functions.
@@ -132,15 +131,15 @@ func ActionRevsetPatterns() carapace.Action {
 //	glob: (glob pattern)
 func ActionStringPatterns() carapace.Action {
 	return carapace.ActionValuesDescribed(
-		"exact:", "Exact match",
-		"exact-i:", "Exact match (case-insensitive)",
-		"substring:", "Substring match (default)",
-		"substring-i:", "Substring match (case-insensitive)",
-		"glob:", "Glob pattern match",
-		"glob-i:", "Glob pattern match (case-insensitive)",
-		"regex:", "Regular expression match",
-		"regex-i:", "Regular expression match (case-insensitive)",
-	).Suffix("").Tag("string patterns").Uid("jj", "revset-string-pattern")
+		"exact", "Exact match",
+		"exact-i", "Exact match (case-insensitive)",
+		"substring", "Substring match (default)",
+		"substring-i", "Substring match (case-insensitive)",
+		"glob", "Glob pattern match",
+		"glob-i", "Glob pattern match (case-insensitive)",
+		"regex", "Regular expression match",
+		"regex-i", "Regular expression match (case-insensitive)",
+	).Uid("jj", "revset-string-pattern").Suffix(":").NoSpace().Tag("string patterns")
 }
 
 // ActionDatePatterns completes date pattern prefixes for date-matching revset functions.
@@ -149,9 +148,9 @@ func ActionStringPatterns() carapace.Action {
 //	before: (before date)
 func ActionDatePatterns() carapace.Action {
 	return carapace.ActionValuesDescribed(
-		"after:", "Matches dates at or after the given date",
-		"before:", "Matches dates before (not including) the given date",
-	).Suffix("").Tag("date patterns").Uid("jj", "revset-date-pattern")
+		"after", "Matches dates at or after the given date",
+		"before", "Matches dates before (not including) the given date",
+	).Uid("jj", "revset-date-pattern").Suffix(":").NoSpace().Tag("date patterns")
 }
 
 // ActionFilesetPatterns completes fileset pattern prefixes.
@@ -160,15 +159,15 @@ func ActionDatePatterns() carapace.Action {
 //	glob: (glob pattern)
 func ActionFilesetPatterns() carapace.Action {
 	return carapace.ActionValuesDescribed(
-		"exact:", "Exact match",
-		"exact-i:", "Exact match (case-insensitive)",
-		"substring:", "Substring match",
-		"substring-i:", "Substring match (case-insensitive)",
-		"glob:", "Glob pattern match",
-		"glob-i:", "Glob pattern match (case-insensitive)",
-		"regex:", "Regular expression match",
-		"regex-i:", "Regular expression match (case-insensitive)",
-	).Suffix("").Tag("fileset patterns").Uid("jj", "revset-fileset-pattern")
+		"exact", "Exact match",
+		"exact-i", "Exact match (case-insensitive)",
+		"substring", "Substring match",
+		"substring-i", "Substring match (case-insensitive)",
+		"glob", "Glob pattern match",
+		"glob-i", "Glob pattern match (case-insensitive)",
+		"regex", "Regular expression match",
+		"regex-i", "Regular expression match (case-insensitive)",
+	).Uid("jj", "revset-fileset-pattern").Suffix(":").NoSpace().Tag("fileset patterns")
 }
 
 // ActionSpecialSymbols completes revset special symbols.
@@ -193,7 +192,7 @@ func ActionRevsetAliases(includeDefaults bool) carapace.Action {
 		return actionExecJJ(args...)(func(output []byte) carapace.Action {
 			return parseTomlAliases(output, "revset-aliases")
 		})
-	}).Tag("revset aliases").Uid("jj", "revset-alias")
+	}).Tag("revset aliases").UidF(Uid("revset"))
 }
 
 // ActionRevsetKeywordArgs completes keyword argument names for revset functions.
@@ -228,26 +227,28 @@ func revsetKeywordArgs(funcName string) []keywordArg {
 }
 
 func parseTomlAliases(output []byte, topLevelKey string) carapace.Action {
-	lines := strings.Split(string(output), "\n")
-	vals := make([]string, 0)
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-		parts := strings.SplitN(line, "=", 2)
-		if len(parts) != 2 {
-			continue
-		}
-		key := strings.TrimSpace(parts[0])
-		val := strings.TrimSpace(parts[1])
-		if strings.HasPrefix(key, topLevelKey+".") || strings.HasPrefix(key, topLevelKey+".'") {
-			aliasName := strings.TrimPrefix(key, topLevelKey+".")
-			vals = append(vals, aliasName, val)
-		}
+	var config map[string]map[string]string
+	if err := toml.Unmarshal(output, &config); err != nil {
+		return carapace.ActionMessage(err.Error())
 	}
-	if len(vals) == 0 {
+	aliases, ok := config[topLevelKey]
+	if !ok || len(aliases) == 0 {
 		return carapace.ActionValues()
 	}
-	return carapace.ActionValuesDescribed(vals...)
+	vals := make([]string, 0, len(aliases)*2)
+	for name, val := range aliases {
+		displayName := cleanAliasName(name)
+		vals = append(vals, displayName, val)
+	}
+	return carapace.ActionValuesDescribed(vals...).NoSpace()
+}
+
+func cleanAliasName(name string) string {
+	if idx := strings.Index(name, "("); idx >= 0 {
+		name = name[:idx]
+	}
+	if idx := strings.Index(name, ":"); idx >= 0 {
+		name = name[:idx]
+	}
+	return name
 }
