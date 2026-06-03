@@ -7,7 +7,7 @@ description: >
   mental model. Triggers on: "jj concept", "jj model", "jj working copy",
   "jj change id", "jj commit id", "jj immutable", "jj conflict", "jj rebase",
   "jj descendant", "jj root commit", "jj stash", "jj index", "jj staging".
-user-invocable: true
+user-invocable: false
 ---
 
 # jj Core Concepts

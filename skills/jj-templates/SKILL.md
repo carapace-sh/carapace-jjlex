@@ -6,7 +6,7 @@ description: >
   types, methods, global functions, and examples. Triggers on: "jj template",
   "jj -T", "jj --template", "template language", "jj format", "jj output format",
   "jj custom log", "template alias".
-user-invocable: true
+user-invocable: false
 ---
 
 # jj Template Language Reference

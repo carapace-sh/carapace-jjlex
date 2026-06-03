@@ -6,7 +6,7 @@ description: >
   bookmark conflicts, push safety, and CLI commands. Triggers on: "jj bookmark",
   "jj branch", "jj remote bookmark", "jj tracking", "jj push", "jj git push",
   "bookmark conflict", "bookmark advance".
-user-invocable: true
+user-invocable: false
 ---
 
 # jj Bookmarks Reference

@@ -148,17 +148,20 @@ Tracks whether any input was consumed before reaching the cursor. Distinguishes 
 
 The `skills/` directory contains reference skills for jj concepts, CLI, and expression languages. Each skill is a self-contained SKILL.md with YAML frontmatter (`name`, `description`, `user-invocable`).
 
-| Skill | Description |
-|-------|-------------|
-| `jj-cli` | CLI commands, subcommands, flags, and argument types |
-| `jj-concepts` | Core concepts: working copy model, change IDs, conflicts, immutable revisions, descendant rebasing |
-| `jj-revsets` | Revset expression syntax: symbols, operators, functions, string/date patterns, aliases |
-| `jj-filesets` | Fileset expression syntax: operators, pattern kinds, built-in functions, bare strings |
-| `jj-bookmarks` | Bookmarks (jj's branches): tracking, conflicts, push safety, CLI commands |
-| `jj-operations` | Operation log: undo/redo, --at-op, lock-free concurrency |
-| `jj-config` | Configuration: levels, sections, conditional config, CLI commands |
-| `jj-templates` | Template language: operators, types, methods, global functions, aliases |
-| `jj-git-compat` | Git comparison: conceptual differences, command equivalents, colocation, migration |
+The `jj` skill is the user-invocable entrypoint that refers to focused sub-skills. The sub-skills have `user-invocable: false` — they trigger automatically via their `description` patterns but are not directly invoked by name.
+
+| Skill | Description | User-invocable |
+|-------|-------------|----------------|
+| `jj` | Main entrypoint for jj skills — refers to sub-skills by topic | true |
+| `jj-cli` | CLI commands, subcommands, flags, and argument types | false |
+| `jj-concepts` | Core concepts: working copy model, change IDs, conflicts, immutable revisions, descendant rebasing | false |
+| `jj-revsets` | Revset expression syntax: symbols, operators, functions, string/date patterns, aliases | false |
+| `jj-filesets` | Fileset expression syntax: operators, pattern kinds, built-in functions, bare strings | false |
+| `jj-bookmarks` | Bookmarks (jj's branches): tracking, conflicts, push safety, CLI commands | false |
+| `jj-operations` | Operation log: undo/redo, --at-op, lock-free concurrency | false |
+| `jj-config` | Configuration: levels, sections, conditional config, CLI commands | false |
+| `jj-templates` | Template language: operators, types, methods, global functions, aliases | false |
+| `jj-git-compat` | Git comparison: conceptual differences, command equivalents, colocation, migration | false |
 
 Skills cross-reference each other. For example, `jj-cli` references `jj-revsets` for revset syntax and `jj-filesets` for fileset syntax.
 

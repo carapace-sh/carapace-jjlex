@@ -5,7 +5,7 @@ description: >
   command equivalents, colocated repos, and migration guide. Triggers on: "jj git",
   "jj vs git", "git comparison", "git equivalent", "git to jj", "jj colocate",
   "jj colocation", "git compatibility", "jj migration".
-user-invocable: true
+user-invocable: false
 ---
 
 # jj Git Compatibility Reference

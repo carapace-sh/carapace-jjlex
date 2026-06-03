@@ -5,7 +5,7 @@ description: >
   precedence, all config sections and key settings, conditional config, and the
   config CLI commands. Triggers on: "jj config", "jj configuration", "jj settings",
   "jj toml", "jj config edit", "jj config set", "jj config list", "jj config path".
-user-invocable: true
+user-invocable: false
 ---
 
 # jj Configuration Reference

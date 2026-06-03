@@ -7,7 +7,7 @@ description: >
   functions. Source of truth is the jj source code (lib/src/revset.rs,
   lib/src/revset.pest). Triggers on: "jj revset", "revset expression",
   "jj revsets", "revset function", "revset operator", "jj select revisions".
-user-invocable: true
+user-invocable: false
 ---
 
 # jj Revset Reference

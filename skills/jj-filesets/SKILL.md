@@ -8,7 +8,7 @@ description: >
   docs/filesets.md). Triggers on: "jj fileset", "fileset expression",
   "jj filesets", "fileset function", "fileset operator", "jj select files",
   "file pattern".
-user-invocable: true
+user-invocable: false
 ---
 
 # jj Fileset Reference

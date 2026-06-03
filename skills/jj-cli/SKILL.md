@@ -8,7 +8,7 @@ description: >
   comparison see jj-git-compat; for revset syntax see jj-revsets; for fileset
   syntax see jj-filesets. Triggers on: "jj cli", "jj command", "jj usage",
   "jj subcommand", "jj flag", "jj help".
-user-invocable: true
+user-invocable: false
 ---
 
 # jj CLI Reference

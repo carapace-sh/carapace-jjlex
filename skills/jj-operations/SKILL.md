@@ -7,7 +7,7 @@ description: >
   lock-free concurrency. Triggers on: "jj operation", "jj op", "jj undo",
   "jj redo", "jj at-op", "operation log", "jj op log", "jj op restore",
   "jj op revert".
-user-invocable: true
+user-invocable: false
 ---
 
 # jj Operation Log Reference
