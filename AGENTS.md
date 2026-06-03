@@ -106,7 +106,7 @@ Template grammar uses a Pratt parser for infix operators (precedence from weakes
 
 ### Completion actions return pure value lists
 
-Action functions in `pkg/actions/jj/function.go` return raw value lists without formatting modifiers (`.Suffix`, `.NoSpace`, `.Prefix`). These are applied at call sites in `pkg/actions/jj/revset.go` where context determines what suffix/no-space behavior is needed. This keeps actions reusable.
+Action functions in `pkg/actions/jj/function.go` return raw value lists with Uid and Tag set, but without formatting modifiers (`.Suffix`, `.NoSpace`, `.Prefix`). These are applied at call sites in `pkg/actions/jj/revset.go` where context determines what suffix/no-space behavior is needed. This keeps actions reusable. Uid is set before any formatting modifiers so that suffix/prefix characters don't leak into the UID.
 
 ### Expression uses a type-erased payload pattern
 
