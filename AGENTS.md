@@ -196,12 +196,15 @@ The `jj` skill is the user-invocable entrypoint that refers to focused sub-skill
 | `jj` | Main entrypoint for jj skills — refers to sub-skills by topic | true |
 | `jj-cli` | CLI commands, subcommands, flags, and argument types | false |
 | `jj-concepts` | Core concepts: working copy model, change IDs, conflicts, immutable revisions, descendant rebasing | false |
-| `jj-revsets` | Revset expression syntax: symbols, operators, functions, string/date patterns, aliases | false |
-| `jj-filesets` | Fileset expression syntax: operators, pattern kinds, built-in functions, bare strings | false |
+| `jj-conflicts` | First-class conflicts, marker styles (diff/snapshot/git), long markers, resolution workflows | false |
 | `jj-bookmarks` | Bookmarks (jj's branches): tracking, conflicts, push safety, CLI commands | false |
 | `jj-operations` | Operation log: undo/redo, --at-op, lock-free concurrency | false |
 | `jj-config` | Configuration: levels, sections, conditional config, CLI commands | false |
+| `jj-revsets` | Revset expression syntax: symbols, operators, functions, string/date patterns, aliases | false |
+| `jj-filesets` | Fileset expression syntax: operators, pattern kinds, built-in functions, bare strings | false |
 | `jj-templates` | Template language: operators, types, methods, global functions, aliases | false |
+| `jj-divergence` | Divergent changes: what divergence is, how it happens, resolution strategies, change offsets | false |
+| `jj-forge-workflows` | GitHub/GitLab/Gerrit integration, push options, pull requests, code review, multi-remote setup | false |
 | `jj-git-compat` | Git comparison: conceptual differences, command equivalents, colocation, migration | false |
 
 Skills cross-reference each other. For example, `jj-cli` references `jj-revsets` for revset syntax and `jj-filesets` for fileset syntax.
@@ -243,3 +246,24 @@ Check: `lib/src/template.pest`, `lib/src/template_parser.rs`, `docs/templates.md
 When jj CLI or concepts change, update the corresponding skill in `skills/`. Source of truth is the jj documentation and CLI help output.
 
 Check: `docs/`, `jj --help`, <https://jj-vcs.github.io/jj/latest/>
+
+### Conflicts
+
+When jj conflict handling or marker syntax changes, update:
+1. Skill (`skills/jj-conflicts/SKILL.md`)
+
+Check: `docs/conflicts/`, <https://jj-vcs.github.io/jj/latest/conflicts/>
+
+### Divergence
+
+When jj divergence handling or change offset syntax changes, update:
+1. Skill (`skills/jj-divergence/SKILL.md`)
+
+Check: `docs/guides/divergence/`, <https://jj-vcs.github.io/jj/latest/guides/divergence/>
+
+### Forge Workflows
+
+When jj forge integration (GitHub, GitLab, Gerrit) changes, update:
+1. Skill (`skills/jj-forge-workflows/SKILL.md`)
+
+Check: `docs/github/`, `docs/gerrit/`, <https://jj-vcs.github.io/jj/latest/github/>, <https://jj-vcs.github.io/jj/latest/gerrit/>

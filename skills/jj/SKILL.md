@@ -18,12 +18,15 @@ about jj, determine which sub-skill(s) are relevant and load them by their name.
 |-------|------|-------------|
 | **jj-cli** | `jj-cli` | Commands, subcommands, flags, argument types, help output |
 | **jj-concepts** | `jj-concepts` | Working-copy model, change IDs, commit IDs, rebasing, immutable revisions, conflicts, root commit |
+| **jj-conflicts** | `jj-conflicts` | First-class conflicts, marker styles (diff/snapshot/git), long markers, resolution workflows |
 | **jj-bookmarks** | `jj-bookmarks` | Bookmarks (branches), remote bookmarks, tracking, bookmark conflicts, push safety |
 | **jj-config** | `jj-config` | Config file locations, layered precedence, sections, conditional config, config CLI commands |
 | **jj-revsets** | `jj-revsets` | Revset expressions: symbols, operators, built-in functions, string/date patterns, aliases |
 | **jj-filesets** | `jj-filesets` | Fileset expressions: operators, pattern kinds, built-in functions, bare strings, grammar |
 | **jj-templates** | `jj-templates` | Template language: operators, types, methods, global functions, output formatting |
 | **jj-operations** | `jj-operations` | Operation log: undo/redo, --at-op, lock-free concurrency |
+| **jj-divergence** | `jj-divergence` | Divergent changes: what divergence is, how it happens, resolution strategies, change offsets |
+| **jj-forge-workflows** | `jj-forge-workflows` | GitHub/GitLab/Gerrit integration, push options, pull requests, code review, multi-remote setup |
 | **jj-git-compat** | `jj-git-compat` | Git interoperability: differences, command equivalents, colocated repos, migration |
 
 ## How to use
