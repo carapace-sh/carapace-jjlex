@@ -144,6 +144,24 @@ Tracks whether any input was consumed before reaching the cursor. Distinguishes 
 - No external dependencies (pure stdlib)
 - Passing `cursor=-1` to `ParseForCompletion` defaults to `len(input)` (end of input)
 
+## Skills
+
+The `skills/` directory contains reference skills for jj concepts, CLI, and expression languages. Each skill is a self-contained SKILL.md with YAML frontmatter (`name`, `description`, `user-invocable`).
+
+| Skill | Description |
+|-------|-------------|
+| `jj-cli` | CLI commands, subcommands, flags, and argument types |
+| `jj-concepts` | Core concepts: working copy model, change IDs, conflicts, immutable revisions, descendant rebasing |
+| `jj-revsets` | Revset expression syntax: symbols, operators, functions, string/date patterns, aliases |
+| `jj-filesets` | Fileset expression syntax: operators, pattern kinds, built-in functions, bare strings |
+| `jj-bookmarks` | Bookmarks (jj's branches): tracking, conflicts, push safety, CLI commands |
+| `jj-operations` | Operation log: undo/redo, --at-op, lock-free concurrency |
+| `jj-config` | Configuration: levels, sections, conditional config, CLI commands |
+| `jj-templates` | Template language: operators, types, methods, global functions, aliases |
+| `jj-git-compat` | Git comparison: conceptual differences, command equivalents, colocation, migration |
+
+Skills cross-reference each other. For example, `jj-cli` references `jj-revsets` for revset syntax and `jj-filesets` for fileset syntax.
+
 ## Syncing with jj Upstream
 
 ### Revset
@@ -158,8 +176,15 @@ Check: `lib/src/revset.pest`, `lib/src/revset.rs` (BUILTIN_FUNCTION_MAP), `docs/
 ### Fileset
 
 When jj fileset syntax changes, update:
-1. Parser (`pkg/fileset/parser.go`, `parser_helpers.go`, `scanner.go`, `helpers.go`)
-2. Completion parser (`pkg/fileset/completion_parser.go`, `completion_helpers.go`)
-3. AST (`pkg/fileset/ast.go`)
+1. Skill (`skills/jj-filesets/SKILL.md`)
+2. Parser (`pkg/fileset/parser.go`, `parser_helpers.go`, `scanner.go`, `helpers.go`)
+3. Completion parser (`pkg/fileset/completion_parser.go`, `completion_helpers.go`)
+4. AST (`pkg/fileset/ast.go`)
 
 Check: `lib/src/fileset.pest`, `lib/src/fileset.rs` (BUILTIN_FUNCTION_MAP), `docs/filesets.md`
+
+### CLI, Concepts, Bookmarks, Operations, Config, Templates, Git Compat
+
+When jj CLI or concepts change, update the corresponding skill in `skills/`. Source of truth is the jj documentation and CLI help output.
+
+Check: `docs/`, `jj --help`, <https://jj-vcs.github.io/jj/latest/>
