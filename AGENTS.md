@@ -163,7 +163,3 @@ When jj fileset syntax changes, update:
 3. AST (`pkg/fileset/ast.go`)
 
 Check: `lib/src/fileset.pest`, `lib/src/fileset.rs` (BUILTIN_FUNCTION_MAP), `docs/filesets.md`
-
-### go.mod has unused dependency
-
-`go.mod` requires `github.com/carapace-sh/revset` but gopls reports it's not used. Don't add dependencies to this — it may be intentional or a leftover.
