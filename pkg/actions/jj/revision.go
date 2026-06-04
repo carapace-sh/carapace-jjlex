@@ -168,18 +168,55 @@ func ActionDescendants(revset string) carapace.Action {
 		if revset == "" {
 			revset = "@"
 		}
-		batch := carapace.Batch()
-		for i := range 20 {
-			idx := i + 1
-			batch = append(batch, actionExecJJE("show", "--template", `description.first_line()`, revset+strings.Repeat("+", idx))(func(output []byte, err error) carapace.Action {
-				if err != nil {
-					return carapace.ActionValues()
-				}
-				lines := strings.Split(string(output), "\n")
-				desc := strings.TrimSpace(lines[0])
-				return carapace.ActionValuesDescribed(strings.Repeat("+", idx), desc).Prefix(revset)
-			}).Invoke(c).ToA())
+		revsetArgs := make([]string, 0, 20)
+		for d := 1; d <= 20; d++ {
+			revsetArgs = append(revsetArgs, fmt.Sprintf("children(%v, %d)", revset, d))
 		}
-		return batch.ToA().Tag("descendants")
+		revsetExpr := strings.Join(revsetArgs, " | ")
+		depthChecks := ""
+		for d := 20; d >= 1; d-- {
+			inner := fmt.Sprintf(`self.contained_in("children(%v, %d)")`, revset, d)
+			if depthChecks == "" {
+				depthChecks = fmt.Sprintf(`if(%s, "%d", "unknown")`, inner, d)
+			} else {
+				depthChecks = fmt.Sprintf(`if(%s, "%d", %s)`, inner, d, depthChecks)
+			}
+		}
+		tmpl := fmt.Sprintf(`%s ++ "\t" ++ description.first_line() ++ "\n"`, depthChecks)
+		return actionExecJJ("log", "--no-graph", "--template", tmpl, "--revisions", revsetExpr, "--limit", "100")(func(output []byte) carapace.Action {
+			lines := parseLines(output)
+			byDepth := make(map[int][]string)
+			maxDepth := 0
+			for _, line := range lines {
+				parts := strings.SplitN(line, "\t", 2)
+				if len(parts) < 2 {
+					continue
+				}
+				var d int
+				if _, err := fmt.Sscanf(parts[0], "%d", &d); err != nil || d < 1 || d > 20 {
+					continue
+				}
+				byDepth[d] = append(byDepth[d], parts[1])
+				if d > maxDepth {
+					maxDepth = d
+				}
+			}
+			vals := make([]string, 0)
+			for d := 1; d <= maxDepth; d++ {
+				descs := byDepth[d]
+				if len(descs) == 0 {
+					continue
+				}
+				if len(descs) == 1 {
+					vals = append(vals, strings.Repeat("+", d), descs[0])
+				} else {
+					vals = append(vals, strings.Repeat("+", d), fmt.Sprintf("%d children", len(descs)))
+				}
+			}
+			if len(vals) == 0 {
+				return carapace.ActionValues()
+			}
+			return carapace.ActionValuesDescribed(vals...).Prefix(revset).Tag("descendants")
+		})
 	}).UidF(Uid("revset"))
 }
