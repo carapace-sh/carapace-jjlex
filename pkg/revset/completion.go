@@ -99,4 +99,9 @@ type CompletionContext struct {
 	InPattern bool `json:"inPattern"`
 	// PatternName is the pattern prefix name (e.g. "exact" in "exact:")
 	PatternName string `json:"patternName,omitempty"`
+
+	// AttachedRevset is the revset expression that postfix operators are
+	// attached to (e.g. "@-" has AttachedRevset "@-"). Used to determine
+	// whether ActionAncestors or ActionDescendants should be invoked.
+	AttachedRevset string `json:"attachedRevset,omitempty"`
 }

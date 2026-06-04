@@ -48,6 +48,11 @@ type compParser struct {
 
 	// exprStart is the input position where the current expression started
 	exprStart int
+
+	// postfixStart is the input position where the current postfix chain
+	// started (set at the beginning of parsePostfixOps). Used to compute
+	// AttachedRevset.
+	postfixStart int
 }
 
 type funcParseState struct {
@@ -122,6 +127,13 @@ func (p *compParser) afterExpression() {
 	p.addOperator("..", "range")
 	p.addOperator("-", "parents")
 	p.addOperator("+", "children")
+
+	// Set AttachedRevset to the input from the start of the current postfix
+	// chain to the current position. This tells the action layer what revset
+	// the postfix operators are attached to (e.g. "@-" or "main--").
+	if p.postfixStart < p.pos && p.ctx.AttachedRevset == "" {
+		p.ctx.AttachedRevset = p.input[p.postfixStart:p.pos]
+	}
 
 	// If inside a function, also expect ) and ,
 	if len(p.funcStack) > 0 {
@@ -361,6 +373,7 @@ func (p *compParser) parseInfixRangeOp() {
 }
 
 func (p *compParser) parsePostfixOps() {
+	p.postfixStart = p.pos
 	p.parsePrimary()
 	for {
 		p.skipWS()

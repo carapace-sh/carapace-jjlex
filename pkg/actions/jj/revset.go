@@ -12,6 +12,7 @@ type RevOpts struct {
 	LocalBookmarks  bool
 	RemoteBookmarks bool
 	Commits         int
+	HeadCommits     int
 	Tags            bool
 	ChangeIds       bool
 }
@@ -20,6 +21,7 @@ func (o RevOpts) Default() RevOpts {
 	o.LocalBookmarks = true
 	o.RemoteBookmarks = true
 	o.Commits = 100
+	o.HeadCommits = 10
 	o.Tags = true
 	o.ChangeIds = true
 	return o
@@ -41,6 +43,9 @@ func ActionRevs(opts RevOpts) carapace.Action {
 		}
 		if opts.Commits > 0 {
 			batch = append(batch, ActionRecentCommits(opts.Commits))
+		}
+		if opts.HeadCommits > 0 {
+			batch = append(batch, ActionHeadCommits(opts.HeadCommits))
 		}
 		if opts.Tags {
 			batch = append(batch, ActionTags())
@@ -111,6 +116,30 @@ func expectsToken(ctx *revset.CompletionContext, token revset.ExpectedToken) boo
 	return false
 }
 
+// postfixActions returns additional actions for postfix operator completion
+// based on the AttachedRevset from the completion parser. Only returns
+// ActionAncestors when the attached revset ends with "-", and only returns
+// ActionDescendants when it ends with "+". This avoids the expensive
+// ActionDescendants (which runs 20 jj show commands) when not needed.
+func postfixActions(ctx *revset.CompletionContext) []carapace.Action {
+	attached := ctx.AttachedRevset
+	if attached == "" {
+		return nil
+	}
+	var actions []carapace.Action
+	if strings.HasSuffix(attached, "-") {
+		actions = append(actions,
+			ActionAncestors(strings.TrimSuffix(attached, "-")).Suppress("doesn't exist"),
+		)
+	}
+	if strings.HasSuffix(attached, "+") {
+		actions = append(actions,
+			ActionDescendants(strings.TrimSuffix(attached, "+")).Suppress("doesn't exist"),
+		)
+	}
+	return actions
+}
+
 func actionExpression(opts RevOpts, ctx *revset.CompletionContext) carapace.Action {
 	batch := carapace.Batch(
 		ActionRevs(opts),
@@ -120,9 +149,9 @@ func actionExpression(opts RevOpts, ctx *revset.CompletionContext) carapace.Acti
 		ActionRevsetAliases(true),
 	)
 
-	result := batch.ToA()
+	batch = append(batch, postfixActions(ctx)...)
 
-	return result.NoSpace()
+	return batch.ToA().NoSpace()
 }
 
 func actionOperator(opts RevOpts, ctx *revset.CompletionContext) carapace.Action {
@@ -130,15 +159,7 @@ func actionOperator(opts RevOpts, ctx *revset.CompletionContext) carapace.Action
 		ActionRevsetOperators(true),
 	)
 
-	for _, op := range ctx.ValidOperators {
-		switch op.Op {
-		case "-", "+":
-			batch = append(batch,
-				ActionAncestors(strings.TrimSuffix(ctx.PartialIdent, "-")).Suppress("doesn't exist"),
-				ActionDescendants(strings.TrimSuffix(ctx.PartialIdent, "+")).Suppress("doesn't exist"),
-			)
-		}
-	}
+	batch = append(batch, postfixActions(ctx)...)
 
 	return batch.ToA().NoSpace()
 }

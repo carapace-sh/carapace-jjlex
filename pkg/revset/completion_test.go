@@ -579,3 +579,31 @@ func TestCompletionKeywordArgEqualsExpr(t *testing.T) {
 		t.Errorf("expected function name 'remote_bookmarks', got %q", ctx.Function.Name)
 	}
 }
+
+func TestCompletionAttachedRevset(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"@", "@"},
+		{"@-", "@-"},
+		{"@--", "@--"},
+		{"@+", "@+"},
+		{"foo", "foo"},
+		{"foo-", "foo-"},
+		{"foo++", "foo++"},
+		{"all()", "all()"},
+		{"", ""},
+		{"@- |", ""},
+		{"foo | @-", "@-"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			ctx := ParseForCompletion(tt.input)
+			if ctx.AttachedRevset != tt.expected {
+				t.Errorf("expected AttachedRevset %q, got %q", tt.expected, ctx.AttachedRevset)
+			}
+		})
+	}
+}

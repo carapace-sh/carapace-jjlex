@@ -2,11 +2,30 @@ package jj
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/carapace-sh/carapace"
 	"github.com/carapace-sh/carapace/pkg/style"
 )
+
+// ActionHeadCommits completes head commits (@, @-, @--, ...).
+//
+//	@  (HEAD)
+//	@- (commit message)
+func ActionHeadCommits(limit int) carapace.Action {
+	return actionExecJJ("log", "--no-graph", "--template", `description.first_line() ++ "\n"`, "--revisions", "::@", "--limit", strconv.Itoa(limit))(func(output []byte) carapace.Action {
+		lines := parseLines(output)
+		vals := make([]string, 0)
+		for i, line := range lines {
+			vals = append(vals, "@"+strings.Repeat("-", i), line)
+		}
+		if len(vals) == 0 {
+			return carapace.ActionValues()
+		}
+		return carapace.ActionValuesDescribed(vals...).Tag("head commits").Style(style.Blue)
+	}).UidF(Uid("commit"))
+}
 
 // ActionLocalBookmarks completes local bookmarks.
 //
