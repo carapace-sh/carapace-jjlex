@@ -7,46 +7,58 @@ Go library for parsing [jj (Jujutsu)](https://github.com/jj-vcs/jj) revset, file
 ## Commands
 
 ```sh
-# From repo root:
 go test ./...                              # run all tests
 go test ./pkg/revset/                      # run revset package tests only
 go test ./pkg/fileset/                      # run fileset package tests only
+go test ./pkg/template/                     # run template package tests only
 go test -run TestParseRevset ./pkg/revset/  # run specific test
 go build ./...                              # build all packages
-go run main/main.go revset "<expr>"                    # parse revset expression, output AST as JSON
-go run main/main.go revset-complete <cursor> "<expr>"  # revset completion context as JSON
-go run main/main.go fileset "<expr>"                   # parse fileset expression, output AST as JSON
-go run main/main.go fileset-complete <cursor> "<expr>" # fileset completion context as JSON
-go run main/main.go fileset-bare "<expr>"              # parse fileset with bare string fallback
-go run main/main.go template "<expr>"                    # parse template expression, output AST as JSON
-go run main/main.go template-complete <cursor> "<expr>"  # template completion context as JSON
+go run . revset "<expr>"                   # parse revset expression, output AST as JSON
+go run . revset-complete "<expr>"          # revset completion context as JSON
+go run . fileset "<expr>"                  # parse fileset expression, output AST as JSON
+go run . fileset-complete "<expr>"        # fileset completion context as JSON
+go run . fileset-bare "<expr>"             # parse fileset with bare string fallback
+go run . fileset-bare-complete "<expr>"    # fileset-bare completion context as JSON
+go run . template "<expr>"                 # parse template expression, output AST as JSON
+go run . template-complete "<expr>"        # template completion context as JSON
 ```
 
 No Makefile, no linter config, no CI config present.
 
 ## Architecture
 
+Cobra-based CLI (`cmd/`) wrapping three pairs of independent recursive-descent parsers (`pkg/revset/`, `pkg/fileset/`, `pkg/template/`) with completion actions that wire the parsers to carapace (`pkg/actions/jj/`).
+
+### CLI (`cmd/`)
+
+- **`root.go`** — Root cobra command with `carapace.Gen(rootCmd).Standalone()`
+- **`revset.go`** — `revset` and `revset-complete` subcommands, wired to `jj.ActionRevsets()` for shell completion
+- **`fileset.go`** — `fileset`, `fileset-complete`, `fileset-bare`, and `fileset-bare-complete` subcommands
+- **`template.go`** — `template` and `template-complete` subcommands
+
+Entry point is `main.go` at repo root, which calls `cmd.Execute()`.
+
 Three pairs of independent recursive-descent parsers:
 
 ### Revset (`pkg/revset/`)
 
 - **`parser.go`** — Full parser. `Parse()` → `*Expression` AST with spans. Strict: rejects partial/invalid input.
-- **`completion_parser.go`** — Completion parser. `ParseForCompletion(input, cursor)` → `*CompletionContext` describing what tokens are valid at the cursor position. Tolerant: recovers from errors at cursor to report expectations.
+- **`completion_parser.go`** — Completion parser. `ParseForCompletion(input)` → `*CompletionContext` describing what tokens are valid at end of input. Tolerant: recovers from errors to report expectations.
 
-Both parsers implement the same operator precedence hierarchy (levels 0-6) but independently. The completion parser mirrors the main parser's structure but stops at the cursor and records expectations instead of building a full AST.
+Both parsers implement the same operator precedence hierarchy (levels 0-6) but independently. The completion parser mirrors the main parser's structure but stops at end of input and records expectations instead of building a full AST.
 
 ### Fileset (`pkg/fileset/`)
 
 - **`parser.go`** — Full parser. `Parse()` → `*Expression` AST with spans. Also `ParseProgramOrBareString()` for bare string/pattern fallback (matching jj's `program_or_bare_string` rule).
-- **`completion_parser.go`** — Completion parser. `ParseForCompletion(input, cursor)` → `*CompletionContext`.
+- **`completion_parser.go`** — Completion parser. `ParseForCompletion(input)` → `*CompletionContext`.
 
 Fileset grammar is simpler than revset: no `::`, `..`, `-`, `+` operators; no `@` workspace syntax; no remote symbols. Operators are `|` (union), `&` (intersection), `~` (negate/difference). Precedence: `|` < `&`/`~` (infix) < `~` (prefix) < `p:x` (pattern) < primary.
 
 ### Template (`pkg/template/`)
 
 - **`parser.go`** — Full parser using Pratt parser for expression precedence. `Parse()` → `*Expression` AST with spans. `++` (concat) is handled at the template level, outside the Pratt parser.
-- **`completion_parser.go`** — Completion parser entry point. `ParseForCompletion(input, cursor)` → `*CompletionContext`.
-- **`completion_parser_impl.go`** — Completion parser implementation with cursor-aware scanning.
+- **`completion_parser.go`** — Completion parser entry point. `ParseForCompletion(input)` → `*CompletionContext`.
+- **`completion_parser_impl.go`** — Completion parser implementation.
 - **`completion_helpers.go`** — Dedup helpers for tokens and operators.
 - **`parser_helpers.go`** — Shared helper functions: character classification (`isWhitespace`, `isIdentifierStart`, `isIdentifierPart`, `isFunctionName`, `isPatternIdentifierStart`, `isPatternIdentifierPart`, `isStrictIdentifierPart`), string/integer literal scanning, infix operator peeking.
 - **`ast.go`** — Template AST node types (`UnaryOp`, `BinaryOp`, `ExpressionKind`, payload types including `ConcatExpr`, `FunctionCallExpr`, `MethodCallExpr`, `LambdaExpr`, `KeywordArg`).
@@ -93,14 +105,19 @@ Template grammar uses a Pratt parser for infix operators (precedence from weakes
 | `pkg/template/completion_helpers.go` | Template completion parser dedup helpers |
 | `pkg/template/template_test.go` | Template parser tests |
 | `pkg/template/completion_test.go` | Template completion tests |
-| `main/main.go` | CLI entrypoint with subcommands for revset, fileset, and template |
-| `main/main_test.go` | Integration tests with realistic examples from jj source |
-| `pkg/actions/jj/function.go` | Completion action definitions: revset/fileset/string/date patterns, operators, functions, keyword args, special symbols |
-| `pkg/actions/jj/revset.go` | Revset completion wiring: maps CompletionContext to carapace actions using function arg dispatch and pattern value dispatch |
-| `pkg/actions/jj/revision.go` | Dynamic completion actions (bookmarks, tags, remotes, commits, operations, workspaces) that shell out to `jj` |
-| `pkg/actions/jj/helpers.go` | Parsing helpers for `jj` CLI output (bookmarks, lines, toml aliases) |
-| `pkg/actions/jj/exec.go` | `actionExecJJ` helper to run `jj` commands and process output |
+| `main.go` | CLI entrypoint, calls `cmd.Execute()` |
+| `main_test.go` | Integration tests with realistic examples from jj source |
+| `cmd/root.go` | Root cobra command |
+| `cmd/revset.go` | Revset subcommands |
+| `cmd/fileset.go` | Fileset subcommands (including bare string variants) |
+| `cmd/template.go` | Template subcommands |
+| `pkg/actions/jj/function.go` | Static action definitions: patterns, operators, functions, keyword args, special symbols |
+| `pkg/actions/jj/revset.go` | Completion wiring: maps CompletionContext to carapace actions |
+| `pkg/actions/jj/revision.go` | Dynamic completion actions (bookmarks, tags, remotes, commits, operations) that shell out to `jj` |
+| `pkg/actions/jj/helpers.go` | Parsing helpers for `jj` CLI output (bookmarks, lines) |
+| `pkg/actions/jj/exec.go` | `actionExecJJ`/`actionExecJJE` helpers to run `jj` commands |
 | `pkg/actions/jj/uid.go` | UID generation helper for action deduplication |
+| `pkg/actions/jj/action_test.go` | Sandbox tests for actions and unit tests for parsing helpers |
 
 ## Key Patterns & Gotchas
 
@@ -112,7 +129,7 @@ Action functions in `pkg/actions/jj/function.go` return raw value lists with Uid
 
 `Expression.payload` is `any`; accessors (`.Identifier()`, `.UnaryOp()`, `.BinaryLHS()`, etc.) do type checks and return zero values on kind mismatch. Always check `Kind` before calling accessors.
 
-### Two parsers must stay in sync (both packages)
+### Two parsers must stay in sync (all three packages)
 
 When modifying operator precedence or parsing rules in `parser.go`, the same changes must be mirrored in `completion_parser.go`. They share helper functions but have independent parser types. The completion parsers also duplicate `isFunctionName`/`isStrictIdentifier` as `isFunctionNameCheck`/`isStrictIdentifierCheck` — keep these in sync.
 
@@ -190,10 +207,10 @@ Template function calls support keyword arguments (`f(x, key=val)`). The parser'
 
 - Tests use standard `testing` package only (no testify or other deps)
 - `revset_test.go` / `fileset_test.go` — parser tests using helpers
-- `completion_test.go` (both packages) — completion tests using `assertHasExpected`, `assertHasOperator`
-- `main/main_test.go` — integration tests with realistic examples from jj source code
-- No external dependencies (pure stdlib)
-- Passing `cursor=-1` to `ParseForCompletion` defaults to `len(input)` (end of input)
+- `completion_test.go` (all three packages) — completion tests using `assertHasExpected`, `assertHasOperator`
+- `main_test.go` — integration tests with realistic examples from jj source code
+- `pkg/actions/jj/action_test.go` — sandbox tests for carapace actions and unit tests for parsing helpers
+- Parser/completion packages have no external dependencies (pure stdlib); `pkg/actions/jj` depends on carapace and cobra
 
 ## Skills
 
