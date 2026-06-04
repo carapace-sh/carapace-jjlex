@@ -1,38 +1,9 @@
----
-name: jj-git-compat
-description: >
-  Reference for jj (Jujutsu VCS) interoperability with Git — conceptual differences,
-  command equivalents, colocated repos, and migration guide. Triggers on: "jj git",
-  "jj vs git", "git comparison", "git equivalent", "git to jj", "jj colocate",
-  "jj colocation", "git compatibility", "jj migration".
-user-invocable: false
----
-
 # jj Git Compatibility Reference
 
 jj uses Git as its storage backend and provides seamless interoperability. This reference covers conceptual differences, command equivalents, colocation, and migration.
 
-> **Source of truth**: <https://jj-vcs.github.io/jj/latest/git-comparison/>, <https://jj-vcs.github.io/jj/latest/git-compatibility/>. For **CLI commands**, see the `jj-cli` skill. For **bookmark details**, see the `jj-bookmarks` skill. For **core concepts**, see the `jj-concepts` skill.
+> **Source of truth**: <https://jj-vcs.github.io/jj/latest/git-comparison/>, <https://jj-vcs.github.io/jj/latest/git-compatibility/>. For **CLI commands**, see [cli.md](cli.md). For **bookmark details**, see [bookmarks.md](bookmarks.md). For **core concepts**, see [concepts.md](concepts.md).
 
----
-
-## Conceptual Differences
-
-| Aspect | Git | jj |
-|--------|-----|-----|
-| **Working copy** | Must manually commit | Automatically committed as a regular commit |
-| **Staging area (index)** | Has an index for partial commits | No index — use `jj split` and `jj squash -i` instead |
-| **Branches** | Named refs that become "current" when checked out | "Bookmarks" — just names pointing to commits, no "current branch" concept |
-| **Detached HEAD** | A special state to avoid | The normal state — there's no way to have an "active branch" |
-| **Conflicts** | Commands fail on merge conflicts | Conflicts can be committed and resolved later |
-| **Descendant rebasing** | Must manually rebase descendant commits | Automatically rebased when parent is rewritten |
-| **Evil merges** | Merges with changes not in any parent are problematic | Safe to include changes in merge commits |
-| **Virtual root** | New repos start in "unborn branch" state | Has a virtual root commit (all-zeros hash) |
-| **Operation log** | Reflogs track per-ref history | Operation log tracks atomic updates to all refs |
-| **Stash** | `git stash` stores changes separately | `jj new @-` creates a new commit on top of parent (no special stash) |
-| **Commit identity** | Hash changes on every amend | Change ID stays stable across rewrites |
-
----
 
 ## Command Equivalents
 
@@ -160,58 +131,6 @@ jj uses Git as its storage backend and provides seamless interoperability. This 
 | List tags containing rev | `git tag --contains <rev>` | `jj tag list -r '<rev>::'` |
 | List tags merged into rev | `git tag --merged <rev>` | `jj tag list -r '::<rev>'` |
 
----
-
-## Colocation
-
-By default, `jj git init` and `jj git clone` create **colocated** repos where `.jj` and `.git` coexist in the same directory. This means:
-
-- Git and jj share the same working copy
-- You can mix `jj` and `git` commands (read-only git recommended)
-- Auto-import/export happens on every `jj` command
-- jj bookmarks map to Git branches and vice versa
-
-### Manage Colocation
-
-```bash
-jj git colocation status    # Check current status
-jj git colocation enable     # Enable colocation
-jj git colocation disable    # Disable colocation
-```
-
-### Import/Export
-
-```bash
-jj git export   # Push jj state to underlying Git repo
-jj git import   # Pull Git state into jj
-```
-
-In colocated repos, these happen automatically. In non-colocated repos, you need to run them manually.
-
-### Non-Colocated Setup
-
-```bash
-jj git init --no-colocate          # Create non-colocated repo
-jj git init --git-repo=<path>      # Use existing Git repo as backend
-```
-
-### Supported Git Features
-
-- ✅ Branches/bookmarks
-- ✅ Tags (lightweight only)
-- ✅ `.gitignore`
-- ✅ Merge commits (including octopus)
-- ✅ Detached HEAD state
-- ✅ Orphan branches
-- ✅ Signed commits
-- ✅ Bare repositories
-- ❌ `.gitattributes`
-- ❌ Git hooks
-- ❌ Submodules
-- ❌ Partial/shallow clones (limited)
-- ❌ `git worktree` (use jj workspaces instead)
-
----
 
 ## Migration from Git
 

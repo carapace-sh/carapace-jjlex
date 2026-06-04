@@ -1,16 +1,3 @@
----
-name: jj-filesets
-description: >
-  Reference for jj (Jujutsu VCS) fileset expressions — the language for selecting
-  sets of files. Covers operators with precedence, pattern kinds, built-in
-  functions, bare string rules, identifier syntax, and grammar. Source of truth
-  is the jj source code (lib/src/fileset.rs, lib/src/fileset.pest,
-  docs/filesets.md). Triggers on: "jj fileset", "fileset expression",
-  "jj filesets", "fileset function", "fileset operator", "jj select files",
-  "file pattern".
-user-invocable: false
----
-
 # jj Fileset Reference
 
 Jujutsu filesets are expressions that select sets of files. The language consists of **file patterns**, **operators**, and **functions**.

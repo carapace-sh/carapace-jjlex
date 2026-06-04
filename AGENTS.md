@@ -241,7 +241,7 @@ Skills cross-reference each other. For example, `jj-cli` references `jj-revsets`
 ### Revset
 
 When jj revset syntax changes, update:
-1. Skill (`skills/jj-revsets/SKILL.md`)
+1. Skill (`skills/jj/references/revsets.md`)
 2. Parser (`pkg/revset/parser.go`)
 3. Completion parser (`pkg/revset/completion_parser.go`)
 4. Completion actions (`pkg/actions/jj/function.go`, `pkg/actions/jj/revset.go`)
@@ -251,7 +251,7 @@ Check: `lib/src/revset.pest`, `lib/src/revset.rs` (BUILTIN_FUNCTION_MAP), `docs/
 ### Fileset
 
 When jj fileset syntax changes, update:
-1. Skill (`skills/jj-filesets/SKILL.md`)
+1. Skill (`skills/jj/references/filesets.md`)
 2. Parser (`pkg/fileset/parser.go`, `parser_helpers.go`, `scanner.go`, `helpers.go`)
 3. Completion parser (`pkg/fileset/completion_parser.go`, `completion_helpers.go`)
 4. AST (`pkg/fileset/ast.go`)
@@ -262,7 +262,7 @@ Check: `lib/src/fileset.pest`, `lib/src/fileset.rs` (BUILTIN_FUNCTION_MAP), `doc
 ### Template
 
 When jj template syntax changes, update:
-1. Skill (`skills/jj-templates/SKILL.md`)
+1. Skill (`skills/jj/references/templates.md`)
 2. Parser (`pkg/template/parser.go`, `parser_helpers.go`)
 3. Completion parser (`pkg/template/completion_parser.go`, `completion_parser_impl.go`, `completion_helpers.go`)
 4. AST (`pkg/template/ast.go`)
@@ -272,27 +272,27 @@ Check: `lib/src/template.pest`, `lib/src/template_parser.rs`, `docs/templates.md
 
 ### CLI, Concepts, Bookmarks, Operations, Config, Templates, Git Compat
 
-When jj CLI or concepts change, update the corresponding skill in `skills/`. Source of truth is the jj documentation and CLI help output.
+When jj CLI or concepts change, update the corresponding reference in `skills/jj/references/`. Source of truth is the jj documentation and CLI help output.
 
 Check: `docs/`, `jj --help`, <https://jj-vcs.github.io/jj/latest/>
 
 ### Conflicts
 
 When jj conflict handling or marker syntax changes, update:
-1. Skill (`skills/jj-conflicts/SKILL.md`)
+1. Skill (`skills/jj/references/conflicts.md`)
 
 Check: `docs/conflicts/`, <https://jj-vcs.github.io/jj/latest/conflicts/>
 
 ### Divergence
 
 When jj divergence handling or change offset syntax changes, update:
-1. Skill (`skills/jj-divergence/SKILL.md`)
+1. Skill (`skills/jj/references/divergence.md`)
 
 Check: `docs/guides/divergence/`, <https://jj-vcs.github.io/jj/latest/guides/divergence/>
 
 ### Forge Workflows
 
 When jj forge integration (GitHub, GitLab, Gerrit) changes, update:
-1. Skill (`skills/jj-forge-workflows/SKILL.md`)
+1. Skill (`skills/jj/references/forge-workflows.md`)
 
 Check: `docs/github/`, `docs/gerrit/`, <https://jj-vcs.github.io/jj/latest/github/>, <https://jj-vcs.github.io/jj/latest/gerrit/>

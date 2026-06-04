@@ -1,15 +1,3 @@
----
-name: jj-revsets
-description: >
-  Reference for jj (Jujutsu VCS) revset expressions — the language for selecting
-  sets of revisions. Covers symbols, operators with precedence, all built-in
-  functions with exact signatures, string/date patterns, aliases, and deprecated
-  functions. Source of truth is the jj source code (lib/src/revset.rs,
-  lib/src/revset.pest). Triggers on: "jj revset", "revset expression",
-  "jj revsets", "revset function", "revset operator", "jj select revisions".
-user-invocable: false
----
-
 # jj Revset Reference
 
 Jujutsu revsets are expressions that select sets of revisions (commits). The language consists of **symbols**, **operators**, and **functions**.
