@@ -21,7 +21,7 @@ Command-line reference for jj (Jujutsu VCS). Argument types: **REVSET** = revisi
 |---------|-------------|
 | `jj status` / `jj st` | Show high-level repo status |
 | `jj log [FILESETS]...` | Show revision history |
-| `jj show [REVSET]` | Show commit description and changes |
+| `jj show [REVSETS]` | Show commit description and changes |
 | `jj diff [FILESETS]...` | Compare file contents between revisions |
 | `jj root` | Show current workspace root directory |
 | `jj version` | Display version information |
@@ -167,6 +167,7 @@ See [config.md](config.md) for all config sections and settings.
 | `jj sparse list/set/edit/reset` | Manage sparse working copy patterns |
 | `jj bisect run --range <REVSETS> <CMD>` | Find bad revision by bisection |
 | `jj gerrit upload` | Upload changes to Gerrit |
+| `jj util backend name` | Print the commit backend being used |
 | `jj util completion <SHELL>` | Print shell completion script |
 | `jj util config-schema` | Print JSON schema for jj TOML config |
 | `jj util exec <CMD>` | Execute an external command |
@@ -205,7 +206,7 @@ Many jj commands accept **REVSET** arguments (see [revsets.md](revsets.md) for f
 | `jj rebase` | `--branch`, `--source`, `--revision`, `--onto`, `--insert-after`, `--insert-before` |
 | `jj restore` | `--from <REVSET>`, `--into <REVSET>`, `--changes-in <REVSET>` |
 | `jj revert` | `--revision <REVSETS>`, `--onto`, `--insert-after`, `--insert-before` |
-| `jj show` | `<REVSET>` |
+| `jj show` | `<REVSETS>` |
 | `jj sign/unsign` | `--revision <REVSETS>` |
 | `jj simplify-parents` | `--source <REVSETS>`, `--revision <REVSETS>` |
 | `jj split` | `--revision <REVSET>`, `--onto`, `--insert-after`, `--insert-before` |

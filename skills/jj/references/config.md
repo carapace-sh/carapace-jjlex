@@ -61,3 +61,39 @@ paginate = "never"
 | `--when.platforms` | Platform: `windows`, `linux`, `macos`, `unix`, etc. |
 | `--when.environments` | Environment variable values |
 
+
+## Diff Editor Settings
+
+| Setting | Values | Default |
+|---------|--------|---------|
+| `edit-invocation-mode` | `"dir"`, `"file-by-file"` | `"dir"` |
+
+Configured per merge tool:
+
+```toml
+[merge-tools.<name>]
+edit-invocation-mode = "file-by-file"
+```
+
+- `"dir"` — Editor is invoked with a directory containing the left and right sides
+- `"file-by-file"` — Editor is launched once per changed file, enabling per-file tools like `vimdiff`
+
+Applies to commands that edit diffs: `jj diffedit`, `jj split`.
+
+
+## Removed Config Options
+
+The following options were removed in v0.42.0 (deprecated since v0.36.0):
+
+| Removed Option | Replacement |
+|----------------|-------------|
+| `git.auto-local-bookmark` | `remotes.<name>.auto-track-bookmarks` |
+| `git.push-new-bookmarks` | `remotes.<name>.auto-track-bookmarks` |
+
+Use `remotes.<name>.auto-track-bookmarks` for flexible bookmark tracking:
+
+```toml
+[remotes.origin]
+auto-track-bookmarks = "glob:*"
+```
+
