@@ -122,10 +122,6 @@ func actionExpression(opts RevOpts, ctx *revset.CompletionContext) carapace.Acti
 
 	result := batch.ToA()
 
-	if ctx.PartialIdent != "" {
-		result = result.Filter(ctx.PartialIdent).Prefix(ctx.PartialIdent)
-	}
-
 	return result.NoSpace()
 }
 
