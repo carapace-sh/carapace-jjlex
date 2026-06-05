@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/carapace-sh/carapace"
+	"github.com/carapace-sh/carapace/pkg/style"
 	"github.com/pelletier/go-toml/v2"
 )
 
@@ -16,21 +17,14 @@ func ActionRevsetFunctions() carapace.Action {
 	return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
 		noArgs := carapace.ActionValuesDescribed(
 			"all", "All visible commits and ancestors of commits explicitly mentioned",
-			"builtin_immutable_heads", "Default immutable heads (trunk() | tags() | untracked_remote_bookmarks())",
 			"conflicts", "Commits that have files in a conflicted state",
 			"divergent", "Commits that are divergent",
 			"empty", "Commits modifying no files (includes merges() without user modifications and root())",
-			"hidden", "Hidden commits (empty unless hidden revisions are mentioned)",
-			"immutable", "Commits that jj treats as immutable",
-			"immutable_heads", "Heads of the set of immutable commits",
 			"merges", "Merge commits",
 			"mine", "Commits where the author's email matches the email of the current user",
-			"mutable", "Commits that jj treats as mutable",
 			"none", "No commits",
 			"root", "The virtual commit that is the oldest ancestor of all other commits",
 			"signed", "Commits that are cryptographically signed",
-			"trunk", "Head commit for the default bookmark of the default remote",
-			"visible", "Visible commits (equal to all() unless hidden revisions are mentioned)",
 			"visible_heads", "All visible heads (same as heads(all()))",
 			"working_copies", "The working copy commits across all the workspaces",
 		).Uid("jj", "revset-function", "args", "false")
@@ -198,8 +192,13 @@ func ActionSpecialSymbols() carapace.Action {
 
 // ActionRevsetAliases completes revset aliases from jj config.
 //
-//	trunk() (main@origin)
+//	trunk() (present(trunk()) | tags() | untracked_remote_bookmarks())
+//	builtin_immutable_heads() (present(trunk()) | tags() | untracked_remote_bookmarks())
+//	immutable_heads() (builtin_immutable_heads())
 //	immutable() (::(immutable_heads() | root()))
+//	mutable() (~immutable())
+//	visible() (::visible_heads())
+//	hidden() (~visible())
 func ActionRevsetAliases(includeDefaults bool) carapace.Action {
 	return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
 		args := []string{"config", "list", "revset-aliases"}
@@ -208,7 +207,7 @@ func ActionRevsetAliases(includeDefaults bool) carapace.Action {
 		}
 		return actionExecJJ(args...)(func(output []byte) carapace.Action {
 			return parseTomlAliases(output, "revset-aliases")
-		})
+		}).Style(style.Dim)
 	}).Tag("revset aliases").NoSpace().UidF(Uid("revset"))
 }
 

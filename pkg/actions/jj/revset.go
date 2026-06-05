@@ -21,7 +21,7 @@ func (o RevOpts) Default() RevOpts {
 	o.LocalBookmarks = true
 	o.RemoteBookmarks = true
 	o.Commits = 100
-	o.HeadCommits = 10
+	o.HeadCommits = 0
 	o.Tags = true
 	o.ChangeIds = true
 	return o
