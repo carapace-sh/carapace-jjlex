@@ -40,10 +40,10 @@ type Tag struct {
 }
 
 type State struct {
-	Commits   []Commit   `json:"commits"`
-	Bookmarks []Bookmark `json:"bookmarks"`
-	Tags      []Tag      `json:"tags"`
-	WorkingCopy CommitID `json:"working_copy"`
+	Commits     []Commit   `json:"commits"`
+	Bookmarks   []Bookmark `json:"bookmarks"`
+	Tags        []Tag      `json:"tags"`
+	WorkingCopy CommitID   `json:"working_copy"`
 }
 
 type CommitID string
@@ -95,6 +95,7 @@ func Init(dir string) (*Fixture, error) {
 		return nil, fmt.Errorf("create directory: %w", err)
 	}
 
+	// TODO option pattern for config location (filepath, default)
 	f := &Fixture{dir: dir}
 
 	if err := f.jj("git", "init"); err != nil {
@@ -123,6 +124,14 @@ func (f *Fixture) Dir() string {
 	return f.dir
 }
 
+func (f *Fixture) Env() []string {
+	return []string{
+		"JJ_CONFIG=" + filepath.Join(f.dir, ".git/jj.toml"),
+		"JJ_USER=fixture",
+		"JJ_EMAIL=fixture@test.com",
+	}
+}
+
 func (f *Fixture) Cleanup() error {
 	return os.RemoveAll(f.dir)
 }
@@ -135,10 +144,14 @@ func (f *Fixture) RunOutput(args ...string) (string, error) {
 	return f.jjOutput(args...)
 }
 
+func (f *Fixture) cmdEnv() []string {
+	return append(os.Environ(), f.Env()...)
+}
+
 func (f *Fixture) jj(args ...string) error {
 	cmd := exec.Command("jj", args...)
 	cmd.Dir = f.dir
-	cmd.Env = append(os.Environ(), "JJ_USER=fixture", "JJ_EMAIL=fixture@test.com")
+	cmd.Env = f.cmdEnv()
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("jj %s: %s: %w", strings.Join(args, " "), strings.TrimSpace(string(out)), err)
@@ -149,7 +162,7 @@ func (f *Fixture) jj(args ...string) error {
 func (f *Fixture) jjOutput(args ...string) (string, error) {
 	cmd := exec.Command("jj", args...)
 	cmd.Dir = f.dir
-	cmd.Env = append(os.Environ(), "JJ_USER=fixture", "JJ_EMAIL=fixture@test.com")
+	cmd.Env = f.cmdEnv()
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("jj %s: %s: %w", strings.Join(args, " "), strings.TrimSpace(string(out)), err)
@@ -305,7 +318,7 @@ func (f *Fixture) getLog() ([]Commit, error) {
 	}
 
 	var commits []Commit
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
@@ -334,7 +347,7 @@ func (f *Fixture) getBookmarks() ([]Bookmark, error) {
 	}
 
 	var bookmarks []Bookmark
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
@@ -358,7 +371,7 @@ func (f *Fixture) getTags() ([]Tag, error) {
 	}
 
 	var tags []Tag
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue

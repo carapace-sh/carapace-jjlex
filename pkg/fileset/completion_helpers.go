@@ -197,8 +197,8 @@ func (p *compParser) setFunctionContext(fs *funcParseState, argIndex int) {
 		return
 	}
 	ctx := &FunctionContext{
-		Name:      fs.name,
-		ArgIndex:  argIndex,
+		Name:     fs.name,
+		ArgIndex: argIndex,
 	}
 	ctx.Args = make([]*Expression, len(fs.args))
 	copy(ctx.Args, fs.args)

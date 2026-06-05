@@ -106,8 +106,8 @@ func TestParseRevset(t *testing.T) {
 
 func TestParseExpressionSpans(t *testing.T) {
 	tests := []struct {
-		input    string
-		spanStr  string
+		input   string
+		spanStr string
 	}{
 		{" ~ x ", "~ x"},
 		{" x+ ", "x+"},

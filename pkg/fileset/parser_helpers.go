@@ -139,8 +139,8 @@ func (p *parser) tryBareStringPattern() *Expression {
 	bareValue := p.input[bareStart:p.pos]
 
 	return &Expression{
-		Kind:    KindBareStringPattern,
-		Span:    Span{Start: start, End: p.pos},
+		Kind: KindBareStringPattern,
+		Span: Span{Start: start, End: p.pos},
 		payload: &PatternExpr{
 			Name: ident,
 			Value: &Expression{

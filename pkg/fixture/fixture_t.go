@@ -10,9 +10,18 @@ type T struct {
 	f *Fixture
 }
 
-func InitT(t *testing.T, dir string) *T {
+type Sandbox interface {
+	Dir() string
+	Env(string, string) // TODO should be setenv in sandbox
+}
+
+func InitT(t *testing.T, s Sandbox) *T {
 	t.Helper()
-	f, err := Init(dir)
+	f, err := Init(s.Dir())
+	for _, e := range f.Env() {
+		k, v, _ := strings.Cut(e, "=")
+		s.Env(k, v)
+	}
 	if err != nil {
 		t.Fatalf("init fixture: %v", err)
 	}
@@ -138,6 +147,10 @@ func (t *T) ConfigSet(key, value string) {
 	if err := t.f.ConfigSet(key, value); err != nil {
 		t.t.Fatalf("config set %s=%s: %v", key, value, err)
 	}
+}
+
+func (t *T) Env() []string {
+	return t.f.Env()
 }
 
 func (t *T) NewCommit(parents ...string) {

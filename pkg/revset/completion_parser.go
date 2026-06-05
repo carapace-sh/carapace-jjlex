@@ -11,7 +11,7 @@ import (
 func ParseForCompletion(input string) *CompletionContext {
 	cursor := len(input)
 	p := &compParser{
-		input:   input,
+		input:  input,
 		pos:    0,
 		cursor: cursor,
 		ctx:    &CompletionContext{},
@@ -27,10 +27,10 @@ func ParseForCompletion(input string) *CompletionContext {
 }
 
 type compParser struct {
-	input   string
-	pos     int
-	cursor  int
-	ctx     *CompletionContext
+	input  string
+	pos    int
+	cursor int
+	ctx    *CompletionContext
 
 	// consumed is true when we have consumed at least one token of input
 	// before reaching the cursor. This distinguishes "expecting first expression"

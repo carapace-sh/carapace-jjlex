@@ -294,7 +294,8 @@ func TestParseLinesTrailingNewline(t *testing.T) {
 
 func TestActionLocalBookmarks(t *testing.T) {
 	sandbox.Action(t, ActionLocalBookmarks)(func(s *sandbox.Sandbox) {
-		f := fixture.InitT(t, s.Dir())
+		f := fixture.InitT(t, s)
+
 		f.CreateBookmark("first-bookmark")
 		f.CommitAdd("README.md", "fixture test", "added readme")
 		f.CreateBookmark("second-bookmark")
@@ -320,7 +321,8 @@ func TestActionLocalBookmarks(t *testing.T) {
 
 func TestActionTags(t *testing.T) {
 	sandbox.Action(t, ActionTags)(func(s *sandbox.Sandbox) {
-		f := fixture.InitT(t, s.Dir())
+		f := fixture.InitT(t, s)
+
 		f.CommitAdd("file.txt", "content", "first commit")
 		f.CreateTag("v1.0")
 		f.CommitAdd("file.txt", "content2", "second commit")
@@ -336,7 +338,7 @@ func TestActionTags(t *testing.T) {
 
 func TestActionHeadCommits(t *testing.T) {
 	sandbox.Action(t, func() carapace.Action { return ActionHeadCommits(5) })(func(s *sandbox.Sandbox) {
-		f := fixture.InitT(t, s.Dir())
+		f := fixture.InitT(t, s)
 		f.CommitAdd("a.txt", "a", "first commit")
 		f.CommitAdd("b.txt", "b", "second commit")
 		f.CommitAdd("c.txt", "c", "third commit")
@@ -352,7 +354,7 @@ func TestActionHeadCommits(t *testing.T) {
 
 func TestActionAncestors(t *testing.T) {
 	sandbox.Action(t, func() carapace.Action { return ActionAncestors("") })(func(s *sandbox.Sandbox) {
-		f := fixture.InitT(t, s.Dir())
+		f := fixture.InitT(t, s)
 		f.CommitAdd("a.txt", "a", "first commit")
 		f.CommitAdd("b.txt", "b", "second commit")
 		f.CommitAdd("c.txt", "c", "third commit")
@@ -367,7 +369,7 @@ func TestActionAncestors(t *testing.T) {
 
 func TestActionRemotes(t *testing.T) {
 	sandbox.Action(t, ActionRemotes)(func(s *sandbox.Sandbox) {
-		f := fixture.InitT(t, s.Dir())
+		f := fixture.InitT(t, s)
 		f.Run("git", "remote", "add", "origin", "https://example.com/repo.git")
 		f.Run("git", "remote", "add", "upstream", "https://example.com/upstream.git")
 

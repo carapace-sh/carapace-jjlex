@@ -146,8 +146,6 @@ func (p *parser) atEnd() bool {
 	return p.pos >= len(p.input)
 }
 
-
-
 // Operator precedence (from lowest to highest):
 // 0: union (|) - left assoc
 // 1: intersection (&), difference (~) - left assoc

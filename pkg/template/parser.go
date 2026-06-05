@@ -145,8 +145,8 @@ func (p *parser) parseTemplate() (*Expression, error) {
 		return nodes[0], nil
 	}
 	return &Expression{
-		Kind: KindConcat,
-		Span: Span{Start: nodes[0].Span.Start, End: nodes[len(nodes)-1].Span.End},
+		Kind:    KindConcat,
+		Span:    Span{Start: nodes[0].Span.Start, End: nodes[len(nodes)-1].Span.End},
 		payload: &ConcatExpr{Nodes: nodes},
 	}, nil
 }

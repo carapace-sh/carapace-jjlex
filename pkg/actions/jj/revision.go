@@ -138,8 +138,8 @@ func ActionOperations() carapace.Action {
 
 // ActionAncestors completes ancestor postfix operators for a given revset.
 //
-//	- (message)
-//	-- (message)
+//   - (message)
+//     -- (message)
 func ActionAncestors(revset string) carapace.Action {
 	return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
 		if revset == "" {
@@ -161,8 +161,8 @@ func ActionAncestors(revset string) carapace.Action {
 
 // ActionDescendants completes descendant postfix operators for a given revset.
 //
-//	+ (message)
-//	++ (message)
+//   - (message)
+//     ++ (message)
 func ActionDescendants(revset string) carapace.Action {
 	return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
 		if revset == "" {

@@ -7,14 +7,14 @@ import (
 
 // Precedence levels (higher = tighter binding)
 const (
-	precUnion     = 1
-	precInterDiff = 2
-	precNegate    = 3
-	precRange     = 4
-	precPrefixRng = 5
+	precUnion      = 1
+	precInterDiff  = 2
+	precNegate     = 3
+	precRange      = 4
+	precPrefixRng  = 5
 	precPostfixRng = 6
-	precPostfix   = 7
-	precPrimary   = 8
+	precPostfix    = 7
+	precPrimary    = 8
 )
 
 func (e *Expression) String() string {
