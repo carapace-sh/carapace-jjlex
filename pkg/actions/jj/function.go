@@ -74,7 +74,9 @@ func ActionRevsetFunctions() carapace.Action {
 			"subject", "Commits with subject (first line of description) matching pattern",
 			"tags", "All tag targets, optionally filtered by pattern",
 			"tracked_remote_bookmarks", "Targets of tracked remote bookmarks",
+			"tracked_remote_tags", "Targets of tracked remote tags",
 			"untracked_remote_bookmarks", "Targets of untracked remote bookmarks",
+			"untracked_remote_tags", "Targets of untracked remote tags",
 		).Uid("jj", "revset-function", "args", "true")
 
 		return carapace.Batch(noArgs, withArgs).ToA()
@@ -236,7 +238,7 @@ type keywordArg struct {
 func revsetKeywordArgs(funcName string) []keywordArg {
 	switch funcName {
 	case "remote_bookmarks", "tracked_remote_bookmarks", "untracked_remote_bookmarks",
-		"remote_tags":
+		"remote_tags", "tracked_remote_tags", "untracked_remote_tags":
 		return []keywordArg{{name: "remote", description: "Filter by remote name"}}
 	case "diff_lines", "diff_lines_added", "diff_lines_removed":
 		return []keywordArg{{name: "files", description: "Narrow search to fileset expression"}}

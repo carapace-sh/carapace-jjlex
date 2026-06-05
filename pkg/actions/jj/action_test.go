@@ -166,9 +166,9 @@ func TestRevsetKeywordArgsLogic(t *testing.T) {
 		t.Errorf("expected no keywords for parents, got %v", args)
 	}
 
-	args = revsetKeywordArgs("remote_tags")
+	args = revsetKeywordArgs("tracked_remote_tags")
 	if len(args) != 1 || args[0].name != "remote" {
-		t.Errorf("expected remote keyword for remote_tags, got %v", args)
+		t.Errorf("expected remote keyword for tracked_remote_tags, got %v", args)
 	}
 
 	args = revsetKeywordArgs("untracked_remote_bookmarks")

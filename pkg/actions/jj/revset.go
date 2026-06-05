@@ -201,7 +201,7 @@ func actionForFunctionArg(ctx *revset.CompletionContext, opts RevOpts) carapace.
 		return ActionFilesetPatterns().Suffix(":").NoSpace()
 
 	case "bookmarks", "remote_bookmarks", "tracked_remote_bookmarks", "untracked_remote_bookmarks",
-		"tags", "remote_tags":
+		"tags", "remote_tags", "tracked_remote_tags", "untracked_remote_tags":
 		if fn.ArgIndex >= 1 && !fn.IsKeywordArg {
 			return ActionRemotes().NoSpace()
 		}
@@ -211,7 +211,7 @@ func actionForFunctionArg(ctx *revset.CompletionContext, opts RevOpts) carapace.
 			batch = append(batch, ActionLocalBookmarks())
 		case "remote_bookmarks", "tracked_remote_bookmarks", "untracked_remote_bookmarks":
 			batch = append(batch, ActionRemoteBookmarks())
-		case "tags", "remote_tags":
+		case "tags", "remote_tags", "tracked_remote_tags", "untracked_remote_tags":
 			batch = append(batch, ActionTags())
 		}
 		return batch.ToA().NoSpace()
