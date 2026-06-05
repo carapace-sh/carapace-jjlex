@@ -173,7 +173,8 @@ func (p *compParser) parseInfixLevel0() {
 	for {
 		p.skipWS()
 		if p.atCursorOrEnd() {
-			if p.consumed {
+			// Don't offer operators right after an operator (expecting RHS)
+			if p.lastExpr != nil && !p.afterOperator {
 				p.afterExpression()
 			} else {
 				p.beforeExpression()
@@ -186,7 +187,7 @@ func (p *compParser) parseInfixLevel0() {
 			p.afterOperator = true
 			p.skipWS()
 			if p.atCursorOrEnd() {
-				p.afterExpression()
+				// After | with no RHS - only expect expression
 				p.beforeExpression()
 				return
 			}
@@ -199,11 +200,17 @@ func (p *compParser) parseInfixLevel0() {
 }
 
 func (p *compParser) parseInfixLevel1() {
+	p.skipWS()
+	// At cursor with no left operand - call parseNegatePrefix to get prefix operators
+	if p.atCursorOrEnd() && p.lastExpr == nil {
+		p.parseNegatePrefix()
+		return
+	}
 	p.parseNegatePrefix()
 	for {
 		p.skipWS()
 		if p.atCursorOrEnd() {
-			if p.consumed {
+			if p.lastExpr != nil {
 				p.afterExpression()
 			}
 			return
@@ -214,7 +221,7 @@ func (p *compParser) parseInfixLevel1() {
 			p.afterOperator = true
 			p.skipWS()
 			if p.atCursorOrEnd() {
-				p.afterExpression()
+				// After & with no RHS - only expect expression
 				p.beforeExpression()
 				return
 			}
@@ -225,7 +232,11 @@ func (p *compParser) parseInfixLevel1() {
 			p.afterOperator = true
 			p.skipWS()
 			if p.atCursorOrEnd() {
-				p.afterExpression()
+				// After ~ with no RHS - could be difference or negate
+				// Since ~ can be both prefix and infix, we handle it carefully
+				if p.lastExpr != nil {
+					p.afterExpression()
+				}
 				p.beforeExpression()
 				return
 			}
@@ -240,7 +251,7 @@ func (p *compParser) parseInfixLevel1() {
 func (p *compParser) parseNegatePrefix() {
 	p.skipWS()
 	if p.atCursorOrEnd() {
-		if p.consumed {
+		if p.lastExpr != nil {
 			// After an expression, ~ is difference operator (handled by afterExpression)
 			// But also ~ is a valid prefix operator here
 			p.addExpected(ExpectedOperator)
@@ -270,7 +281,7 @@ func (p *compParser) parseNegatePrefix() {
 func (p *compParser) parseRangeExpr() {
 	p.skipWS()
 	if p.atCursorOrEnd() {
-		if p.consumed {
+		if p.lastExpr != nil {
 			p.afterExpression()
 		} else {
 			p.beforeExpression()
@@ -324,7 +335,7 @@ func (p *compParser) parseRangeExpr() {
 	// Check for postfix or infix range operators
 	p.skipWS()
 	if p.atCursorOrEnd() {
-		if p.consumed {
+		if p.lastExpr != nil {
 			p.afterExpression()
 			p.addOperator("::", "DAG range")
 			p.addOperator("..", "range")
@@ -335,10 +346,13 @@ func (p *compParser) parseRangeExpr() {
 	if p.matchString("::") {
 		saved := p.pos
 		p.pos += 2
+		p.afterOperator = true
 		p.skipWS()
 		if p.atCursorOrEnd() || p.peek() == ')' || p.peek() == ',' || p.peek() == '|' || p.peek() == '&' || p.peek() == '~' {
-			// Could be postfix :: or infix :: needing RHS
-			p.afterExpression()
+			// After :: at cursor - only expect expression (not operators)
+			if p.lastExpr != nil {
+				p.afterExpression()
+			}
 			p.beforeExpression()
 			return
 		}
@@ -351,9 +365,13 @@ func (p *compParser) parseRangeExpr() {
 	if p.matchString("..") {
 		saved := p.pos
 		p.pos += 2
+		p.afterOperator = true
 		p.skipWS()
 		if p.atCursorOrEnd() || p.peek() == ')' || p.peek() == ',' || p.peek() == '|' || p.peek() == '&' || p.peek() == '~' {
-			p.afterExpression()
+			// After .. at cursor - only expect expression (not operators)
+			if p.lastExpr != nil {
+				p.afterExpression()
+			}
 			p.beforeExpression()
 			return
 		}
@@ -370,7 +388,10 @@ func (p *compParser) parseInfixRangeOp() {
 		p.afterOperator = true
 		p.skipWS()
 		if p.atCursorOrEnd() {
-			p.afterExpression()
+			// After :: at cursor - only expect expression (not operators)
+			if p.lastExpr != nil {
+				p.afterExpression()
+			}
 			p.beforeExpression()
 			return
 		}
@@ -383,7 +404,10 @@ func (p *compParser) parseInfixRangeOp() {
 		p.afterOperator = true
 		p.skipWS()
 		if p.atCursorOrEnd() {
-			p.afterExpression()
+			// After .. at cursor - only expect expression (not operators)
+			if p.lastExpr != nil {
+				p.afterExpression()
+			}
 			p.beforeExpression()
 			return
 		}
@@ -399,7 +423,7 @@ func (p *compParser) parsePostfixOps() {
 	for {
 		p.skipWS()
 		if p.atCursorOrEnd() {
-			if p.consumed {
+			if p.lastExpr != nil {
 				p.afterExpression()
 			}
 			return

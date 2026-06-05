@@ -52,6 +52,13 @@ func TestCompletionAfterAmpersand(t *testing.T) {
 	assertHasExpected(t, ctx, ExpectedExpression)
 }
 
+func TestCompletionAmpersandAtStart(t *testing.T) {
+	// "&" at start - only expect expression, not operators (ampersand is infix-only)
+	ctx := ParseForCompletion("&")
+	assertHasExpected(t, ctx, ExpectedExpression)
+	assertNoOperator(t, ctx, "&")
+}
+
 func TestCompletionAfterTilde(t *testing.T) {
 	// "foo ~ " with cursor at end - expect expression
 	ctx := ParseForCompletion("foo ~ ")
@@ -506,6 +513,16 @@ func assertHasOperator(t *testing.T, ctx *CompletionContext, op string) {
 		}
 	}
 	t.Errorf("expected operator %q in ValidOperators, got %v", op, ctx.ValidOperators)
+}
+
+func assertNoOperator(t *testing.T, ctx *CompletionContext, op string) {
+	t.Helper()
+	for _, v := range ctx.ValidOperators {
+		if v.Op == op {
+			t.Errorf("expected operator %q NOT in ValidOperators, but it was found", op)
+			return
+		}
+	}
 }
 
 func TestCompletionNullaryRange(t *testing.T) {

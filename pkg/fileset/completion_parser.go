@@ -136,7 +136,8 @@ func (p *compParser) parseInfixLevel0() {
 	for {
 		p.skipWS()
 		if p.atCursorOrEnd() {
-			if p.consumed {
+			// Don't offer operators right after an operator (expecting RHS)
+			if p.lastExpr != nil && !p.afterOperator {
 				p.afterExpression()
 			} else {
 				p.beforeExpression()
@@ -149,7 +150,7 @@ func (p *compParser) parseInfixLevel0() {
 			p.afterOperator = true
 			p.skipWS()
 			if p.atCursorOrEnd() {
-				p.afterExpression()
+				// After | with no RHS - only expect expression
 				p.beforeExpression()
 				return
 			}
@@ -162,11 +163,17 @@ func (p *compParser) parseInfixLevel0() {
 }
 
 func (p *compParser) parseInfixLevel1() {
+	p.skipWS()
+	// At cursor with no left operand - call parseNegatePrefix to get prefix operators
+	if p.atCursorOrEnd() && p.lastExpr == nil {
+		p.parseNegatePrefix()
+		return
+	}
 	p.parseNegatePrefix()
 	for {
 		p.skipWS()
 		if p.atCursorOrEnd() {
-			if p.consumed {
+			if p.lastExpr != nil {
 				p.afterExpression()
 			}
 			return
@@ -177,7 +184,7 @@ func (p *compParser) parseInfixLevel1() {
 			p.afterOperator = true
 			p.skipWS()
 			if p.atCursorOrEnd() {
-				p.afterExpression()
+				// After & with no RHS - only expect expression
 				p.beforeExpression()
 				return
 			}
@@ -188,7 +195,10 @@ func (p *compParser) parseInfixLevel1() {
 			p.afterOperator = true
 			p.skipWS()
 			if p.atCursorOrEnd() {
-				p.afterExpression()
+				// After ~ with no RHS - could be difference or negate
+				if p.lastExpr != nil {
+					p.afterExpression()
+				}
 				p.beforeExpression()
 				return
 			}
@@ -203,7 +213,7 @@ func (p *compParser) parseInfixLevel1() {
 func (p *compParser) parseNegatePrefix() {
 	p.skipWS()
 	if p.atCursorOrEnd() {
-		if p.consumed {
+		if p.lastExpr != nil {
 			p.addExpected(ExpectedOperator)
 			p.addOperator("~", "negate/difference")
 		} else {

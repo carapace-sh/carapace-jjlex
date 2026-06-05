@@ -55,6 +55,14 @@ func ActionFilesets() carapace.Action {
 		}
 
 		if expectsFilesetToken(ctx, fileset.ExpectedOperator) {
+			// If ValidOperators is populated, filter to only those operators
+			if len(ctx.ValidOperators) > 0 {
+				batch := carapace.Batch()
+				for _, op := range ctx.ValidOperators {
+					batch = append(batch, carapace.ActionValuesDescribed(op.Op, op.Description))
+				}
+				return batch.ToA().NoSpace().Prefix(prefix)
+			}
 			return ActionFilesetOperators().NoSpace().Prefix(prefix)
 		}
 

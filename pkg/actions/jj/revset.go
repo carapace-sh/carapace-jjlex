@@ -173,16 +173,23 @@ func actionExpression(opts RevOpts, ctx *revset.CompletionContext) carapace.Acti
 }
 
 func actionOperator(_ RevOpts, ctx *revset.CompletionContext, allowPostfix bool) carapace.Action {
-	attached := allowPostfix && ctx.AttachedRevset != ""
-	batch := carapace.Batch(
-		ActionRevsetOperators(attached),
-	)
+	// If ValidOperators is populated, filter to only those operators
+	if len(ctx.ValidOperators) > 0 {
+		batch := carapace.Batch()
+		for _, op := range ctx.ValidOperators {
+			batch = append(batch, carapace.ActionValuesDescribed(op.Op, op.Description))
+		}
 
-	if allowPostfix {
-		batch = append(batch, postfixActions(ctx)...)
+		attached := allowPostfix && ctx.AttachedRevset != ""
+		if attached {
+			batch = append(batch, postfixActions(ctx)...)
+		}
+
+		return batch.ToA().NoSpace()
 	}
 
-	return batch.ToA().NoSpace()
+	// No valid operators from completion context
+	return carapace.ActionValues()
 }
 
 func actionForFunctionArg(ctx *revset.CompletionContext, opts RevOpts) carapace.Action {
