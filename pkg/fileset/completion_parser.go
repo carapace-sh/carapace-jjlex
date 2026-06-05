@@ -34,6 +34,10 @@ type compParser struct {
 	// before reaching the cursor.
 	consumed bool
 
+	// afterOperator is true when we have consumed an operator but haven't
+	// started parsing the RHS.
+	afterOperator bool
+
 	// Stack of function parse states for nested calls
 	funcStack []*funcParseState
 
@@ -142,11 +146,14 @@ func (p *compParser) parseInfixLevel0() {
 		ch := p.peek()
 		if ch == '|' {
 			p.advance()
+			p.afterOperator = true
 			p.skipWS()
 			if p.atCursorOrEnd() {
+				p.afterExpression()
 				p.beforeExpression()
 				return
 			}
+			p.afterOperator = false
 			p.parseInfixLevel1()
 		} else {
 			break
@@ -167,19 +174,25 @@ func (p *compParser) parseInfixLevel1() {
 		ch := p.peek()
 		if ch == '&' {
 			p.advance()
+			p.afterOperator = true
 			p.skipWS()
 			if p.atCursorOrEnd() {
+				p.afterExpression()
 				p.beforeExpression()
 				return
 			}
+			p.afterOperator = false
 			p.parseNegatePrefix()
 		} else if ch == '~' {
 			p.advance()
+			p.afterOperator = true
 			p.skipWS()
 			if p.atCursorOrEnd() {
+				p.afterExpression()
 				p.beforeExpression()
 				return
 			}
+			p.afterOperator = false
 			p.parseNegatePrefix()
 		} else {
 			break

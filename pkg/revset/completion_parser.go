@@ -37,6 +37,11 @@ type compParser struct {
 	// from "after an expression, expecting operator".
 	consumed bool
 
+	// afterOperator is true when we have consumed an operator but haven't
+	// started parsing the RHS. Used to avoid setting AttachedRevset in this
+	// case.
+	afterOperator bool
+
 	// Stack of function parse states for nested calls
 	funcStack []*funcParseState
 
@@ -131,7 +136,8 @@ func (p *compParser) afterExpression() {
 	// Set AttachedRevset to the input from the start of the current postfix
 	// chain to the current position. This tells the action layer what revset
 	// the postfix operators are attached to (e.g. "@-" or "main--").
-	if p.postfixStart < p.pos && p.ctx.AttachedRevset == "" {
+	// Don't set if we're right after an operator (before RHS started).
+	if p.postfixStart < p.pos && p.ctx.AttachedRevset == "" && !p.afterOperator {
 		p.ctx.AttachedRevset = p.input[p.postfixStart:p.pos]
 	}
 
@@ -177,11 +183,14 @@ func (p *compParser) parseInfixLevel0() {
 		ch := p.peek()
 		if ch == '|' {
 			p.advance()
+			p.afterOperator = true
 			p.skipWS()
 			if p.atCursorOrEnd() {
+				p.afterExpression()
 				p.beforeExpression()
 				return
 			}
+			p.afterOperator = false
 			p.parseInfixLevel1()
 		} else {
 			break
@@ -202,19 +211,25 @@ func (p *compParser) parseInfixLevel1() {
 		ch := p.peek()
 		if ch == '&' {
 			p.advance()
+			p.afterOperator = true
 			p.skipWS()
 			if p.atCursorOrEnd() {
+				p.afterExpression()
 				p.beforeExpression()
 				return
 			}
+			p.afterOperator = false
 			p.parseNegatePrefix()
 		} else if ch == '~' {
 			p.advance()
+			p.afterOperator = true
 			p.skipWS()
 			if p.atCursorOrEnd() {
+				p.afterExpression()
 				p.beforeExpression()
 				return
 			}
+			p.afterOperator = false
 			p.parseNegatePrefix()
 		} else {
 			break
@@ -352,21 +367,27 @@ func (p *compParser) parseInfixRangeOp() {
 	p.skipWS()
 	if p.matchString("::") {
 		p.pos += 2
+		p.afterOperator = true
 		p.skipWS()
 		if p.atCursorOrEnd() {
+			p.afterExpression()
 			p.beforeExpression()
 			return
 		}
+		p.afterOperator = false
 		p.parsePostfixOps()
 		return
 	}
 	if p.matchString("..") {
 		p.pos += 2
+		p.afterOperator = true
 		p.skipWS()
 		if p.atCursorOrEnd() {
+			p.afterExpression()
 			p.beforeExpression()
 			return
 		}
+		p.afterOperator = false
 		p.parsePostfixOps()
 		return
 	}

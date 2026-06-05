@@ -113,6 +113,7 @@ func (p *compParser) parseTemplateComp() {
 			p.pos += 2
 			p.skipWS()
 			if p.atCursorOrEnd() {
+				p.afterExpression()
 				p.beforeExpression()
 				return
 			}
@@ -144,6 +145,7 @@ func (p *compParser) parsePrattComp(minPrec int) {
 		p.pos += len(op)
 		p.skipWS()
 		if p.atCursorOrEnd() {
+			p.afterExpression()
 			p.beforeExpression()
 			return
 		}
