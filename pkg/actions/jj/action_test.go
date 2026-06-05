@@ -377,3 +377,14 @@ func TestActionRemotes(t *testing.T) {
 		).Tag("remotes"))
 	})
 }
+
+// TODO(fixture): TestActionDescendants - ActionDescendants returns empty results.
+// The descendant depth query logic needs investigation; likely the children()
+// revset query or depth detection in revision.go is not matching expected commits.
+
+// TODO(fixture): TestActionChangeIds - shortest change IDs are non-deterministic
+// and differ between runs. Need to either use exact IDs from fixture state or
+// adjust test to verify structure/style without specific values.
+
+// TODO(fixture): TestActionRecentCommits - shortest commit IDs are non-deterministic
+// and differ between runs. Same issue as TestActionChangeIds.
