@@ -155,8 +155,11 @@ func actionExpression(opts RevOpts, ctx *revset.CompletionContext) carapace.Acti
 }
 
 func actionOperator(_ RevOpts, ctx *revset.CompletionContext) carapace.Action {
+	// Only show postfix operators if there's an attached revset
+	// (not when we're right after an operator like "foo |")
+	attached := ctx.AttachedRevset != ""
 	batch := carapace.Batch(
-		ActionRevsetOperators(true),
+		ActionRevsetOperators(attached),
 	)
 
 	batch = append(batch, postfixActions(ctx)...)
