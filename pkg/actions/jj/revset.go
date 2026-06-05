@@ -84,10 +84,14 @@ func ActionRevsets(opts RevOpts) carapace.Action {
 		}
 
 		if expectsToken(ctx, revset.ExpectedExpression) && expectsToken(ctx, revset.ExpectedOperator) {
-			// Both expression and operator are valid - combine both actions
+			// Both expression and operator are valid - combine both actions.
+			// When there's a partialIdent, the user is typing an expression
+			// so don't show postfix operators (attachedRevset is just the
+			// partial identifier, not a completed revset).
+			hasPartial := ctx.PartialIdent != ""
 			batch := carapace.Batch(
 				actionExpression(opts, ctx),
-				actionOperator(opts, ctx),
+				actionOperator(opts, ctx, !hasPartial),
 			)
 			return batch.ToA()
 		}
@@ -97,7 +101,7 @@ func ActionRevsets(opts RevOpts) carapace.Action {
 		}
 
 		if expectsToken(ctx, revset.ExpectedOperator) {
-			return actionOperator(opts, ctx)
+			return actionOperator(opts, ctx, true)
 		}
 
 		if expectsToken(ctx, revset.ExpectedClosingParen) {
@@ -163,15 +167,15 @@ func actionExpression(opts RevOpts, ctx *revset.CompletionContext) carapace.Acti
 	return batch.ToA().NoSpace()
 }
 
-func actionOperator(_ RevOpts, ctx *revset.CompletionContext) carapace.Action {
-	// Only show postfix operators if there's an attached revset
-	// (not when we're right after an operator like "foo |")
-	attached := ctx.AttachedRevset != ""
+func actionOperator(_ RevOpts, ctx *revset.CompletionContext, allowPostfix bool) carapace.Action {
+	attached := allowPostfix && ctx.AttachedRevset != ""
 	batch := carapace.Batch(
 		ActionRevsetOperators(attached),
 	)
 
-	batch = append(batch, postfixActions(ctx)...)
+	if allowPostfix {
+		batch = append(batch, postfixActions(ctx)...)
+	}
 
 	return batch.ToA().NoSpace()
 }
