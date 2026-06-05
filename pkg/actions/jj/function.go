@@ -15,36 +15,43 @@ import (
 func ActionRevsetFunctions() carapace.Action {
 	return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
 		noArgs := carapace.ActionValuesDescribed(
-			"all", "All visible commits and ancestors of explicitly mentioned commits",
-			"conflicts", "Commits with conflicted files",
-			"divergent", "Divergent commits",
+			"all", "All visible commits and ancestors of commits explicitly mentioned",
+			"builtin_immutable_heads", "Default immutable heads (trunk() | tags() | untracked_remote_bookmarks())",
+			"conflicts", "Commits that have files in a conflicted state",
+			"divergent", "Commits that are divergent",
 			"empty", "Commits modifying no files (includes merges() without user modifications and root())",
-			"merges", "Merge commits (2+ parents)",
-			"mine", "Commits where author email matches current user",
+			"hidden", "Hidden commits (empty unless hidden revisions are mentioned)",
+			"immutable", "Commits that jj treats as immutable",
+			"immutable_heads", "Heads of the set of immutable commits",
+			"merges", "Merge commits",
+			"mine", "Commits where the author's email matches the email of the current user",
+			"mutable", "Commits that jj treats as mutable",
 			"none", "No commits",
-			"root", "The virtual root commit",
-			"signed", "Cryptographically signed commits",
+			"root", "The virtual commit that is the oldest ancestor of all other commits",
+			"signed", "Commits that are cryptographically signed",
+			"trunk", "Head commit for the default bookmark of the default remote",
+			"visible", "Visible commits (equal to all() unless hidden revisions are mentioned)",
 			"visible_heads", "All visible heads (same as heads(all()))",
-			"working_copies", "Working copy commits across all workspaces",
+			"working_copies", "The working copy commits across all the workspaces",
 		).Uid("jj", "revset-function", "args", "false")
 
 		withArgs := carapace.ActionValuesDescribed(
 			"ancestors", "Ancestors of x, optionally limited by depth",
 			"at_operation", "Evaluate x at the specified operation",
-			"author", "Commits with author name or email matching pattern",
-			"author_date", "Commits with author date matching date pattern",
-			"author_email", "Commits with author email matching pattern",
-			"author_name", "Commits with author name matching pattern",
+			"author", "Commits with the author's name or email matching pattern",
+			"author_date", "Commits with author dates matching date pattern",
+			"author_email", "Commits with the author's email matching pattern",
+			"author_name", "Commits with the author's name matching pattern",
 			"bisect", "Commits where about half the input set are descendants",
 			"bookmarks", "All local bookmark targets, optionally filtered by pattern",
-			"change_id", "Commits with given change ID prefix",
+			"change_id", "Commits with the given change ID prefix",
 			"children", "Same as x+, optionally limited by depth",
-			"coalesce", "First non-none revset from a list",
-			"commit_id", "Commits with given commit ID prefix",
-			"committer", "Commits with committer name or email matching pattern",
-			"committer_date", "Commits with committer date matching date pattern",
-			"committer_email", "Commits with committer email matching pattern",
-			"committer_name", "Commits with committer name matching pattern",
+			"coalesce", "Commits in the first non-none revset from a list",
+			"commit_id", "Commits with the given commit ID prefix",
+			"committer", "Commits with the committer's name or email matching pattern",
+			"committer_date", "Commits with committer dates matching date pattern",
+			"committer_email", "Commits with the committer's email matching pattern",
+			"committer_name", "Commits with the committer's name matching pattern",
 			"connected", "Same as x::x",
 			"descendants", "Same as x::, optionally limited by depth",
 			"description", "Commits with description matching pattern",
@@ -55,20 +62,19 @@ func ActionRevsetFunctions() carapace.Action {
 			"files", "Commits modifying paths matching fileset expression",
 			"first_ancestors", "Like ancestors() but only traverses first parent",
 			"first_parent", "Like parents() but for merges returns only first parent",
-			"fork_point", "Common ancestor(s) with no descendant that is also a common ancestor",
+			"fork_point", "The fork point of all commits in x",
 			"heads", "Commits in x that are not ancestors of other commits in x",
 			"latest", "Latest count commits by committer timestamp",
 			"parents", "Same as x-, optionally limited by depth",
 			"present", "Same as x, but evaluates to none() if any commit doesn't exist",
 			"reachable", "All commits reachable from srcs within domain",
 			"remote_bookmarks", "All remote bookmark targets, optionally filtered",
+			"remote_tags", "All remote tag targets, optionally filtered",
 			"roots", "Commits in x that are not descendants of other commits in x",
 			"subject", "Commits with subject (first line of description) matching pattern",
 			"tags", "All tag targets, optionally filtered by pattern",
 			"tracked_remote_bookmarks", "Targets of tracked remote bookmarks",
-			"tracked_remote_tags", "Targets of tracked remote tags",
 			"untracked_remote_bookmarks", "Targets of untracked remote bookmarks",
-			"untracked_remote_tags", "Targets of untracked remote tags",
 		).Uid("jj", "revset-function", "args", "true")
 
 		return carapace.Batch(noArgs, withArgs).ToA()
@@ -160,14 +166,19 @@ func ActionDatePatterns() carapace.Action {
 func ActionFilesetPatterns() carapace.Action {
 	return carapace.ActionValuesDescribed(
 		"cwd", "Cwd-relative path prefix (file or directory)",
+		"file", "Cwd-relative exact file path (alias for cwd-file)",
 		"cwd-file", "Cwd-relative exact file path",
+		"glob", "Cwd-relative glob pattern (alias for cwd-glob)",
 		"cwd-glob", "Cwd-relative glob pattern",
+		"prefix-glob", "Cwd-relative prefix-glob pattern (alias for cwd-prefix-glob)",
 		"cwd-prefix-glob", "Cwd-relative prefix-glob pattern",
 		"root", "Workspace-relative path prefix (file or directory)",
 		"root-file", "Workspace-relative exact file path",
 		"root-glob", "Workspace-relative glob pattern",
 		"root-prefix-glob", "Workspace-relative prefix-glob pattern",
+		"glob-i", "Cwd-relative glob pattern, case-insensitive (alias for cwd-glob-i)",
 		"cwd-glob-i", "Cwd-relative glob pattern (case-insensitive)",
+		"prefix-glob-i", "Cwd-relative prefix-glob pattern, case-insensitive (alias for cwd-prefix-glob-i)",
 		"cwd-prefix-glob-i", "Cwd-relative prefix-glob pattern (case-insensitive)",
 		"root-glob-i", "Workspace-relative glob pattern (case-insensitive)",
 		"root-prefix-glob-i", "Workspace-relative prefix-glob pattern (case-insensitive)",
@@ -225,8 +236,10 @@ type keywordArg struct {
 func revsetKeywordArgs(funcName string) []keywordArg {
 	switch funcName {
 	case "remote_bookmarks", "tracked_remote_bookmarks", "untracked_remote_bookmarks",
-		"remote_tags", "tracked_remote_tags", "untracked_remote_tags":
+		"remote_tags":
 		return []keywordArg{{name: "remote", description: "Filter by remote name"}}
+	case "diff_lines", "diff_lines_added", "diff_lines_removed":
+		return []keywordArg{{name: "files", description: "Narrow search to fileset expression"}}
 	default:
 		return nil
 	}

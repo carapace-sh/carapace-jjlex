@@ -68,14 +68,19 @@ func TestActionFilesetPatterns(t *testing.T) {
 	})(func(s *sandbox.Sandbox) {
 		s.Run("").Expect(carapace.ActionValuesDescribed(
 			"cwd", "Cwd-relative path prefix (file or directory)",
+			"file", "Cwd-relative exact file path (alias for cwd-file)",
 			"cwd-file", "Cwd-relative exact file path",
+			"glob", "Cwd-relative glob pattern (alias for cwd-glob)",
 			"cwd-glob", "Cwd-relative glob pattern",
+			"prefix-glob", "Cwd-relative prefix-glob pattern (alias for cwd-prefix-glob)",
 			"cwd-prefix-glob", "Cwd-relative prefix-glob pattern",
 			"root", "Workspace-relative path prefix (file or directory)",
 			"root-file", "Workspace-relative exact file path",
 			"root-glob", "Workspace-relative glob pattern",
 			"root-prefix-glob", "Workspace-relative prefix-glob pattern",
+			"glob-i", "Cwd-relative glob pattern, case-insensitive (alias for cwd-glob-i)",
 			"cwd-glob-i", "Cwd-relative glob pattern (case-insensitive)",
+			"prefix-glob-i", "Cwd-relative prefix-glob pattern, case-insensitive (alias for cwd-prefix-glob-i)",
 			"cwd-prefix-glob-i", "Cwd-relative prefix-glob pattern (case-insensitive)",
 			"root-glob-i", "Workspace-relative glob pattern (case-insensitive)",
 			"root-prefix-glob-i", "Workspace-relative prefix-glob pattern (case-insensitive)",
@@ -89,6 +94,16 @@ func TestActionRevsetKeywordArgs(t *testing.T) {
 	})(func(s *sandbox.Sandbox) {
 		s.Run("").Expect(carapace.ActionValuesDescribed(
 			"remote", "Filter by remote name",
+		).Tag("keyword arguments"))
+	})
+}
+
+func TestActionRevsetKeywordArgsDiffLines(t *testing.T) {
+	sandbox.Action(t, func() carapace.Action {
+		return ActionRevsetKeywordArgs("diff_lines")
+	})(func(s *sandbox.Sandbox) {
+		s.Run("").Expect(carapace.ActionValuesDescribed(
+			"files", "Narrow search to fileset expression",
 		).Tag("keyword arguments"))
 	})
 }
@@ -151,14 +166,29 @@ func TestRevsetKeywordArgsLogic(t *testing.T) {
 		t.Errorf("expected no keywords for parents, got %v", args)
 	}
 
-	args = revsetKeywordArgs("tracked_remote_tags")
+	args = revsetKeywordArgs("remote_tags")
 	if len(args) != 1 || args[0].name != "remote" {
-		t.Errorf("expected remote keyword for tracked_remote_tags, got %v", args)
+		t.Errorf("expected remote keyword for remote_tags, got %v", args)
 	}
 
 	args = revsetKeywordArgs("untracked_remote_bookmarks")
 	if len(args) != 1 || args[0].name != "remote" {
 		t.Errorf("expected remote keyword for untracked_remote_bookmarks, got %v", args)
+	}
+
+	args = revsetKeywordArgs("diff_lines")
+	if len(args) != 1 || args[0].name != "files" {
+		t.Errorf("expected files keyword for diff_lines, got %v", args)
+	}
+
+	args = revsetKeywordArgs("diff_lines_added")
+	if len(args) != 1 || args[0].name != "files" {
+		t.Errorf("expected files keyword for diff_lines_added, got %v", args)
+	}
+
+	args = revsetKeywordArgs("diff_lines_removed")
+	if len(args) != 1 || args[0].name != "files" {
+		t.Errorf("expected files keyword for diff_lines_removed, got %v", args)
 	}
 }
 

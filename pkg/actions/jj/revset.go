@@ -154,7 +154,7 @@ func actionExpression(opts RevOpts, ctx *revset.CompletionContext) carapace.Acti
 	return batch.ToA().NoSpace()
 }
 
-func actionOperator(opts RevOpts, ctx *revset.CompletionContext) carapace.Action {
+func actionOperator(_ RevOpts, ctx *revset.CompletionContext) carapace.Action {
 	batch := carapace.Batch(
 		ActionRevsetOperators(true),
 	)
@@ -191,11 +191,17 @@ func actionForFunctionArg(ctx *revset.CompletionContext, opts RevOpts) carapace.
 	case "author_date", "committer_date":
 		return ActionDatePatterns().Suffix(":").NoSpace()
 
-	case "files", "diff_lines", "diff_lines_added", "diff_lines_removed":
+	case "diff_lines", "diff_lines_added", "diff_lines_removed":
+		if fn.IsKeywordArg && fn.KeywordArgName == "files" {
+			return ActionFilesetPatterns().Suffix(":").NoSpace()
+		}
+		return ActionStringPatterns().Suffix(":").NoSpace()
+
+	case "files":
 		return ActionFilesetPatterns().Suffix(":").NoSpace()
 
 	case "bookmarks", "remote_bookmarks", "tracked_remote_bookmarks", "untracked_remote_bookmarks",
-		"tags", "remote_tags", "tracked_remote_tags", "untracked_remote_tags":
+		"tags", "remote_tags":
 		if fn.ArgIndex >= 1 && !fn.IsKeywordArg {
 			return ActionRemotes().NoSpace()
 		}
@@ -205,7 +211,7 @@ func actionForFunctionArg(ctx *revset.CompletionContext, opts RevOpts) carapace.
 			batch = append(batch, ActionLocalBookmarks())
 		case "remote_bookmarks", "tracked_remote_bookmarks", "untracked_remote_bookmarks":
 			batch = append(batch, ActionRemoteBookmarks())
-		case "tags", "remote_tags", "tracked_remote_tags", "untracked_remote_tags":
+		case "tags", "remote_tags":
 			batch = append(batch, ActionTags())
 		}
 		return batch.ToA().NoSpace()
@@ -232,9 +238,10 @@ func actionForPatternValue(ctx *revset.CompletionContext) carapace.Action {
 		return ActionStringPatterns().Suffix(":").NoSpace()
 	case "after", "before":
 		return ActionDatePatterns().Suffix(":").NoSpace()
-	case "cwd", "cwd-file", "cwd-glob", "cwd-prefix-glob",
+	case "cwd", "file", "cwd-file", "prefix-glob", "cwd-prefix-glob",
 		"root", "root-file", "root-glob", "root-prefix-glob",
-		"cwd-glob-i", "cwd-prefix-glob-i", "root-glob-i", "root-prefix-glob-i":
+		"cwd-glob-i", "prefix-glob-i", "cwd-prefix-glob-i",
+		"root-glob-i", "root-prefix-glob-i":
 		return ActionFilesetPatterns().Suffix(":").NoSpace()
 	default:
 		return carapace.ActionValues()
