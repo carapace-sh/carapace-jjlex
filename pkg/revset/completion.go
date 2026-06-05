@@ -100,6 +100,15 @@ type CompletionContext struct {
 	// PatternName is the pattern prefix name (e.g. "exact" in "exact:")
 	PatternName string `json:"patternName,omitempty"`
 
+	// InRemoteSymbol is true when completing the remote name part of a
+	// name@remote expression (e.g. completing "origin" in "main@origin").
+	InRemoteSymbol bool `json:"inRemoteSymbol"`
+	// PartialRemote is the partial remote name being typed (e.g. "ori" in "main@ori")
+	PartialRemote string `json:"partialRemote,omitempty"`
+	// RemoteBookmarkName is the bookmark name before @ in a name@remote expression
+	// (e.g. "main" in "main@origin")
+	RemoteBookmarkName string `json:"remoteBookmarkName,omitempty"`
+
 	// AttachedRevset is the revset expression that postfix operators are
 	// attached to (e.g. "@-" has AttachedRevset "@-"). Used to determine
 	// whether ActionAncestors or ActionDescendants should be invoked.

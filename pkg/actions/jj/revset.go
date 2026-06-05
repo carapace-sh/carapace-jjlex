@@ -72,6 +72,27 @@ func ActionRevsets(opts RevOpts) carapace.Action {
 		// before invoking them and re-attach it to the completion values.
 		prefix := c.Value[:len(c.Value)-len(ctx.PartialIdent)]
 
+		if ctx.InRemoteSymbol {
+			// Completing a remote name after @ (e.g. "main@ori")
+			// Strip the remote part from the prefix so ActionRemotes filters correctly
+			if ctx.PartialRemote != "" {
+				prefix = c.Value[:len(c.Value)-len(ctx.PartialRemote)]
+			} else if ctx.PartialString != "" {
+				// String literal remote (e.g. main@"ori)
+				atIdx := strings.LastIndex(c.Value, "@")
+				if atIdx >= 0 {
+					prefix = c.Value[:atIdx+1]
+				}
+			} else {
+				// Bare @ with no remote text yet (e.g. "main@")
+				atIdx := strings.LastIndex(c.Value, "@")
+				if atIdx >= 0 {
+					prefix = c.Value[:atIdx+1]
+				}
+			}
+			return ActionRemotes().Prefix(prefix).NoSpace()
+		}
+
 		if ctx.InPattern {
 			return actionForPatternValue(ctx).Prefix(prefix)
 		}

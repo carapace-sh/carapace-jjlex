@@ -367,8 +367,63 @@ func TestCompletionAfterDifferenceInFunction(t *testing.T) {
 func TestCompletionRemoteSymbolPartial(t *testing.T) {
 	// "main@ori" with cursor at end - partial remote name
 	ctx := ParseForCompletion("main@ori")
-	if ctx.PartialIdent != "ori" {
-		t.Errorf("expected PartialIdent 'ori', got %q", ctx.PartialIdent)
+	if !ctx.InRemoteSymbol {
+		t.Error("expected InRemoteSymbol to be true")
+	}
+	if ctx.PartialRemote != "ori" {
+		t.Errorf("expected PartialRemote 'ori', got %q", ctx.PartialRemote)
+	}
+	if ctx.RemoteBookmarkName != "main" {
+		t.Errorf("expected RemoteBookmarkName 'main', got %q", ctx.RemoteBookmarkName)
+	}
+	// PartialIdent should be empty since this is a remote name, not a general identifier
+	if ctx.PartialIdent != "" {
+		t.Errorf("expected PartialIdent to be empty for remote names, got %q", ctx.PartialIdent)
+	}
+}
+
+func TestCompletionRemoteSymbolAtCursor(t *testing.T) {
+	// "main@" with cursor at end - after @, expecting remote name
+	ctx := ParseForCompletion("main@")
+	if !ctx.InRemoteSymbol {
+		t.Error("expected InRemoteSymbol to be true")
+	}
+	if ctx.RemoteBookmarkName != "main" {
+		t.Errorf("expected RemoteBookmarkName 'main', got %q", ctx.RemoteBookmarkName)
+	}
+	if ctx.PartialRemote != "" {
+		t.Errorf("expected empty PartialRemote, got %q", ctx.PartialRemote)
+	}
+}
+
+func TestCompletionRemoteSymbolInFunction(t *testing.T) {
+	// "parents(main@ori" - partial remote in function arg
+	ctx := ParseForCompletion("parents(main@ori")
+	if !ctx.InRemoteSymbol {
+		t.Error("expected InRemoteSymbol to be true")
+	}
+	if ctx.PartialRemote != "ori" {
+		t.Errorf("expected PartialRemote 'ori', got %q", ctx.PartialRemote)
+	}
+	if ctx.RemoteBookmarkName != "main" {
+		t.Errorf("expected RemoteBookmarkName 'main', got %q", ctx.RemoteBookmarkName)
+	}
+	if ctx.Function == nil {
+		t.Fatal("expected Function context")
+	}
+	if ctx.Function.IsKeywordArg {
+		t.Error("expected IsKeywordArg to be false for remote names")
+	}
+	if ctx.Function.KeywordArgName != "" {
+		t.Errorf("expected empty KeywordArgName for remote names, got %q", ctx.Function.KeywordArgName)
+	}
+}
+
+func TestCompletionRemoteSymbolCompleted(t *testing.T) {
+	// "main@origin)" - completed remote symbol, not in remote context
+	ctx := ParseForCompletion("main@origin)")
+	if ctx.InRemoteSymbol {
+		t.Error("expected InRemoteSymbol to be false for completed remote symbol")
 	}
 }
 

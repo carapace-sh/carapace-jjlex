@@ -597,6 +597,10 @@ func (p *compParser) parseSymbolOrFunctionCompletion() {
 		p.advance() // consume @
 		p.skipWS()
 		if p.atCursorOrEnd() {
+			// After @ at cursor: could be completing a remote name
+			// or the expression is complete as AtWorkspace
+			p.ctx.InRemoteSymbol = true
+			p.ctx.RemoteBookmarkName = ident
 			p.beforeExpression()
 			p.lastExpr = &Expression{Kind: KindAtWorkspace, Span: Span{Start: identStart, End: p.pos}, payload: &AtWorkspaceExpr{Name: ident}}
 			return
@@ -606,14 +610,26 @@ func (p *compParser) parseSymbolOrFunctionCompletion() {
 		var remote string
 		if ch == '"' {
 			remote = p.parseStringLiteralCompletion()
+			if p.atCursorOrEnd() {
+				p.ctx.InRemoteSymbol = true
+				p.ctx.RemoteBookmarkName = ident
+			}
 		} else if ch == '\'' {
 			remote = p.parseRawStringLiteralCompletion()
+			if p.atCursorOrEnd() {
+				p.ctx.InRemoteSymbol = true
+				p.ctx.RemoteBookmarkName = ident
+			}
 		} else if isIdentifierStart(ch) {
 			remoteStart := p.pos
 			p.scanIdentifierCompletion()
 			if p.pos >= p.cursor && remoteStart < p.cursor {
-				p.ctx.PartialIdent = p.input[remoteStart:p.cursor]
-				remote = p.ctx.PartialIdent
+				p.ctx.PartialRemote = p.input[remoteStart:p.cursor]
+				remote = p.ctx.PartialRemote
+				// Clear PartialIdent since this is a remote name, not a general identifier
+				p.ctx.PartialIdent = ""
+				p.ctx.InRemoteSymbol = true
+				p.ctx.RemoteBookmarkName = ident
 			} else {
 				remote = p.input[remoteStart:p.pos]
 			}
