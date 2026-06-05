@@ -118,6 +118,8 @@ Template grammar uses a Pratt parser for infix operators (precedence from weakes
 | `pkg/actions/jj/exec.go` | `actionExecJJ`/`actionExecJJE` helpers to run `jj` commands |
 | `pkg/actions/jj/uid.go` | UID generation helper for action deduplication |
 | `pkg/actions/jj/action_test.go` | Sandbox tests for actions and unit tests for parsing helpers |
+| `pkg/fixture/fixture.go` | Fixture for creating jj test repos: commits, bookmarks, tags, state inspection |
+| `pkg/fixture/fixture_t.go` | Testing.T wrapper with fatal helpers for fixture operations |
 
 ## Key Patterns & Gotchas
 
@@ -210,6 +212,7 @@ Template function calls support keyword arguments (`f(x, key=val)`). The parser'
 - `completion_test.go` (all three packages) — completion tests using `assertHasExpected`, `assertHasOperator`
 - `main_test.go` — integration tests with realistic examples from jj source code
 - `pkg/actions/jj/action_test.go` — sandbox tests for carapace actions and unit tests for parsing helpers
+- `pkg/fixture/` — jj repo fixture for creating test repos with commits, bookmarks, tags, etc.
 - Parser/completion packages have no external dependencies (pure stdlib); `pkg/actions/jj` depends on carapace and cobra
 
 ## Skills
