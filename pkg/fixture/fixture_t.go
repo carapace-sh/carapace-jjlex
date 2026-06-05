@@ -1,6 +1,8 @@
 package fixture
 
 import (
+	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -188,4 +190,23 @@ func (t *T) GetState() *State {
 		t.t.Fatalf("get state: %v", err)
 	}
 	return state
+}
+
+func (t *T) AddRemote(name string) error {
+	t.t.Helper()
+	return t.f.AddRemote(name)
+}
+
+func (t *T) RemoveRemote(name string) error {
+	t.t.Helper()
+	return t.f.RemoveRemote(name)
+}
+
+func (t *T) DumpState() error {
+	m, err := json.MarshalIndent(t.GetState(), "", "  ")
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(m))
+	return nil
 }

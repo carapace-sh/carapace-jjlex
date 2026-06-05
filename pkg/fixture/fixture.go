@@ -2,6 +2,7 @@ package fixture
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -91,24 +92,15 @@ func (s *State) CommitIDs() []string {
 }
 
 func Init(dir string) (*Fixture, error) {
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	f := &Fixture{dir: dir}
+
+	if err := os.MkdirAll(f.dir, 0o755); err != nil {
 		return nil, fmt.Errorf("create directory: %w", err)
 	}
-
-	// TODO option pattern for config location (filepath, default)
-	f := &Fixture{dir: dir}
 
 	if err := f.jj("git", "init"); err != nil {
 		return nil, fmt.Errorf("jj git init: %w", err)
 	}
-
-	if err := f.jj("config", "set", "--repo", "user.email", "fixture@test.com"); err != nil {
-		return nil, fmt.Errorf("set user.email: %w", err)
-	}
-	if err := f.jj("config", "set", "--repo", "user.name", "fixture"); err != nil {
-		return nil, fmt.Errorf("set user.name: %w", err)
-	}
-
 	return f, nil
 }
 
@@ -126,9 +118,9 @@ func (f *Fixture) Dir() string {
 
 func (f *Fixture) Env() []string {
 	return []string{
-		"JJ_CONFIG=" + filepath.Join(f.dir, ".git/jj.toml"),
+		"JJ_CONFIG=" + filepath.Join(f.dir, ".git/fixtures/jj.toml"),
 		"JJ_USER=fixture",
-		"JJ_EMAIL=fixture@test.com",
+		"JJ_EMAIL=fixture@nowhere",
 	}
 }
 
@@ -146,6 +138,17 @@ func (f *Fixture) RunOutput(args ...string) (string, error) {
 
 func (f *Fixture) cmdEnv() []string {
 	return append(os.Environ(), f.Env()...)
+}
+
+func (f *Fixture) git(args ...string) error {
+	cmd := exec.Command("git", args...)
+	cmd.Dir = f.dir
+	cmd.Env = f.cmdEnv()
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("jj %s: %s: %w", strings.Join(args, " "), strings.TrimSpace(string(out)), err)
+	}
+	return nil
 }
 
 func (f *Fixture) jj(args ...string) error {
@@ -391,4 +394,32 @@ func (f *Fixture) getWorkingCopy() (CommitID, error) {
 		return "", err
 	}
 	return CommitID(out), nil
+}
+
+func (f *Fixture) AddRemote(name string) error {
+	if strings.ContainsAny(name, "./") {
+		return errors.New("invalid name")
+	}
+	path := fmt.Sprintf(".git/fixtures/remotes/%s.git", name)
+	err := f.git("init", "--bare", path)
+	if err != nil {
+		return err
+	}
+	err = f.jj("git", "remote", "add", name, path)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (f *Fixture) RemoveRemote(name string) error {
+	if strings.ContainsAny(name, "./") {
+		return errors.New("invalid name")
+	}
+	path := fmt.Sprintf(".git/fixtures/remotes/%s.git", name)
+	err := f.jj("git", "remote", "remove", name)
+	if err != nil {
+		return err
+	}
+	return os.RemoveAll(path)
 }
