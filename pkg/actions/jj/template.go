@@ -78,12 +78,17 @@ func ActionTemplates() carapace.Action {
 	return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
 		ctx := template.ParseForCompletion(c.Value)
 
+		// Compute the prefix: everything before the partial identifier being typed.
+		// Sub-actions filter against c.Value, so we need to strip this prefix
+		// before invoking them and re-attach it to the completion values.
+		prefix := c.Value[:len(c.Value)-len(ctx.PartialIdent)]
+
 		if ctx.InPattern {
-			return actionForTemplatePatternValue(ctx)
+			return actionForTemplatePatternValue(ctx).Prefix(prefix)
 		}
 
 		if ctx.Function != nil {
-			return actionForTemplateFunctionArg(ctx)
+			return actionForTemplateFunctionArg(ctx).Prefix(prefix)
 		}
 
 		if expectsTemplateToken(ctx, template.ExpectedExpression) && expectsTemplateToken(ctx, template.ExpectedOperator) {
@@ -92,34 +97,34 @@ func ActionTemplates() carapace.Action {
 				actionTemplateExpression(ctx),
 				ActionTemplateOperators(),
 			)
-			return batch.ToA().NoSpace()
+			return batch.ToA().NoSpace().Prefix(prefix)
 		}
 
 		if expectsTemplateToken(ctx, template.ExpectedExpression) {
-			return actionTemplateExpression(ctx)
+			return actionTemplateExpression(ctx).Prefix(prefix)
 		}
 
 		if expectsTemplateToken(ctx, template.ExpectedOperator) {
-			return ActionTemplateOperators().NoSpace()
+			return ActionTemplateOperators().NoSpace().Prefix(prefix)
 		}
 
 		if expectsTemplateToken(ctx, template.ExpectedClosingParen) {
-			return carapace.ActionValues(")")
+			return carapace.ActionValues(")").Prefix(prefix)
 		}
 
 		if expectsTemplateToken(ctx, template.ExpectedComma) {
-			return carapace.ActionValues(",")
+			return carapace.ActionValues(",").Prefix(prefix)
 		}
 
 		if expectsTemplateToken(ctx, template.ExpectedEquals) {
-			return carapace.ActionValues("=")
+			return carapace.ActionValues("=").Prefix(prefix)
 		}
 
 		if expectsTemplateToken(ctx, template.ExpectedLambdaClose) {
-			return carapace.ActionValues("|")
+			return carapace.ActionValues("|").Prefix(prefix)
 		}
 
-		return actionTemplateExpression(ctx)
+		return actionTemplateExpression(ctx).Prefix(prefix)
 	})
 }
 

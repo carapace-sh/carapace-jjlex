@@ -67,16 +67,21 @@ func ActionRevsets(opts RevOpts) carapace.Action {
 	return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
 		ctx := revset.ParseForCompletion(c.Value)
 
+		// Compute the prefix: everything before the partial identifier being typed.
+		// Sub-actions filter against c.Value, so we need to strip this prefix
+		// before invoking them and re-attach it to the completion values.
+		prefix := c.Value[:len(c.Value)-len(ctx.PartialIdent)]
+
 		if ctx.InPattern {
-			return actionForPatternValue(ctx)
+			return actionForPatternValue(ctx).Prefix(prefix)
 		}
 
 		if ctx.Function != nil {
-			return actionForFunctionArg(ctx, opts)
+			return actionForFunctionArg(ctx, opts).Prefix(prefix)
 		}
 
 		if expectsToken(ctx, revset.ExpectedPatternValue) {
-			return ActionStringPatterns().Suffix(":").NoSpace()
+			return ActionStringPatterns().Suffix(":").NoSpace().Prefix(prefix)
 		}
 
 		if expectsToken(ctx, revset.ExpectedStringClose) && ctx.PartialString != "" {
@@ -93,30 +98,30 @@ func ActionRevsets(opts RevOpts) carapace.Action {
 				actionExpression(opts, ctx),
 				actionOperator(opts, ctx, !hasPartial),
 			)
-			return batch.ToA()
+			return batch.ToA().Prefix(prefix)
 		}
 
 		if expectsToken(ctx, revset.ExpectedExpression) {
-			return actionExpression(opts, ctx)
+			return actionExpression(opts, ctx).Prefix(prefix)
 		}
 
 		if expectsToken(ctx, revset.ExpectedOperator) {
-			return actionOperator(opts, ctx, true)
+			return actionOperator(opts, ctx, true).Prefix(prefix)
 		}
 
 		if expectsToken(ctx, revset.ExpectedClosingParen) {
-			return carapace.ActionValues(")")
+			return carapace.ActionValues(")").Prefix(prefix)
 		}
 
 		if expectsToken(ctx, revset.ExpectedComma) {
-			return carapace.ActionValues(",")
+			return carapace.ActionValues(",").Prefix(prefix)
 		}
 
 		if expectsToken(ctx, revset.ExpectedEquals) {
-			return carapace.ActionValues("=")
+			return carapace.ActionValues("=").Prefix(prefix)
 		}
 
-		return actionExpression(opts, ctx)
+		return actionExpression(opts, ctx).Prefix(prefix)
 	})
 }
 

@@ -37,31 +37,36 @@ func ActionFilesets() carapace.Action {
 	return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
 		ctx := fileset.ParseForCompletion(c.Value)
 
+		// Compute the prefix: everything before the partial identifier being typed.
+		// Sub-actions filter against c.Value, so we need to strip this prefix
+		// before invoking them and re-attach it to the completion values.
+		prefix := c.Value[:len(c.Value)-len(ctx.PartialIdent)]
+
 		if ctx.InPattern {
-			return actionForFilesetPatternValue(ctx)
+			return actionForFilesetPatternValue(ctx).Prefix(prefix)
 		}
 
 		if ctx.Function != nil {
-			return actionForFilesetFunctionArg(ctx)
+			return actionForFilesetFunctionArg(ctx).Prefix(prefix)
 		}
 
 		if expectsFilesetToken(ctx, fileset.ExpectedExpression) {
-			return actionFilesetExpression(ctx)
+			return actionFilesetExpression(ctx).Prefix(prefix)
 		}
 
 		if expectsFilesetToken(ctx, fileset.ExpectedOperator) {
-			return ActionFilesetOperators().NoSpace()
+			return ActionFilesetOperators().NoSpace().Prefix(prefix)
 		}
 
 		if expectsFilesetToken(ctx, fileset.ExpectedClosingParen) {
-			return carapace.ActionValues(")")
+			return carapace.ActionValues(")").Prefix(prefix)
 		}
 
 		if expectsFilesetToken(ctx, fileset.ExpectedComma) {
-			return carapace.ActionValues(",")
+			return carapace.ActionValues(",").Prefix(prefix)
 		}
 
-		return actionFilesetExpression(ctx)
+		return actionFilesetExpression(ctx).Prefix(prefix)
 	})
 }
 
