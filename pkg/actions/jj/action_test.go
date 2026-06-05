@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/carapace-sh/carapace"
+	"github.com/carapace-sh/carapace-jjlex/pkg/fixture"
 	"github.com/carapace-sh/carapace/pkg/sandbox"
 )
 
@@ -291,3 +292,28 @@ func TestParseLinesTrailingNewline(t *testing.T) {
 	}
 }
 
+func TestActionLocalBookmarks(t *testing.T) {
+	sandbox.Action(t, ActionLocalBookmarks)(func(s *sandbox.Sandbox) {
+		f := fixture.InitT(t, s.Dir())
+		f.CreateBookmark("first-bookmark")
+		f.CommitAdd("README.md", "fixture test", "added readme")
+		f.CreateBookmark("second-bookmark")
+		f.Describe("setting up project")
+
+		s.Run("").Expect(carapace.ActionValuesDescribed(
+			"first-bookmark", "added readme",
+			"second-bookmark", "(empty) setting up project",
+		).Style("blue").
+			Tag("local bookmarks"))
+
+		s.Run("f").Expect(carapace.ActionValuesDescribed(
+			"first-bookmark", "added readme",
+		).Style("blue").
+			Tag("local bookmarks"))
+
+		s.Run("second-bookmark").Expect(carapace.ActionValuesDescribed(
+			"second-bookmark", "(empty) setting up project",
+		).Style("blue").
+			Tag("local bookmarks"))
+	})
+}
