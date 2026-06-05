@@ -317,3 +317,63 @@ func TestActionLocalBookmarks(t *testing.T) {
 			Tag("local bookmarks"))
 	})
 }
+
+func TestActionTags(t *testing.T) {
+	sandbox.Action(t, ActionTags)(func(s *sandbox.Sandbox) {
+		f := fixture.InitT(t, s.Dir())
+		f.CommitAdd("file.txt", "content", "first commit")
+		f.CreateTag("v1.0")
+		f.CommitAdd("file.txt", "content2", "second commit")
+		f.CreateTag("v2.0")
+
+		s.Run("").Expect(carapace.ActionValues(
+			"v1.0",
+			"v2.0",
+		).Style("yellow").
+			Tag("tags"))
+	})
+}
+
+func TestActionHeadCommits(t *testing.T) {
+	sandbox.Action(t, func() carapace.Action { return ActionHeadCommits(5) })(func(s *sandbox.Sandbox) {
+		f := fixture.InitT(t, s.Dir())
+		f.CommitAdd("a.txt", "a", "first commit")
+		f.CommitAdd("b.txt", "b", "second commit")
+		f.CommitAdd("c.txt", "c", "third commit")
+
+		s.Run("").Expect(carapace.ActionValuesDescribed(
+			"@", "third commit",
+			"@-", "second commit",
+			"@--", "first commit",
+		).Style("blue").
+			Tag("head commits"))
+	})
+}
+
+func TestActionAncestors(t *testing.T) {
+	sandbox.Action(t, func() carapace.Action { return ActionAncestors("") })(func(s *sandbox.Sandbox) {
+		f := fixture.InitT(t, s.Dir())
+		f.CommitAdd("a.txt", "a", "first commit")
+		f.CommitAdd("b.txt", "b", "second commit")
+		f.CommitAdd("c.txt", "c", "third commit")
+
+		s.Run("").Expect(carapace.ActionValuesDescribed(
+			"-", "second commit",
+			"--", "first commit",
+		).Prefix("@").
+			Tag("ancestors"))
+	})
+}
+
+func TestActionRemotes(t *testing.T) {
+	sandbox.Action(t, ActionRemotes)(func(s *sandbox.Sandbox) {
+		f := fixture.InitT(t, s.Dir())
+		f.Run("git", "remote", "add", "origin", "https://example.com/repo.git")
+		f.Run("git", "remote", "add", "upstream", "https://example.com/upstream.git")
+
+		s.Run("").Expect(carapace.ActionValues(
+			"origin",
+			"upstream",
+		).Tag("remotes"))
+	})
+}

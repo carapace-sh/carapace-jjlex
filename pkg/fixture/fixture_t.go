@@ -167,3 +167,12 @@ func (t *T) Merge(revset1, revset2, message string) {
 		t.t.Fatalf("merge %q and %q: %v", revset1, revset2, err)
 	}
 }
+
+func (t *T) GetState() *State {
+	t.t.Helper()
+	state, err := t.f.GetState()
+	if err != nil {
+		t.t.Fatalf("get state: %v", err)
+	}
+	return state
+}
