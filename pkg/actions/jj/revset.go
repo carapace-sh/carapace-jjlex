@@ -83,6 +83,15 @@ func ActionRevsets(opts RevOpts) carapace.Action {
 			return ActionStringPatterns().Suffix(":").Prefix(ctx.PartialString)
 		}
 
+		if expectsToken(ctx, revset.ExpectedExpression) && expectsToken(ctx, revset.ExpectedOperator) {
+			// Both expression and operator are valid - combine both actions
+			batch := carapace.Batch(
+				actionExpression(opts, ctx),
+				actionOperator(opts, ctx),
+			)
+			return batch.ToA()
+		}
+
 		if expectsToken(ctx, revset.ExpectedExpression) {
 			return actionExpression(opts, ctx)
 		}
