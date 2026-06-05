@@ -86,6 +86,15 @@ func ActionTemplates() carapace.Action {
 			return actionForTemplateFunctionArg(ctx)
 		}
 
+		if expectsTemplateToken(ctx, template.ExpectedExpression) && expectsTemplateToken(ctx, template.ExpectedOperator) {
+			// Both expression and operator are valid - combine both actions
+			batch := carapace.Batch(
+				actionTemplateExpression(ctx),
+				ActionTemplateOperators(),
+			)
+			return batch.ToA().NoSpace()
+		}
+
 		if expectsTemplateToken(ctx, template.ExpectedExpression) {
 			return actionTemplateExpression(ctx)
 		}
