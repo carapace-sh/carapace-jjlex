@@ -14,17 +14,19 @@ import (
 //	@  (HEAD)
 //	@- (commit message)
 func ActionHeadCommits(limit int) carapace.Action {
-	return actionExecJJ("log", "--no-graph", "--template", `description.first_line() ++ "\n"`, "--revisions", "::@", "--limit", strconv.Itoa(limit))(func(output []byte) carapace.Action {
-		lines := parseLines(output)
-		vals := make([]string, 0)
-		for i, line := range lines {
-			vals = append(vals, "@"+strings.Repeat("-", i), line)
-		}
-		if len(vals) == 0 {
-			return carapace.ActionValues()
-		}
-		return carapace.ActionValuesDescribed(vals...).Tag("head commits").Style(style.Blue)
-	}).UidF(Uid("commit"))
+	return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
+		return actionExecJJ("log", "--no-graph", "--template", `description.first_line() ++ "\n"`, "--revisions", "::@", "--limit", strconv.Itoa(limit))(func(output []byte) carapace.Action {
+			lines := parseLines(output)
+			vals := make([]string, 0)
+			for i, line := range lines {
+				vals = append(vals, "@"+strings.Repeat("-", i), line)
+			}
+			if len(vals) == 0 {
+				return carapace.ActionValues()
+			}
+			return carapace.ActionValuesDescribed(vals...).Tag("head commits").Style(style.Blue)
+		}).UidF(Uid("commit"))
+	})
 }
 
 // ActionLocalBookmarks completes local bookmarks.
@@ -81,13 +83,15 @@ func ActionTags() carapace.Action {
 //	abc123 (commit message)
 //	def456 (another message)
 func ActionRecentCommits(limit int) carapace.Action {
-	return actionExecJJ("log", "--no-graph", "--template", `commit_id.shortest() ++ " " ++ description.first_line() ++ "\n"`, "--limit", fmt.Sprintf("%d", limit))(func(output []byte) carapace.Action {
-		vals := parseDescribedLines(output)
-		if len(vals) == 0 {
-			return carapace.ActionValues()
-		}
-		return carapace.ActionValuesDescribed(vals...).Tag("commits").Style(style.Dim)
-	}).UidF(Uid("commit"))
+	return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
+		return actionExecJJ("log", "--no-graph", "--template", `commit_id.shortest() ++ " " ++ description.first_line() ++ "\n"`, "--limit", fmt.Sprintf("%d", limit))(func(output []byte) carapace.Action {
+			vals := parseDescribedLines(output)
+			if len(vals) == 0 {
+				return carapace.ActionValues()
+			}
+			return carapace.ActionValuesDescribed(vals...).Tag("commits").Style(style.Dim)
+		}).UidF(Uid("commit"))
+	})
 }
 
 // ActionChangeIds completes change IDs.
@@ -126,14 +130,16 @@ func ActionRemotes() carapace.Action {
 // ActionOperations completes operation IDs.
 //
 //	abc123 (operation description)
-func ActionOperations() carapace.Action {
-	return actionExecJJ("op", "log", "--limit", "20", "--template", `id.short() ++ " " ++ description.first_line() ++ "\n"`)(func(output []byte) carapace.Action {
-		vals := parseDescribedLines(output)
-		if len(vals) == 0 {
-			return carapace.ActionValues()
-		}
-		return carapace.ActionValuesDescribed(vals...).Tag("operations").Style(style.Dim)
-	}).UidF(Uid("operation"))
+func ActionOperations(limit int) carapace.Action {
+	return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
+		return actionExecJJ("op", "log", "--no-graph", "--limit", strconv.Itoa(limit), "--template", `id.short() ++ "\t" ++ description.first_line() ++ "\n"`)(func(output []byte) carapace.Action {
+			vals := parseTabSeparatedLines(output)
+			if len(vals) == 0 {
+				return carapace.ActionValues()
+			}
+			return carapace.ActionValuesDescribed(vals...).Tag("operations").Style(style.Dim)
+		}).UidF(Uid("operation"))
+	})
 }
 
 // ActionAncestors completes ancestor postfix operators for a given revset.

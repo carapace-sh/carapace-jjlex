@@ -40,6 +40,21 @@ func parseDescribedLines(output []byte) []string {
 	return vals
 }
 
+func parseTabSeparatedLines(output []byte) []string {
+	lines := parseLines(output)
+	vals := make([]string, 0, len(lines)*2)
+	for _, line := range lines {
+		parts := strings.SplitN(line, "\t", 2)
+		name := parts[0]
+		var desc string
+		if len(parts) > 1 {
+			desc = parts[1]
+		}
+		vals = append(vals, name, desc)
+	}
+	return vals
+}
+
 func parseBookmarkValues(output []byte, remoteOnly bool) []string {
 	lines := strings.Split(string(output), "\n")
 	vals := make([]string, 0)

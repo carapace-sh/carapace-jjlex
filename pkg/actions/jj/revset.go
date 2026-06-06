@@ -297,7 +297,7 @@ func actionForFunctionArg(ctx *revset.CompletionContext, opts RevOpts) carapace.
 	// Operation: (op, x) — arg 0 = operation, arg 1 = revset
 	case "at_operation":
 		if fn.ArgIndex == 0 {
-			return ActionOperations().NoSpace()
+			return ActionOperations(100).NoSpace()
 		}
 		return actionRevsetArg(opts).NoSpace()
 
