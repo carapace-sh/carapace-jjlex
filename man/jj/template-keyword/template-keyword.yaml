@@ -1,0 +1,4 @@
+self: |
+  `self`: The current context object. In `jj log` templates, `self` is a [Commit](jj://template-method-commit/description). In `jj op log` templates, `self` is an [Operation](jj://template-method-operation/description).
+
+  All zero-arg methods of the context type are also available as top-level keywords (e.g. `description` is equivalent to `self.description()`).

@@ -47,6 +47,42 @@ func ActionTemplateFunctions() carapace.Action {
 	}).Tag("template functions")
 }
 
+// ActionCommitKeywords completes Commit keyword identifiers available in
+// commit templates (equivalent to self.method() calls).
+//
+//	change_id (ChangeId of the commit)
+//	description (commit description as String)
+func ActionCommitKeywords() carapace.Action {
+	return carapace.ActionValuesDescribed(
+		"description", "Commit description as String",
+		"trailers", "List of Trailer objects",
+		"change_id", "ChangeId of the commit",
+		"commit_id", "CommitId of the commit",
+		"parents", "List of parent Commits",
+		"author", "Signature of the author",
+		"committer", "Signature of the committer",
+		"signature", "Cryptographic signature",
+		"mine", "Whether authored by current user",
+		"working_copies", "List of WorkspaceRef objects",
+		"current_working_copy", "Whether this is the current working copy",
+		"bookmarks", "List of all CommitRef bookmarks",
+		"local_bookmarks", "List of local CommitRef bookmarks",
+		"remote_bookmarks", "List of remote CommitRef bookmarks",
+		"tags", "List of all CommitRef tags",
+		"local_tags", "List of local CommitRef tags",
+		"remote_tags", "List of remote CommitRef tags",
+		"divergent", "Whether this commit is divergent",
+		"hidden", "Whether this commit is hidden",
+		"change_offset", "Change offset for divergent commits",
+		"immutable", "Whether this commit is immutable",
+		"conflict", "Whether this commit has conflicts",
+		"empty", "Whether this commit modifies no files",
+		"root", "Whether this is the root commit",
+	).Suffix("()").
+		Uid("jj", "template-method-commit", "args", "false").
+		Tag("commit keywords")
+}
+
 // ActionTemplateOperators completes template operators.
 //
 //	++ (concatenation)
@@ -146,6 +182,8 @@ func expectsTemplateToken(ctx *template.CompletionContext, token template.Expect
 func actionTemplateExpression(_ *template.CompletionContext) carapace.Action {
 	return carapace.Batch(
 		ActionTemplateFunctions(),
+		ActionCommitKeywords(),
+		carapace.ActionValuesDescribed("self", "Current context object (Commit in jj log)").Uid("jj", "template-keyword", "name", "self"),
 		ActionStringPatterns().Suffix(":"),
 	).ToA().NoSpace()
 }
