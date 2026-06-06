@@ -743,13 +743,12 @@ func (p *compParser) parseFunctionCallCompletion(name string) {
 
 		// Regular positional argument
 		p.parseExpr()
-		fs.args = append(fs.args, p.lastExpr)
-		argIndex++
 
-		// If the parsed expression ended with a partial identifier, it might
-		// be a keyword arg name (e.g., "remote" in "remote_bookmarks(remote")
+		// If the parsed expression ended with a partial identifier at the
+		// cursor, the user is still typing this argument — don't count it as
+		// a completed arg. It might also be a keyword arg name (e.g.,
+		// "remote" in "remote_bookmarks(remote").
 		if p.atCursorOrEnd() && p.ctx.PartialIdent != "" {
-			// The partial identifier could be a keyword arg name
 			p.setFunctionContext(fs, argIndex)
 			if p.ctx.Function != nil {
 				p.ctx.Function.KeywordArgName = p.ctx.PartialIdent
@@ -760,6 +759,9 @@ func (p *compParser) parseFunctionCallCompletion(name string) {
 			p.lastExpr = &Expression{Kind: KindFunctionCall, Span: Span{Start: funcStart, End: p.pos}, payload: &FunctionCallExpr{Name: name, Args: fs.args, KeywordArgs: fs.keywordArgs}}
 			return
 		}
+
+		fs.args = append(fs.args, p.lastExpr)
+		argIndex++
 
 		p.skipWS()
 		if p.atCursorOrEnd() {

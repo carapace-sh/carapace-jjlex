@@ -92,7 +92,7 @@ func TestCompletionInFunctionEmpty(t *testing.T) {
 }
 
 func TestCompletionInFunctionAfterArg(t *testing.T) {
-	// "parents(foo" with cursor at end
+	// "parents(foo" with cursor at end - 'foo' is a partial identifier still being typed
 	ctx := ParseForCompletion("parents(foo")
 	assertHasExpected(t, ctx, ExpectedClosingParen)
 	assertHasExpected(t, ctx, ExpectedComma)
@@ -102,31 +102,27 @@ func TestCompletionInFunctionAfterArg(t *testing.T) {
 	if ctx.Function.Name != "parents" {
 		t.Errorf("expected function name 'parents', got %q", ctx.Function.Name)
 	}
-	if ctx.Function.ArgIndex != 1 {
-		t.Errorf("expected arg index 1, got %d", ctx.Function.ArgIndex)
+	// 'foo' is partial (cursor at end), so argIndex is still 0
+	if ctx.Function.ArgIndex != 0 {
+		t.Errorf("expected arg index 0, got %d", ctx.Function.ArgIndex)
 	}
-	if len(ctx.Function.Args) != 1 {
-		t.Fatalf("expected 1 arg, got %d", len(ctx.Function.Args))
+	if ctx.PartialIdent != "foo" {
+		t.Errorf("expected partialIdent 'foo', got %q", ctx.PartialIdent)
 	}
-	if ctx.Function.Args[0] == nil {
-		t.Fatal("expected non-nil arg")
-	}
-	if ctx.Function.Args[0].Kind != KindIdentifier {
-		t.Errorf("expected identifier arg, got %v", ctx.Function.Args[0].Kind)
-	}
-	if ctx.Function.Args[0].Identifier() != "foo" {
-		t.Errorf("expected arg identifier 'foo', got %q", ctx.Function.Args[0].Identifier())
+	if len(ctx.Function.Args) != 0 {
+		t.Fatalf("expected 0 args (partial), got %d", len(ctx.Function.Args))
 	}
 }
 
 func TestCompletionInFunctionMultipleArgs(t *testing.T) {
-	// "file(a, b" with cursor at end
+	// "file(a, b" with cursor at end - 'b' is partial, 'a' is complete
 	ctx := ParseForCompletion("file(a, b")
 	if ctx.Function == nil {
 		t.Fatal("expected Function context")
 	}
-	if len(ctx.Function.Args) != 2 {
-		t.Fatalf("expected 2 args, got %d", len(ctx.Function.Args))
+	// 'a' is complete (followed by comma), 'b' is partial (cursor at end)
+	if len(ctx.Function.Args) != 1 {
+		t.Fatalf("expected 1 complete arg, got %d", len(ctx.Function.Args))
 	}
 	if ctx.Function.Args[0] == nil {
 		t.Fatal("expected non-nil first arg")
@@ -134,11 +130,8 @@ func TestCompletionInFunctionMultipleArgs(t *testing.T) {
 	if ctx.Function.Args[0].Identifier() != "a" {
 		t.Errorf("expected first arg 'a', got %q", ctx.Function.Args[0].Identifier())
 	}
-	if ctx.Function.Args[1] == nil {
-		t.Fatal("expected non-nil second arg")
-	}
-	if ctx.Function.Args[1].Identifier() != "b" {
-		t.Errorf("expected second arg 'b', got %q", ctx.Function.Args[1].Identifier())
+	if ctx.PartialIdent != "b" {
+		t.Errorf("expected partialIdent 'b', got %q", ctx.PartialIdent)
 	}
 }
 
@@ -463,23 +456,17 @@ func TestCompletionRemoteSymbolCompleted(t *testing.T) {
 }
 
 func TestCompletionArgSpanAndContent(t *testing.T) {
-	// "parents(foo" - verify arg span and content
+	// "parents(foo" - 'foo' is partial at cursor, not a completed arg
 	ctx := ParseForCompletion("parents(foo")
 	if ctx.Function == nil {
 		t.Fatal("expected Function context")
 	}
-	if len(ctx.Function.Args) != 1 {
-		t.Fatalf("expected 1 arg, got %d", len(ctx.Function.Args))
+	// 'foo' is partial, so no completed args
+	if len(ctx.Function.Args) != 0 {
+		t.Fatalf("expected 0 args (partial), got %d", len(ctx.Function.Args))
 	}
-	arg := ctx.Function.Args[0]
-	if arg.Kind != KindIdentifier {
-		t.Errorf("expected KindIdentifier, got %v", arg.Kind)
-	}
-	if arg.Identifier() != "foo" {
-		t.Errorf("expected identifier 'foo', got %q", arg.Identifier())
-	}
-	if arg.Span.Start != 8 || arg.Span.End != 11 {
-		t.Errorf("expected span [8,11), got [%d,%d)", arg.Span.Start, arg.Span.End)
+	if ctx.PartialIdent != "foo" {
+		t.Errorf("expected partialIdent 'foo', got %q", ctx.PartialIdent)
 	}
 }
 
@@ -555,13 +542,14 @@ func TestCompletionFunctionCallExpr(t *testing.T) {
 }
 
 func TestCompletionMultipleArgsSpanAndContent(t *testing.T) {
-	// "file(a, b, c" - verify all args have correct span and content
+	// "file(a, b, c" - 'a' and 'b' are complete (comma-separated), 'c' is partial
 	ctx := ParseForCompletion("file(a, b, c")
 	if ctx.Function == nil {
 		t.Fatal("expected Function context")
 	}
-	if len(ctx.Function.Args) != 3 {
-		t.Fatalf("expected 3 args, got %d", len(ctx.Function.Args))
+	// 'a' and 'b' are complete, 'c' is partial at cursor
+	if len(ctx.Function.Args) != 2 {
+		t.Fatalf("expected 2 complete args, got %d", len(ctx.Function.Args))
 	}
 	for i, expected := range []struct {
 		name  string
@@ -570,7 +558,6 @@ func TestCompletionMultipleArgsSpanAndContent(t *testing.T) {
 	}{
 		{"a", 5, 6},
 		{"b", 8, 9},
-		{"c", 11, 12},
 	} {
 		arg := ctx.Function.Args[i]
 		if arg == nil {

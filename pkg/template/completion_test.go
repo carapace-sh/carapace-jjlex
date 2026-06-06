@@ -69,8 +69,9 @@ func TestCompletionInFunctionAfterArg(t *testing.T) {
 	if ctx.Function == nil {
 		t.Fatal("expected Function context")
 	}
-	if ctx.Function.ArgIndex != 1 {
-		t.Errorf("expected arg index 1, got %d", ctx.Function.ArgIndex)
+	// 'foo' is partial (cursor at end), so argIndex is still 0
+	if ctx.Function.ArgIndex != 0 {
+		t.Errorf("expected arg index 0, got %d", ctx.Function.ArgIndex)
 	}
 }
 
@@ -79,8 +80,12 @@ func TestCompletionInFunctionMultipleArgs(t *testing.T) {
 	if ctx.Function == nil {
 		t.Fatal("expected Function context")
 	}
-	if len(ctx.Function.Args) != 2 {
-		t.Fatalf("expected 2 args, got %d", len(ctx.Function.Args))
+	// 'a' is complete (followed by comma), 'b' is partial (cursor at end)
+	if len(ctx.Function.Args) != 1 {
+		t.Fatalf("expected 1 complete arg, got %d", len(ctx.Function.Args))
+	}
+	if ctx.PartialIdent != "b" {
+		t.Errorf("expected partialIdent 'b', got %q", ctx.PartialIdent)
 	}
 }
 

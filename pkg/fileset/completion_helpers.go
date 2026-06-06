@@ -157,6 +157,18 @@ func (p *compParser) parseFunctionCallCompletion(name string) {
 
 		// Parse argument
 		p.parseExpr()
+
+		// If the parsed expression ended with a partial identifier at the
+		// cursor, the user is still typing this argument — don't count it as
+		// a completed arg.
+		if p.atCursorOrEnd() && p.ctx.PartialIdent != "" {
+			p.setFunctionContext(fs, argIndex)
+			p.addExpected(ExpectedClosingParen)
+			p.addExpected(ExpectedComma)
+			p.lastExpr = &Expression{Kind: KindFunctionCall, Span: Span{Start: funcStart, End: p.pos}, payload: &FunctionCallExpr{Name: name, Args: fs.args}}
+			return
+		}
+
 		fs.args = append(fs.args, p.lastExpr)
 		argIndex++
 

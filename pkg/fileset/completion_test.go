@@ -98,8 +98,12 @@ func TestCompletionInFunctionMultipleArgs(t *testing.T) {
 	if ctx.Function == nil {
 		t.Fatal("expected Function context")
 	}
-	if len(ctx.Function.Args) != 2 {
-		t.Fatalf("expected 2 args, got %d", len(ctx.Function.Args))
+	// 'a' is complete (followed by comma), 'b' is partial (cursor at end)
+	if len(ctx.Function.Args) != 1 {
+		t.Fatalf("expected 1 complete arg, got %d", len(ctx.Function.Args))
+	}
+	if ctx.PartialIdent != "b" {
+		t.Errorf("expected partialIdent 'b', got %q", ctx.PartialIdent)
 	}
 }
 

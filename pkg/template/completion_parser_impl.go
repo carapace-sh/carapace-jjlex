@@ -533,6 +533,20 @@ func (p *compParser) parseFunctionCallComp(name string, isMethod bool, methodObj
 		p.updateFunctionArgIndex()
 
 		p.parseTemplateComp()
+
+		// If the parsed expression ended with a partial identifier at the
+		// cursor, the user is still typing this argument — don't count it as
+		// a completed arg.
+		if p.atCursorOrEnd() && p.ctx.PartialIdent != "" {
+			p.addExpected(ExpectedClosingParen)
+			p.addExpected(ExpectedComma)
+			p.addExpected(ExpectedEquals)
+			if p.ctx.Function != nil {
+				p.ctx.Function.KeywordArgName = p.ctx.PartialIdent
+			}
+			return
+		}
+
 		fs.args = append(fs.args, p.lastExpr)
 		fs.argIndex = len(fs.args)
 		p.updateFunctionArgIndex()
