@@ -67,7 +67,6 @@ func TestCompletionAfterUnion(t *testing.T) {
 
 func TestCompletionInFunctionEmpty(t *testing.T) {
 	ctx := ParseForCompletion("all(")
-	assertHasExpected(t, ctx, ExpectedExpression)
 	assertHasExpected(t, ctx, ExpectedClosingParen)
 	if ctx.Function == nil {
 		t.Fatal("expected Function context")
@@ -77,6 +76,9 @@ func TestCompletionInFunctionEmpty(t *testing.T) {
 	}
 	if ctx.Function.ArgIndex != 0 {
 		t.Errorf("expected arg index 0, got %d", ctx.Function.ArgIndex)
+	}
+	if !ctx.Function.IsZeroArg {
+		t.Error("expected IsZeroArg")
 	}
 }
 
@@ -172,8 +174,10 @@ func TestCompletionNestedFunction(t *testing.T) {
 	if ctx.Function.Name != "all" {
 		t.Errorf("expected function name 'all', got %q", ctx.Function.Name)
 	}
-	assertHasExpected(t, ctx, ExpectedExpression)
 	assertHasExpected(t, ctx, ExpectedClosingParen)
+	if !ctx.Function.IsZeroArg {
+		t.Error("expected IsZeroArg for inner all()")
+	}
 }
 
 func TestCompletionEmptyFunctionCall(t *testing.T) {

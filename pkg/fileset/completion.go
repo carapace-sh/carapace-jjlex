@@ -60,6 +60,9 @@ type FunctionContext struct {
 	Args []*Expression `json:"args,omitempty"`
 	// ArgIndex is the 0-based index of the argument being completed
 	ArgIndex int `json:"argIndex"`
+	// IsZeroArg is true when the function takes no arguments
+	// (e.g. all(), none())
+	IsZeroArg bool `json:"isZeroArg"`
 }
 
 // CompletionContext describes what is expected at the completion position.

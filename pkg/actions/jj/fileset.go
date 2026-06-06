@@ -13,7 +13,7 @@ func ActionFilesetFunctions() carapace.Action {
 	return carapace.ActionValuesDescribed(
 		"all", "Matches everything",
 		"none", "Matches nothing",
-	).Uid("jj", "fileset-function").Tag("fileset functions")
+	).Suffix("()").Uid("jj", "fileset-function").Tag("fileset functions")
 }
 
 // ActionFilesetOperators completes fileset operators.
@@ -94,7 +94,10 @@ func actionFilesetExpression(_ *fileset.CompletionContext) carapace.Action {
 	).ToA().NoSpace()
 }
 
-func actionForFilesetFunctionArg(_ *fileset.CompletionContext) carapace.Action {
+func actionForFilesetFunctionArg(ctx *fileset.CompletionContext) carapace.Action {
+	if ctx.Function.IsZeroArg {
+		return carapace.ActionValues(")")
+	}
 	return carapace.Batch(
 		ActionFilesetFunctions(),
 		ActionFilesetPatterns().Suffix(":"),

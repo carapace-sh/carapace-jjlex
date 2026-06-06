@@ -23,6 +23,18 @@ func ParseForCompletion(input string) *CompletionContext {
 	}
 	p.ctx.ExpectedTokens = dedupTokens(p.ctx.ExpectedTokens)
 	p.ctx.ValidOperators = dedupOperators(p.ctx.ValidOperators)
+	// For zero-arg functions, only ) is valid — remove Expression, Operator, Comma, and Equals
+	if p.ctx.Function != nil && p.ctx.Function.IsZeroArg {
+		filtered := make([]ExpectedToken, 0, len(p.ctx.ExpectedTokens))
+		for _, t := range p.ctx.ExpectedTokens {
+			if t == ExpectedExpression || t == ExpectedOperator || t == ExpectedComma || t == ExpectedEquals {
+				continue
+			}
+			filtered = append(filtered, t)
+		}
+		p.ctx.ExpectedTokens = filtered
+		p.ctx.ValidOperators = nil
+	}
 	return p.ctx
 }
 
@@ -663,9 +675,14 @@ func (p *compParser) parseFunctionCallCompletion(name string) {
 	p.skipWS()
 	if p.atCursorOrEnd() {
 		p.setFunctionContext(fs, 0)
-		p.beforeExpression()
-		p.addExpected(ExpectedClosingParen)
-		p.lastExpr = &Expression{Kind: KindFunctionCall, Span: Span{Start: funcStart, End: p.pos}, payload: &FunctionCallExpr{Name: name}}
+		if isZeroArgFunction(name) {
+			p.ctx.Function.IsZeroArg = true
+			p.addExpected(ExpectedClosingParen)
+		} else {
+			p.beforeExpression()
+			p.addExpected(ExpectedClosingParen)
+			p.lastExpr = &Expression{Kind: KindFunctionCall, Span: Span{Start: funcStart, End: p.pos}, payload: &FunctionCallExpr{Name: name}}
+		}
 		return
 	}
 
@@ -886,6 +903,15 @@ func (p *compParser) matchStringAtFullInput(pos int, s string) bool {
 }
 
 // Helper checks that don't need a parser.
+func isZeroArgFunction(name string) bool {
+	switch name {
+	case "all", "conflicts", "divergent", "empty", "merges", "mine", "none",
+		"root", "signed", "visible_heads", "working_copies":
+		return true
+	}
+	return false
+}
+
 func isFunctionNameCheck(ident string) bool {
 	if len(ident) == 0 {
 		return false

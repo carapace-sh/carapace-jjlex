@@ -64,6 +64,8 @@ type FunctionContext struct {
 	IsMethod bool `json:"isMethod"`
 	// MethodObject is the expression the method is called on (if IsMethod)
 	MethodObject *Expression `json:"methodObject,omitempty"`
+	// IsZeroArg is true when the function takes no arguments
+	IsZeroArg bool `json:"isZeroArg"`
 }
 
 // CompletionContext describes what is expected at the completion position.

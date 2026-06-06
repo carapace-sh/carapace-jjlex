@@ -182,7 +182,7 @@ func postfixActions(ctx *revset.CompletionContext) []carapace.Action {
 func actionExpression(opts RevOpts, ctx *revset.CompletionContext) carapace.Action {
 	batch := carapace.Batch(
 		ActionRevs(opts),
-		ActionRevsetFunctions().Suffix("("),
+		ActionRevsetFunctions(),
 		ActionRevsetPatterns().Suffix(":"),
 		ActionSpecialSymbols(),
 		ActionRevsetAliases(true),
@@ -216,6 +216,10 @@ func actionOperator(_ RevOpts, ctx *revset.CompletionContext, allowPostfix bool)
 func actionForFunctionArg(ctx *revset.CompletionContext, opts RevOpts) carapace.Action {
 	fn := ctx.Function
 
+	if fn.IsZeroArg {
+		return carapace.ActionValues(")")
+	}
+
 	if fn.IsKeywordArg && fn.KeywordArgName != "" && !strings.Contains(fn.KeywordArgName, "=") {
 		return ActionRevsetKeywordArgs(fn.Name).Suffix("=")
 	}
@@ -227,7 +231,7 @@ func actionForFunctionArg(ctx *revset.CompletionContext, opts RevOpts) carapace.
 		"present", "connected", "exactly", "reachable", "coalesce":
 		return carapace.Batch(
 			ActionRevs(opts),
-			ActionRevsetFunctions().Suffix("("),
+			ActionRevsetFunctions(),
 			ActionSpecialSymbols(),
 			ActionRevsetAliases(true),
 		).ToA().NoSpace()
@@ -274,7 +278,7 @@ func actionForFunctionArg(ctx *revset.CompletionContext, opts RevOpts) carapace.
 	default:
 		return carapace.Batch(
 			ActionRevs(opts),
-			ActionRevsetFunctions().Suffix("("),
+			ActionRevsetFunctions(),
 			ActionSpecialSymbols(),
 			ActionRevsetAliases(true),
 		).ToA().NoSpace()

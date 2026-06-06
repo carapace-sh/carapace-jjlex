@@ -21,6 +21,18 @@ func ParseForCompletion(input string) *CompletionContext {
 	}
 	p.ctx.ExpectedTokens = dedupTokens(p.ctx.ExpectedTokens)
 	p.ctx.ValidOperators = dedupOperators(p.ctx.ValidOperators)
+	// For zero-arg functions, only ) is valid — remove Expression, Operator, and Comma
+	if p.ctx.Function != nil && p.ctx.Function.IsZeroArg {
+		filtered := make([]ExpectedToken, 0, len(p.ctx.ExpectedTokens))
+		for _, t := range p.ctx.ExpectedTokens {
+			if t == ExpectedExpression || t == ExpectedOperator || t == ExpectedComma {
+				continue
+			}
+			filtered = append(filtered, t)
+		}
+		p.ctx.ExpectedTokens = filtered
+		p.ctx.ValidOperators = nil
+	}
 	return p.ctx
 }
 

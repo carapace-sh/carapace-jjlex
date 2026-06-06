@@ -133,9 +133,14 @@ func (p *compParser) parseFunctionCallCompletion(name string) {
 	p.skipWS()
 	if p.atCursorOrEnd() {
 		p.setFunctionContext(fs, 0)
-		p.beforeExpression()
-		p.addExpected(ExpectedClosingParen)
-		p.lastExpr = &Expression{Kind: KindFunctionCall, Span: Span{Start: funcStart, End: p.pos}, payload: &FunctionCallExpr{Name: name}}
+		if isZeroArgFunctionFileset(name) {
+			p.ctx.Function.IsZeroArg = true
+			p.addExpected(ExpectedClosingParen)
+		} else {
+			p.beforeExpression()
+			p.addExpected(ExpectedClosingParen)
+			p.lastExpr = &Expression{Kind: KindFunctionCall, Span: Span{Start: funcStart, End: p.pos}, payload: &FunctionCallExpr{Name: name}}
+		}
 		return
 	}
 
@@ -229,6 +234,14 @@ func (p *compParser) scanIdentPartCompletion() bool {
 		p.advance()
 	}
 	return p.pos > start
+}
+
+func isZeroArgFunctionFileset(name string) bool {
+	switch name {
+	case "all", "none":
+		return true
+	}
+	return false
 }
 
 func isFunctionNameCheck(ident string) bool {

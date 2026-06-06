@@ -344,6 +344,41 @@ func TestCompletionEmptyFunctionCall(t *testing.T) {
 	assertHasExpected(t, ctx, ExpectedOperator)
 }
 
+func TestCompletionZeroArgFunction(t *testing.T) {
+	// "root(" with cursor at end - zero-arg function only expects )
+	ctx := ParseForCompletion("root(")
+	if ctx.Function == nil {
+		t.Fatal("expected Function context")
+	}
+	if ctx.Function.Name != "root" {
+		t.Errorf("expected function name 'root', got %q", ctx.Function.Name)
+	}
+	if !ctx.Function.IsZeroArg {
+		t.Error("expected IsZeroArg")
+	}
+	assertHasExpected(t, ctx, ExpectedClosingParen)
+	assertNotHasExpected(t, ctx, ExpectedExpression)
+	assertNotHasExpected(t, ctx, ExpectedOperator)
+}
+
+func TestCompletionZeroArgFunctionNested(t *testing.T) {
+	// "all(root(" with cursor at end - inner zero-arg function
+	ctx := ParseForCompletion("all(root(")
+	if ctx.Function == nil {
+		t.Fatal("expected Function context")
+	}
+	if ctx.Function.Name != "root" {
+		t.Errorf("expected function name 'root', got %q", ctx.Function.Name)
+	}
+	if !ctx.Function.IsZeroArg {
+		t.Error("expected IsZeroArg")
+	}
+	assertHasExpected(t, ctx, ExpectedClosingParen)
+	assertNotHasExpected(t, ctx, ExpectedExpression)
+	assertNotHasExpected(t, ctx, ExpectedOperator)
+	assertNotHasExpected(t, ctx, ExpectedComma)
+}
+
 func TestCompletionInPatternWithPartialIdent(t *testing.T) {
 	// "exact:fo" with cursor at end - pattern value is partial identifier
 	ctx := ParseForCompletion("exact:fo")
@@ -558,6 +593,13 @@ func assertHasExpected(t *testing.T, ctx *CompletionContext, expected ExpectedTo
 		return
 	}
 	t.Errorf("expected %s in ExpectedTokens, got %v", expected, ctx.ExpectedTokens)
+}
+
+func assertNotHasExpected(t *testing.T, ctx *CompletionContext, notExpected ExpectedToken) {
+	t.Helper()
+	if slices.Contains(ctx.ExpectedTokens, notExpected) {
+		t.Errorf("did not expect %s in ExpectedTokens, got %v", notExpected, ctx.ExpectedTokens)
+	}
 }
 
 func assertHasOperator(t *testing.T, ctx *CompletionContext, op string) {

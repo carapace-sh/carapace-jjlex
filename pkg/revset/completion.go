@@ -71,6 +71,9 @@ type FunctionContext struct {
 	IsKeywordArg bool `json:"isKeywordArg"`
 	// KeywordArgName is the name of the keyword arg being completed
 	KeywordArgName string `json:"keywordArgName,omitempty"`
+	// IsZeroArg is true when the function takes no arguments
+	// (e.g. root(), all(), none())
+	IsZeroArg bool `json:"isZeroArg"`
 }
 
 // CompletionContext describes what is expected at the completion position.

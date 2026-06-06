@@ -27,7 +27,7 @@ func ActionRevsetFunctions() carapace.Action {
 			"signed", "Commits that are cryptographically signed",
 			"visible_heads", "All visible heads (same as heads(all()))",
 			"working_copies", "The working copy commits across all the workspaces",
-		).Uid("jj", "revset-function", "args", "false")
+		).Suffix("()").Uid("jj", "revset-function", "args", "false")
 
 		withArgs := carapace.ActionValuesDescribed(
 			"ancestors", "Ancestors of x, optionally limited by depth",

@@ -144,7 +144,10 @@ func actionTemplateExpression(_ *template.CompletionContext) carapace.Action {
 	).ToA().NoSpace()
 }
 
-func actionForTemplateFunctionArg(_ *template.CompletionContext) carapace.Action {
+func actionForTemplateFunctionArg(ctx *template.CompletionContext) carapace.Action {
+	if ctx.Function.IsZeroArg {
+		return carapace.ActionValues(")")
+	}
 	return carapace.Batch(
 		ActionTemplateFunctions(),
 		ActionStringPatterns().Suffix(":"),
