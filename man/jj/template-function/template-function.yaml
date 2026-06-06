@@ -45,4 +45,4 @@ config: |
 git_web_url: |
   `git_web_url([remote])`: Convert a git remote URL to an HTTPS browse URL.
 replace: |
-  `replace(pattern, content, replacement)`: Replace matches using a pattern. The replacement is a lambda with `RegexCaptures` providing `.get(index)`, `.name(name)`, and `.len()`.
+  `replace(pattern, content, replacement)`: Replace matches using a pattern. The replacement is a lambda with [RegexCaptures](jj://template-method-regexcaptures/len) providing `.get(index)`, `.name(name)`, and `.len()`.
