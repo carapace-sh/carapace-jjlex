@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/carapace-sh/carapace"
+	"github.com/carapace-sh/carapace-jjlex/pkg/actions/jj"
 	"github.com/carapace-sh/carapace-jjlex/pkg/fileset"
 	"github.com/spf13/cobra"
 )
@@ -79,4 +81,20 @@ func init() {
 	rootCmd.AddCommand(filesetCompleteCmd)
 	rootCmd.AddCommand(filesetBareCmd)
 	rootCmd.AddCommand(filesetBareCompleteCmd)
+
+	carapace.Gen(filesetCmd).PositionalCompletion(
+		jj.ActionFilesets(),
+	)
+
+	carapace.Gen(filesetCompleteCmd).PositionalCompletion(
+		jj.ActionFilesets(),
+	)
+
+	carapace.Gen(filesetBareCmd).PositionalCompletion(
+		jj.ActionFilesets(),
+	)
+
+	carapace.Gen(filesetBareCompleteCmd).PositionalCompletion(
+		jj.ActionFilesets(),
+	)
 }

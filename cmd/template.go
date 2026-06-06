@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/carapace-sh/carapace"
+	"github.com/carapace-sh/carapace-jjlex/pkg/actions/jj"
 	"github.com/carapace-sh/carapace-jjlex/pkg/template"
 	"github.com/spf13/cobra"
 )
@@ -44,4 +46,12 @@ var templateCompleteCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(templateCmd)
 	rootCmd.AddCommand(templateCompleteCmd)
+
+	carapace.Gen(templateCmd).PositionalCompletion(
+		jj.ActionTemplates(),
+	)
+
+	carapace.Gen(templateCompleteCmd).PositionalCompletion(
+		jj.ActionTemplates(),
+	)
 }
