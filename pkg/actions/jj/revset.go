@@ -166,14 +166,14 @@ func postfixActions(ctx *revset.CompletionContext) []carapace.Action {
 		return nil
 	}
 	var actions []carapace.Action
-	if strings.HasSuffix(attached, "-") {
+	if before, ok := strings.CutSuffix(attached, "-"); ok {
 		actions = append(actions,
-			ActionAncestors(strings.TrimSuffix(attached, "-")).Suppress("doesn't exist"),
+			ActionAncestors(before).Suppress("doesn't exist"),
 		)
 	}
-	if strings.HasSuffix(attached, "+") {
+	if before, ok := strings.CutSuffix(attached, "+"); ok {
 		actions = append(actions,
-			ActionDescendants(strings.TrimSuffix(attached, "+")).Suppress("doesn't exist"),
+			ActionDescendants(before).Suppress("doesn't exist"),
 		)
 	}
 	return actions
@@ -182,7 +182,7 @@ func postfixActions(ctx *revset.CompletionContext) []carapace.Action {
 func actionExpression(opts RevOpts, ctx *revset.CompletionContext) carapace.Action {
 	batch := carapace.Batch(
 		ActionRevs(opts),
-		ActionRevsetFunctions(),
+		ActionRevsetFunctions().Suffix("("),
 		ActionRevsetPatterns().Suffix(":"),
 		ActionSpecialSymbols(),
 		ActionRevsetAliases(true),
@@ -227,7 +227,7 @@ func actionForFunctionArg(ctx *revset.CompletionContext, opts RevOpts) carapace.
 		"present", "connected", "exactly", "reachable", "coalesce":
 		return carapace.Batch(
 			ActionRevs(opts),
-			ActionRevsetFunctions(),
+			ActionRevsetFunctions().Suffix("("),
 			ActionSpecialSymbols(),
 			ActionRevsetAliases(true),
 		).ToA().NoSpace()
@@ -274,7 +274,7 @@ func actionForFunctionArg(ctx *revset.CompletionContext, opts RevOpts) carapace.
 	default:
 		return carapace.Batch(
 			ActionRevs(opts),
-			ActionRevsetFunctions(),
+			ActionRevsetFunctions().Suffix("("),
 			ActionSpecialSymbols(),
 			ActionRevsetAliases(true),
 		).ToA().NoSpace()
