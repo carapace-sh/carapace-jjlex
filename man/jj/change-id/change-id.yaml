@@ -1,0 +1,4 @@
+change_id: |
+  A change ID prefix. Change IDs are short, stable identifiers for commits in jj.
+
+  Unlike commit IDs, change IDs remain the same when a commit is rebased or amended. If a change is divergent, the same change ID prefix resolves to multiple commits.

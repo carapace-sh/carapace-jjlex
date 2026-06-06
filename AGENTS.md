@@ -121,6 +121,13 @@ Template grammar uses a Pratt parser for infix operators (precedence from weakes
 | `pkg/fixture/fixture.go` | Fixture for creating jj test repos: commits, bookmarks, tags, state inspection |
 | `pkg/fixture/fixture_t.go` | Testing.T wrapper with fatal helpers for fixture operations |
 
+### Man Pages (`man/`)
+
+YAML documentation files for completion value UIDs. Organized as `man/jj/<host>/<host>.yaml` where the UID `jj://host/path` maps to key `path` in the YAML. Two kinds of content:
+
+- **Known concepts** — fixed meaning, enumerable keys (e.g. `revset-function/parents`, `fileset-operator/&`)
+- **Live entities** — context-dependent, runtime keys (e.g. `bookmark/main`, `commit/abc123`)
+
 ## Key Patterns & Gotchas
 
 ### Completion actions return pure value lists
@@ -248,6 +255,7 @@ When jj revset syntax changes, update:
 2. Parser (`pkg/revset/parser.go`)
 3. Completion parser (`pkg/revset/completion_parser.go`)
 4. Completion actions (`pkg/actions/jj/function.go`, `pkg/actions/jj/revset.go`)
+5. Man pages (`man/jj/revset-function/`, `man/jj/revset-operator/`, `man/jj/revset-pattern/`, etc.)
 
 Check: `lib/src/revset.pest`, `lib/src/revset.rs` (BUILTIN_FUNCTION_MAP), `docs/revsets.md`
 
@@ -259,6 +267,7 @@ When jj fileset syntax changes, update:
 3. Completion parser (`pkg/fileset/completion_parser.go`, `completion_helpers.go`)
 4. AST (`pkg/fileset/ast.go`)
 5. Completion actions (`pkg/actions/jj/function.go`, `pkg/actions/jj/revset.go`)
+6. Man pages (`man/jj/fileset-function/`, `man/jj/fileset-operator/`, `man/jj/fileset-pattern/`)
 
 Check: `lib/src/fileset.pest`, `lib/src/fileset.rs` (BUILTIN_FUNCTION_MAP), `docs/filesets.md`
 
@@ -270,6 +279,7 @@ When jj template syntax changes, update:
 3. Completion parser (`pkg/template/completion_parser.go`, `completion_parser_impl.go`, `completion_helpers.go`)
 4. AST (`pkg/template/ast.go`)
 5. Format (`pkg/template/format.go`)
+6. Man pages (`man/jj/template-function/`, `man/jj/template-operator/`)
 
 Check: `lib/src/template.pest`, `lib/src/template_parser.rs`, `docs/templates.md`
 

@@ -1,0 +1,4 @@
+commit_id: |
+  A commit ID prefix. Commit IDs are SHA-1 hashes that uniquely identify a commit.
+
+  It is an error to use a non-unique prefix. Unmatched prefixes are not an error.

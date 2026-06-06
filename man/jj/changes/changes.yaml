@@ -1,0 +1,4 @@
+path: |
+  A file path changed in the given revisions, with add/remove status indicator.
+
+  Computed using `jj log --summary`. Lists all files modified by the specified revisions.

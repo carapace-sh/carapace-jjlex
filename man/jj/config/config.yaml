@@ -1,0 +1,4 @@
+key: |
+  A jj configuration key in dotted notation (e.g. `ui.editor`, `user.name`).
+
+  Configuration is loaded from multiple levels: system, user, and repository. Use `jj config list` to see all keys, or `jj config list --include-defaults` to include default values.

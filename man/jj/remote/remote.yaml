@@ -1,0 +1,4 @@
+name: |
+  A git remote name (e.g. `origin`, `upstream`).
+
+  Use `jj git remote list` to see all configured remotes.

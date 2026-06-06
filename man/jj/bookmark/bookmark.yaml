@@ -1,0 +1,4 @@
+local: |
+  A local bookmark in the jj repository. Bookmarks are jj's equivalent of Git branches.
+
+  Local bookmarks point to a single commit. Use `jj bookmark list` to see all local bookmarks.

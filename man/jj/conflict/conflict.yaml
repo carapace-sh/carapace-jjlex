@@ -1,0 +1,4 @@
+path: |
+  A file path that is in a conflicted state at the given revision.
+
+  Use `jj resolve --list` to see conflicted files. Conflicts are resolved with `jj resolve <path>`.

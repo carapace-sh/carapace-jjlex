@@ -1,0 +1,6 @@
+"&": |
+  `x & y`: Intersection — matches files in both `x` and `y`.
+"|": |
+  `x | y`: Union — matches files in `x` or `y`.
+"~": |
+  `x ~ y`: Difference — matches files in `x` but not in `y`. As prefix: `~x` negates (matches files not in `x`).

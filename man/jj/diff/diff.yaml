@@ -1,0 +1,4 @@
+path: |
+  A file path changed between revisions, with change type indicator (Added, Modified, Removed, etc.).
+
+  Computed using `jj diff --summary`. Accepts up to two revision arguments to compare.
