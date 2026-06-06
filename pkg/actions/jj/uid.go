@@ -14,7 +14,7 @@ func Uid(host string, opts ...string) func(s string, uc uid.Context) (*url.URL, 
 			return nil, fmt.Errorf("invalid amount of arguments [jj.Uid]: %v", length)
 		}
 
-		repository, ok := uc.LookupEnv("JJ_REPOSITORY")
+		repository, ok := uc.LookupEnv(EnvRepository)
 		if !ok {
 			var err error
 			repository, err = traverse.Parent(".jj")(uc)
@@ -29,10 +29,10 @@ func Uid(host string, opts ...string) func(s string, uc uid.Context) (*url.URL, 
 			Path:   s,
 		}
 		values := uid.Query()
-		if operation, ok := uc.LookupEnv("JJ_OPERATION"); ok {
-			values.Add("JJ_OPERATION", operation)
+		if operation, ok := uc.LookupEnv(EnvOperation); ok {
+			values.Add(EnvOperation, operation)
 		}
-		values.Add("JJ_REPOSITORY", repository)
+		values.Add(EnvRepository, repository)
 		for i := 0; i < len(opts); i += 2 {
 			if opts[i+1] != "" {
 				values.Add(opts[i], opts[i+1])
