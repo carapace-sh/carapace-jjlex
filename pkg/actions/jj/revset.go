@@ -180,13 +180,7 @@ func postfixActions(ctx *revset.CompletionContext) []carapace.Action {
 }
 
 func actionExpression(opts RevOpts, ctx *revset.CompletionContext) carapace.Action {
-	batch := carapace.Batch(
-		ActionRevs(opts),
-		ActionRevsetFunctions(),
-		ActionRevsetPatterns().Suffix(":"),
-		ActionSpecialSymbols(),
-		ActionRevsetAliases(true),
-	)
+	batch := carapace.Batch(actionRevsetArg(opts))
 
 	batch = append(batch, postfixActions(ctx)...)
 
@@ -225,34 +219,65 @@ func actionForFunctionArg(ctx *revset.CompletionContext, opts RevOpts) carapace.
 	}
 
 	switch fn.Name {
+	// Traversal: (x, [depth]) — arg 0 = revset, arg 1 = integer depth
 	case "parents", "children", "ancestors", "descendants",
-		"first_parent", "first_ancestors",
-		"heads", "roots", "latest", "fork_point", "bisect",
-		"present", "connected", "exactly", "reachable", "coalesce":
-		return carapace.Batch(
-			ActionRevs(opts),
-			ActionRevsetFunctions(),
-			ActionSpecialSymbols(),
-			ActionRevsetAliases(true),
-		).ToA().NoSpace()
+		"first_parent", "first_ancestors":
+		if fn.ArgIndex == 0 {
+			return actionRevsetArg(opts).NoSpace()
+		}
+		return carapace.ActionValues()
 
+	// Set operations with revset arg(s)
+	case "heads", "roots", "fork_point", "bisect", "present", "connected":
+		return actionRevsetArg(opts).NoSpace()
+
+	case "latest":
+		if fn.ArgIndex == 0 {
+			return actionRevsetArg(opts).NoSpace()
+		}
+		return carapace.ActionValues()
+
+	case "exactly":
+		if fn.ArgIndex == 0 {
+			return actionRevsetArg(opts).NoSpace()
+		}
+		return carapace.ActionValues()
+
+	case "reachable":
+		return actionRevsetArg(opts).NoSpace()
+
+	case "coalesce":
+		return actionRevsetArg(opts).NoSpace()
+
+	// Identity: string prefix
+	case "change_id", "commit_id":
+		return ActionRevs(opts).NoSpace()
+
+	// String pattern functions
 	case "author", "author_name", "author_email",
 		"committer", "committer_name", "committer_email",
 		"description", "subject":
 		return ActionStringPatterns().Suffix(":").NoSpace()
 
+	// Date pattern functions
 	case "author_date", "committer_date":
 		return ActionDatePatterns().Suffix(":").NoSpace()
 
+	// Diff functions: (text_pattern, [files=])
 	case "diff_lines", "diff_lines_added", "diff_lines_removed":
 		if fn.IsKeywordArg && fn.KeywordArgName == "files" {
 			return ActionFilesetPatterns().Suffix(":").NoSpace()
 		}
-		return ActionStringPatterns().Suffix(":").NoSpace()
+		if fn.ArgIndex == 0 {
+			return ActionStringPatterns().Suffix(":").NoSpace()
+		}
+		return carapace.ActionValues()
 
+	// Fileset expression
 	case "files":
 		return ActionFilesetPatterns().Suffix(":").NoSpace()
 
+	// Bookmark/tag functions: ([name_pattern], [remote=remote_pattern])
 	case "bookmarks", "remote_bookmarks", "tracked_remote_bookmarks", "untracked_remote_bookmarks",
 		"tags", "remote_tags", "tracked_remote_tags", "untracked_remote_tags":
 		if fn.ArgIndex >= 1 && !fn.IsKeywordArg {
@@ -269,20 +294,27 @@ func actionForFunctionArg(ctx *revset.CompletionContext, opts RevOpts) carapace.
 		}
 		return batch.ToA().NoSpace()
 
+	// Operation: (op, x) — arg 0 = operation, arg 1 = revset
 	case "at_operation":
-		return ActionOperations().NoSpace()
-
-	case "change_id", "commit_id":
-		return ActionRevs(opts).NoSpace()
+		if fn.ArgIndex == 0 {
+			return ActionOperations().NoSpace()
+		}
+		return actionRevsetArg(opts).NoSpace()
 
 	default:
-		return carapace.Batch(
-			ActionRevs(opts),
-			ActionRevsetFunctions(),
-			ActionSpecialSymbols(),
-			ActionRevsetAliases(true),
-		).ToA().NoSpace()
+		return actionRevsetArg(opts).NoSpace()
 	}
+}
+
+// actionRevsetArg returns completions for a revset expression argument position.
+func actionRevsetArg(opts RevOpts) carapace.Action {
+	return carapace.Batch(
+		ActionRevs(opts),
+		ActionRevsetFunctions(),
+		ActionRevsetPatterns().Suffix(":"),
+		ActionSpecialSymbols(),
+		ActionRevsetAliases(true),
+	).ToA()
 }
 
 func actionForPatternValue(ctx *revset.CompletionContext) carapace.Action {
