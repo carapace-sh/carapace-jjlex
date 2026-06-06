@@ -1,0 +1,4 @@
+remote: |
+  A remote bookmark in the format `name@remote`. Remote bookmarks track the state of bookmarks on remote repositories.
+
+  Use `jj bookmark list --all-remotes` to see all remote bookmarks. Git-tracking bookmarks (`@git`) are included.

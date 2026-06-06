@@ -1,0 +1,30 @@
+"++": |
+  `x ++ y`: Concatenation — the weakest binding operator. Concatenates two template values.
+"||": |
+  `x || y`: Logical or — returns true if either operand is truthy.
+"&&": |
+  `x && y`: Logical and — returns true if both operands are truthy.
+"==": |
+  `x == y`: Equality — returns true if `x` equals `y`.
+"!=": |
+  `x != y`: Inequality — returns true if `x` does not equal `y`.
+">=": |
+  `x >= y`: Greater than or equal.
+">": |
+  `x > y`: Greater than.
+"<=": |
+  `x <= y`: Less than or equal.
+"<": |
+  `x < y`: Less than.
+"+": |
+  `x + y`: Addition.
+"-": |
+  `x - y`: Subtraction.
+"*": |
+  `x * y`: Multiplication.
+"/": |
+  `x / y`: Division.
+"%": |
+  `x % y`: Remainder.
+"!": |
+  `!x`: Logical not — returns true if `x` is falsy.

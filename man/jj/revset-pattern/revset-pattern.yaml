@@ -1,0 +1,16 @@
+exact: |
+  `exact:"str"`: Matches strings exactly equal to `str`.
+exact-i: |
+  `exact-i:"str"`: Matches strings exactly equal to `str`, case-insensitive.
+substring: |
+  `substring:"str"`: Matches strings containing `str` as a substring. This is the default pattern kind when unqualified.
+substring-i: |
+  `substring-i:"str"`: Matches strings containing `str` as a substring, case-insensitive.
+glob: |
+  `glob:"pattern"`: Matches strings using Unix shell wildcards (`*` matches any sequence, `?` matches single character, `[...]` matches character class).
+glob-i: |
+  `glob-i:"pattern"`: Matches strings using Unix shell wildcards, case-insensitive.
+regex: |
+  `regex:"pattern"`: Matches strings containing substrings that match the given regular expression.
+regex-i: |
+  `regex-i:"pattern"`: Matches strings containing substrings that match the given regular expression, case-insensitive.

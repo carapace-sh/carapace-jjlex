@@ -1,0 +1,4 @@
+id: |
+  An operation ID from the jj operation log. Operations record each state-changing command.
+
+  Use `jj op log` to see the operation history. Operations can be undone with `jj op undo` or restored with `jj op restore`.

@@ -1,0 +1,7 @@
+"@": |
+  `@`: The working copy commit in the current workspace.
+
+  Can be extended with workspace or remote syntax:
+  - `@` — current working copy
+  - `<name>@` — working copy in workspace `<name>`
+  - `<name>@<remote>` — remote-tracking bookmark

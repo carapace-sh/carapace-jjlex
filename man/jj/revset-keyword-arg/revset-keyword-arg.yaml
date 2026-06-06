@@ -1,0 +1,13 @@
+remote: |
+  `remote=<pattern>`: Filter by remote name. Used in bookmark and tag functions that support remote filtering.
+
+  Examples:
+  - `remote_bookmarks(remote=origin)` — bookmarks from the `origin` remote
+  - `remote_bookmarks(remote=exact:"git")` — include `@git` tracking bookmarks
+  - `remote_bookmarks(remote=glob:"*")` — all remotes including `@git`
+files: |
+  `files=<fileset>`: Narrow search to a fileset expression. Used in diff functions.
+
+  Examples:
+  - `diff_lines("TODO", files=src)` — search for "TODO" in files under `src`
+  - `diff_lines_added("fixme", files=glob:"*.rs")` — search for "fixme" in Rust files

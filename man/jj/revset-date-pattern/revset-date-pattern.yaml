@@ -1,0 +1,20 @@
+after: |
+  `after:"date"`: Matches dates at or after the given date.
+
+  Date string forms:
+  - `2024-02-01`
+  - `2024-02-01T12:00:00`
+  - `2024-02-01T12:00:00-08:00`
+  - `2024-02-01 12:00:00`
+  - `2 days ago`, `5 minutes ago`
+  - `yesterday`, `yesterday 5pm`
+before: |
+  `before:"date"`: Matches dates before (not including) the given date.
+
+  Date string forms:
+  - `2024-02-01`
+  - `2024-02-01T12:00:00`
+  - `2024-02-01T12:00:00-08:00`
+  - `2024-02-01 12:00:00`
+  - `2 days ago`, `5 minutes ago`
+  - `yesterday`, `yesterday 5pm`

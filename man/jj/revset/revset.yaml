@@ -1,0 +1,4 @@
+alias: |
+  A revset alias defined in jj configuration.
+
+  Aliases are defined in `[revset-aliases]` config section. Built-in aliases include `trunk()`, `immutable()`, `mutable()`, `visible()`, and `hidden()`.

@@ -1,0 +1,48 @@
+"true": |
+  `true`: Boolean true literal.
+"false": |
+  `false`: Boolean false literal.
+fill: |
+  `fill(width, content)`: Fill lines at the given width.
+indent: |
+  `indent(prefix, content)`: Indent non-empty lines with the given prefix.
+pad_start: |
+  `pad_start(width, content, [fill_char])`: Left-justify content with fill characters.
+pad_end: |
+  `pad_end(width, content, [fill_char])`: Right-justify content with fill characters.
+pad_centered: |
+  `pad_centered(width, content, [fill_char])`: Center content with fill characters.
+truncate_start: |
+  `truncate_start(width, content, [ellipsis])`: Truncate content from the start if it exceeds the given width.
+truncate_end: |
+  `truncate_end(width, content, [ellipsis])`: Truncate content from the end if it exceeds the given width.
+hash: |
+  `hash(content)`: Hash the content and return the hex digest.
+label: |
+  `label(label, content)`: Apply a color label to the content for styling.
+hyperlink: |
+  `hyperlink(url, text, [fallback])`: Render an OSC 8 hyperlink.
+raw_escape_sequence: |
+  `raw_escape_sequence(content)`: Preserve escape sequences in the content.
+stringify: |
+  `stringify(content)`: Remove color labels and format content as a string.
+json: |
+  `json(value)`: Serialize the value to JSON format.
+if: |
+  `if(condition, then, [else])`: Conditional evaluation — returns `then` if `condition` is truthy, otherwise `else`.
+coalesce: |
+  `coalesce(content...)`: Return the first non-empty content from the arguments.
+concat: |
+  `concat(content...)`: Concatenate all content arguments.
+join: |
+  `join(separator, content...)`: Insert the separator between each content item.
+separate: |
+  `separate(separator, content...)`: Insert the separator between non-empty content items.
+surround: |
+  `surround(prefix, suffix, content)`: Wrap non-empty content with prefix and suffix.
+config: |
+  `config(name)`: Look up a configuration value by name. Returns `Option<ConfigValue>`.
+git_web_url: |
+  `git_web_url([remote])`: Convert a git remote URL to an HTTPS browse URL.
+replace: |
+  `replace(pattern, content, replacement)`: Replace matches using a pattern. The replacement is a lambda with `RegexCaptures` providing `.get(index)`, `.name(name)`, and `.len()`.

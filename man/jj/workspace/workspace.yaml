@@ -1,0 +1,4 @@
+name: |
+  A workspace name. Workspaces allow multiple working copies of the same repository.
+
+  Use `jj workspace list` to see all workspaces. The default workspace is named `default`.

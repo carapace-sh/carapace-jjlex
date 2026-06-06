@@ -1,0 +1,4 @@
+all: |
+  `all()`: Matches everything.
+none: |
+  `none()`: Matches nothing.

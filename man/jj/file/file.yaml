@@ -1,0 +1,4 @@
+path: |
+  A file path at the given revision.
+
+  Computed using `jj file list --revision`. Lists all files tracked in the specified revision.

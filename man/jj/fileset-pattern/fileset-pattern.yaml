@@ -1,0 +1,34 @@
+cwd: |
+  `cwd:<path>`: Matches cwd-relative path prefix — a file or all files under a directory recursively.
+file: |
+  `file:<path>`: Matches cwd-relative exact file path. Alias for `cwd-file`.
+cwd-file: |
+  `cwd-file:<path>`: Matches cwd-relative exact file path.
+glob: |
+  `glob:<pattern>`: Matches file paths with cwd-relative Unix-style shell wildcard pattern. Alias for `cwd-glob`.
+cwd-glob: |
+  `cwd-glob:<pattern>`: Matches file paths with cwd-relative Unix-style shell wildcard pattern.
+prefix-glob: |
+  `prefix-glob:<pattern>`: Matches cwd-relative prefix-glob pattern. Like `glob:`, but also matches path prefix (equivalent to `glob:"*.d" | glob:"*.d/**"`). Alias for `cwd-prefix-glob`.
+cwd-prefix-glob: |
+  `cwd-prefix-glob:<pattern>`: Matches cwd-relative prefix-glob pattern. Like `cwd-glob:`, but also matches path prefix.
+root: |
+  `root:<path>`: Matches workspace-relative path prefix — a file or all files under a directory recursively.
+root-file: |
+  `root-file:<path>`: Matches workspace-relative exact file path.
+root-glob: |
+  `root-glob:<pattern>`: Matches file paths with workspace-relative wildcard pattern.
+root-prefix-glob: |
+  `root-prefix-glob:<pattern>`: Like `root-glob:`, but also matches path prefix.
+glob-i: |
+  `glob-i:<pattern>`: Matches file paths with cwd-relative glob pattern, case-insensitive. Alias for `cwd-glob-i`.
+cwd-glob-i: |
+  `cwd-glob-i:<pattern>`: Matches file paths with cwd-relative glob pattern, case-insensitive.
+prefix-glob-i: |
+  `prefix-glob-i:<pattern>`: Matches cwd-relative prefix-glob pattern, case-insensitive. Alias for `cwd-prefix-glob-i`.
+cwd-prefix-glob-i: |
+  `cwd-prefix-glob-i:<pattern>`: Matches cwd-relative prefix-glob pattern, case-insensitive.
+root-glob-i: |
+  `root-glob-i:<pattern>`: Matches file paths with workspace-relative glob pattern, case-insensitive.
+root-prefix-glob-i: |
+  `root-prefix-glob-i:<pattern>`: Matches workspace-relative prefix-glob pattern, case-insensitive.
