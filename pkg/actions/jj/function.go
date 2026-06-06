@@ -73,7 +73,7 @@ func ActionRevsetFunctions() carapace.Action {
 			"untracked_remote_tags", "Targets of untracked remote tags",
 		).Uid("jj", "revset-function", "args", "true")
 
-		return carapace.Batch(noArgs, withArgs).ToA()
+		return carapace.Batch(noArgs, withArgs.Suffix("(")).ToA()
 	}).Tag("revset functions")
 }
 
