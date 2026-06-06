@@ -39,7 +39,7 @@ func ActionRevs(opts RevOpts) carapace.Action {
 			batch = append(batch, ActionLocalBookmarks())
 		}
 		if opts.RemoteBookmarks {
-			batch = append(batch, ActionRemoteBookmarks())
+			batch = append(batch, ActionRemoteBookmarks(""))
 		}
 		if opts.Commits > 0 {
 			batch = append(batch, ActionRecentCommits(opts.Commits))
@@ -296,7 +296,8 @@ func actionForFunctionArg(ctx *revset.CompletionContext, opts RevOpts) carapace.
 		case "bookmarks":
 			batch = append(batch, ActionLocalBookmarks())
 		case "remote_bookmarks", "tracked_remote_bookmarks", "untracked_remote_bookmarks":
-			batch = append(batch, ActionRemoteBookmarks())
+			remote := keywordArgValue(fn, "remote")
+			batch = append(batch, ActionRemoteBookmarks(remote))
 		case "tags", "remote_tags", "tracked_remote_tags", "untracked_remote_tags":
 			batch = append(batch, ActionTags())
 		}
@@ -312,6 +313,17 @@ func actionForFunctionArg(ctx *revset.CompletionContext, opts RevOpts) carapace.
 	default:
 		return actionRevsetArg(opts).NoSpace()
 	}
+}
+
+// keywordArgValue returns the formatted value of the first keyword argument
+// with the given name, or "" if not present.
+func keywordArgValue(fn *revset.FunctionContext, name string) string {
+	for _, ka := range fn.KeywordArgs {
+		if ka.Name == name && ka.Value != nil {
+			return revset.Format(ka.Value)
+		}
+	}
+	return ""
 }
 
 // actionRevsetArg returns completions for a revset expression argument position.

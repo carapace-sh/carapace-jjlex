@@ -47,8 +47,14 @@ func ActionLocalBookmarks() carapace.Action {
 //
 //	main@origin (last commit message)
 //	develop@upstream (another message)
-func ActionRemoteBookmarks() carapace.Action {
-	return actionExecJJ("bookmark", "list", "--all-remotes")(func(output []byte) carapace.Action {
+func ActionRemoteBookmarks(remote string) carapace.Action {
+	args := []string{"bookmark", "list"}
+	if remote != "" {
+		args = append(args, "--remote", remote)
+	} else {
+		args = append(args, "--all-remotes")
+	}
+	return actionExecJJ(args...)(func(output []byte) carapace.Action {
 		vals := parseBookmarkValues(output, true)
 		if len(vals) == 0 {
 			return carapace.ActionValues()

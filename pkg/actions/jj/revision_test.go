@@ -122,7 +122,7 @@ func TestActionRemotesEmpty(t *testing.T) {
 }
 
 func TestActionRemoteBookmarksEmpty(t *testing.T) {
-	sandbox.Action(t, ActionRemoteBookmarks)(func(s *sandbox.Sandbox) {
+	sandbox.Action(t, func() carapace.Action { return ActionRemoteBookmarks("") })(func(s *sandbox.Sandbox) {
 		fixture.InitT(t, s)
 
 		s.Run("").Expect(carapace.ActionValues())
@@ -130,7 +130,7 @@ func TestActionRemoteBookmarksEmpty(t *testing.T) {
 }
 
 func TestActionRemoteBookmarks(t *testing.T) {
-	sandbox.Action(t, ActionRemoteBookmarks)(func(s *sandbox.Sandbox) {
+	sandbox.Action(t, func() carapace.Action { return ActionRemoteBookmarks("") })(func(s *sandbox.Sandbox) {
 		f := fixture.InitT(t, s)
 		f.CreateBookmark("first")
 		f.CommitAdd("a.txt", "a", "first commit")
@@ -142,6 +142,26 @@ func TestActionRemoteBookmarks(t *testing.T) {
 		s.Run("").Expect(carapace.ActionValuesDescribed(
 			"first@git", "first commit",
 			"second@git", "second commit",
+		).Style(style.Cyan).Tag("remote bookmarks"))
+
+	})
+}
+
+func TestActionRemoteBookmarksFilteredByRemote(t *testing.T) {
+	sandbox.Action(t, func() carapace.Action { return ActionRemoteBookmarks("origin") })(func(s *sandbox.Sandbox) {
+		f := fixture.InitT(t, s)
+		f.CreateBookmark("first")
+		f.CommitAdd("a.txt", "a", "first commit")
+		f.CreateBookmark("second")
+		f.CommitAdd("b.txt", "b", "second commit")
+		f.AddRemote("origin")
+		f.Run("bookmark", "track", "first", "--remote=origin")
+		f.Run("bookmark", "track", "second", "--remote=origin")
+		f.Run("git", "push", "--remote", "origin")
+
+		s.Run("").Expect(carapace.ActionValuesDescribed(
+			"first@origin", "first commit",
+			"second@origin", "second commit",
 		).Style(style.Cyan).Tag("remote bookmarks"))
 
 	})
