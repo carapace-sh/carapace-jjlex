@@ -291,6 +291,107 @@ func TestCompletionMethodCallOnExpression(t *testing.T) {
 	}
 }
 
+func TestCompletionMethodTypeSelf(t *testing.T) {
+	ctx := ParseForCompletion("self.")
+	if ctx.MethodType != "Commit" {
+		t.Errorf("expected MethodType 'Commit', got %q", ctx.MethodType)
+	}
+}
+
+func TestCompletionMethodTypeSelfPartial(t *testing.T) {
+	ctx := ParseForCompletion("self.desc")
+	if ctx.MethodType != "Commit" {
+		t.Errorf("expected MethodType 'Commit', got %q", ctx.MethodType)
+	}
+	if ctx.PartialIdent != "desc" {
+		t.Errorf("expected PartialIdent 'desc', got %q", ctx.PartialIdent)
+	}
+}
+
+func TestCompletionMethodTypeChain(t *testing.T) {
+	ctx := ParseForCompletion("self.description().")
+	if ctx.MethodType != "String" {
+		t.Errorf("expected MethodType 'String', got %q", ctx.MethodType)
+	}
+}
+
+func TestCompletionMethodTypeDeepChain(t *testing.T) {
+	ctx := ParseForCompletion("self.author().email().")
+	if ctx.MethodType != "Email" {
+		t.Errorf("expected MethodType 'Email', got %q", ctx.MethodType)
+	}
+}
+
+func TestCompletionMethodTypeChangeId(t *testing.T) {
+	ctx := ParseForCompletion("self.change_id().")
+	if ctx.MethodType != "ChangeId" {
+		t.Errorf("expected MethodType 'ChangeId', got %q", ctx.MethodType)
+	}
+}
+
+func TestCompletionMethodTypeCommitKeyword(t *testing.T) {
+	ctx := ParseForCompletion("description.sh")
+	if ctx.MethodType != "String" {
+		t.Errorf("expected MethodType 'String', got %q", ctx.MethodType)
+	}
+}
+
+func TestCompletionMethodTypeGlobalFunction(t *testing.T) {
+	ctx := ParseForCompletion("config().")
+	if ctx.MethodType != "Option<ConfigValue>" {
+		t.Errorf("expected MethodType 'Option<ConfigValue>', got %q", ctx.MethodType)
+	}
+}
+
+func TestCompletionMethodTypeStringLiteral(t *testing.T) {
+	ctx := ParseForCompletion(`"hello".`)
+	if ctx.MethodType != "String" {
+		t.Errorf("expected MethodType 'String', got %q", ctx.MethodType)
+	}
+}
+
+func TestCompletionMethodTypeInteger(t *testing.T) {
+	ctx := ParseForCompletion("42.")
+	if ctx.MethodType != "Integer" {
+		t.Errorf("expected MethodType 'Integer', got %q", ctx.MethodType)
+	}
+}
+
+func TestCompletionMethodTypeBoolean(t *testing.T) {
+	ctx := ParseForCompletion("true.")
+	if ctx.MethodType != "Boolean" {
+		t.Errorf("expected MethodType 'Boolean', got %q", ctx.MethodType)
+	}
+}
+
+func TestCompletionMethodTypeShortestIdPrefix(t *testing.T) {
+	ctx := ParseForCompletion("self.commit_id().shortest().")
+	if ctx.MethodType != "ShortestIdPrefix" {
+		t.Errorf("expected MethodType 'ShortestIdPrefix', got %q", ctx.MethodType)
+	}
+}
+
+func TestCompletionMethodTypeSignature(t *testing.T) {
+	ctx := ParseForCompletion("self.author().")
+	if ctx.MethodType != "Signature" {
+		t.Errorf("expected MethodType 'Signature', got %q", ctx.MethodType)
+	}
+}
+
+func TestCompletionMethodTypeTimestamp(t *testing.T) {
+	ctx := ParseForCompletion("self.author().timestamp().")
+	if ctx.MethodType != "Timestamp" {
+		t.Errorf("expected MethodType 'Timestamp', got %q", ctx.MethodType)
+	}
+}
+
+func TestCompletionMethodTypeOptionConfigValue(t *testing.T) {
+	ctx := ParseForCompletion("config().as_string().")
+	if ctx.MethodType != "String" {
+		t.Errorf("expected MethodType 'String', got %q", ctx.MethodType)
+	}
+}
+
 func TestCompletionPatternCaseInsensitive(t *testing.T) {
 	ctx := ParseForCompletion("glob-i:")
 	if !ctx.InPattern {

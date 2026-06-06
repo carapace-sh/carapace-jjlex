@@ -1,0 +1,14 @@
+bytes_delta: |
+  `bytes_delta()`: Returns the byte size change as an Integer.
+lines_added: |
+  `lines_added()`: Returns the lines added as an Integer.
+lines_removed: |
+  `lines_removed()`: Returns the lines removed as an Integer.
+path: |
+  `path()`: Returns the [RepoPath](jj://template-method-repopath/display) of the file.
+display_diff_path: |
+  `display_diff_path()`: Returns the display path as a [String](jj://template-method-string/len).
+status: |
+  `status()`: Returns the status as a [String](jj://template-method-string/len).
+status_char: |
+  `status_char()`: Returns the status character as a [String](jj://template-method-string/len).

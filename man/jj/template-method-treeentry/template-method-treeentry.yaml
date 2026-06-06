@@ -1,0 +1,10 @@
+path: |
+  `path()`: Returns the [RepoPath](jj://template-method-repopath/display) of the file.
+conflict: |
+  `conflict()`: Returns `true` if the file is in a conflicted state.
+conflict_side_count: |
+  `conflict_side_count()`: Returns the number of conflict sides as an Integer.
+file_type: |
+  `file_type()`: Returns the file type as a [String](jj://template-method-string/len) (e.g. "normal", "symlink", "executable").
+executable: |
+  `executable()`: Returns `true` if the file is executable.

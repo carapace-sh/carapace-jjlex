@@ -1,0 +1,6 @@
+start: |
+  `start()`: Returns the start [Timestamp](jj://template-method-timestamp/ago) of the range.
+end: |
+  `end()`: Returns the end [Timestamp](jj://template-method-timestamp/ago) of the range.
+duration: |
+  `duration()`: Returns the duration as a [String](jj://template-method-string/len) (e.g. "2h 30m").

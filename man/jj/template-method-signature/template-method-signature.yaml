@@ -1,0 +1,6 @@
+name: |
+  `name()`: Returns the name of the person as a [String](jj://template-method-string/len).
+email: |
+  `email()`: Returns the email address as an [Email](jj://template-method-email/local) type.
+timestamp: |
+  `timestamp()`: Returns the [Timestamp](jj://template-method-timestamp/ago) of the signature.

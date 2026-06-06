@@ -1,0 +1,2 @@
+short: |
+  `short([len])`: Returns a shortened hex string of the operation ID.

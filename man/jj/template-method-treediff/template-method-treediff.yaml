@@ -1,0 +1,10 @@
+files: |
+  `files()`: Returns the list of [TreeDiffEntry](jj://template-method-treediffentry/path) files in the diff.
+color_words: |
+  `color_words([context])`: Returns the diff in color-words format as a Template. `context` controls the number of context lines.
+git: |
+  `git([context])`: Returns the diff in git format as a Template. `context` controls the number of context lines.
+stat: |
+  `stat([width])`: Returns the diff stats as [DiffStats](jj://template-method-diffstats/files). `width` controls the histogram width.
+summary: |
+  `summary()`: Returns a summary of the diff as a Template.

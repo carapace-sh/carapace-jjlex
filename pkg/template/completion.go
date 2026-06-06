@@ -97,4 +97,8 @@ type CompletionContext struct {
 	InLambda bool `json:"inLambda"`
 	// LambdaParams are the parameter names of the enclosing lambda
 	LambdaParams []string `json:"lambdaParams,omitempty"`
+
+	// MethodType is the template type name whose methods are being completed
+	// (e.g. "Commit", "String", "Timestamp") when the cursor is after a dot
+	MethodType string `json:"methodType,omitempty"`
 }

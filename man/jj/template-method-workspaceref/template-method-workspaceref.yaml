@@ -1,0 +1,6 @@
+name: |
+  `name()`: Returns the workspace name as a RefSymbol.
+target: |
+  `target()`: Returns the target [Commit](jj://template-method-commit/description).
+root: |
+  `root()`: Returns the root as a Template.

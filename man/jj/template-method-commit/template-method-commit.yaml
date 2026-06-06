@@ -1,0 +1,56 @@
+description: |
+  `description()`: Returns the commit description as a [String](jj://template-method-string/len).
+trailers: |
+  `trailers()`: Returns the list of [Trailer](jj://template-method-trailer/key) objects in the commit message.
+change_id: |
+  `change_id()`: Returns the [ChangeId](jj://template-method-changeid/normal_hex) of the commit.
+commit_id: |
+  `commit_id()`: Returns the [CommitId](jj://template-method-commitid/short) of the commit.
+parents: |
+  `parents()`: Returns the list of parent [Commit](jj://template-method-commit/description) objects.
+author: |
+  `author()`: Returns the [Signature](jj://template-method-signature/name) of the author.
+committer: |
+  `committer()`: Returns the [Signature](jj://template-method-signature/name) of the committer.
+signature: |
+  `signature()`: Returns the `Option<CryptographicSignature>` of the commit's signing key.
+mine: |
+  `mine()`: Returns `true` if the author email matches the current user's email.
+working_copies: |
+  `working_copies()`: Returns the list of [WorkspaceRef](jj://template-method-workspaceref/name) objects for this commit.
+current_working_copy: |
+  `current_working_copy()`: Returns `true` if this is the current working copy commit.
+bookmarks: |
+  `bookmarks()`: Returns the list of all [CommitRef](jj://template-method-commitref/name) bookmarks pointing to this commit.
+local_bookmarks: |
+  `local_bookmarks()`: Returns the list of local [CommitRef](jj://template-method-commitref/name) bookmarks.
+remote_bookmarks: |
+  `remote_bookmarks()`: Returns the list of remote [CommitRef](jj://template-method-commitref/name) bookmarks.
+tags: |
+  `tags()`: Returns the list of all [CommitRef](jj://template-method-commitref/name) tags pointing to this commit.
+local_tags: |
+  `local_tags()`: Returns the list of local [CommitRef](jj://template-method-commitref/name) tags.
+remote_tags: |
+  `remote_tags()`: Returns the list of remote [CommitRef](jj://template-method-commitref/name) tags.
+divergent: |
+  `divergent()`: Returns `true` if this commit is divergent (has the same change ID as another commit).
+hidden: |
+  `hidden()`: Returns `true` if this commit is hidden (not visible).
+change_offset: |
+  `change_offset()`: Returns `Option<Integer>` — the change offset for divergent commits.
+immutable: |
+  `immutable()`: Returns `true` if this commit is immutable.
+contained_in: |
+  `contained_in(revset)`: Returns `true` if this commit is contained in the given revset.
+conflict: |
+  `conflict()`: Returns `true` if this commit has files in a conflicted state.
+empty: |
+  `empty()`: Returns `true` if this commit modifies no files.
+diff: |
+  `diff([files])`: Returns the [TreeDiff](jj://template-method-treediff/files) of changes in this commit, optionally filtered by a fileset expression.
+files: |
+  `files([files])`: Returns the list of [TreeEntry](jj://template-method-treeentry/path) files in this commit, optionally filtered by a fileset expression.
+conflicted_files: |
+  `conflicted_files()`: Returns the list of conflicted [TreeEntry](jj://template-method-treeentry/path) files in this commit.
+root: |
+  `root()`: Returns `true` if this is the virtual root commit.

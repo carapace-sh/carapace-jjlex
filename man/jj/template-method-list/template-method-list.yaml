@@ -1,0 +1,26 @@
+len: |
+  `len()`: Returns the number of items in the list as an Integer.
+join: |
+  `join(separator)`: Joins list items with the separator Template.
+filter: |
+  `filter(|item| expr)`: Filters list items using a lambda expression.
+map: |
+  `map(|item| expr)`: Maps list items using a lambda expression, returning an AnyList.
+any: |
+  `any(|item| expr)`: Returns `true` if any item matches the lambda expression.
+all: |
+  `all(|item| expr)`: Returns `true` if all items match the lambda expression.
+first: |
+  `first()`: Returns the first item in the list.
+last: |
+  `last()`: Returns the last item in the list.
+get: |
+  `get(index)`: Returns the item at the given index.
+reverse: |
+  `reverse()`: Returns the list in reverse order.
+skip: |
+  `skip(count)`: Skips the first `count` items.
+take: |
+  `take(count)`: Takes the first `count` items.
+contains_key: |
+  `contains_key(key)`: Returns `true` if a Trailer with the given key exists in the list.

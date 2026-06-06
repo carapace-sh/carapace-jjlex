@@ -1,0 +1,4 @@
+short: |
+  `short([len])`: Returns a shortened hex string. Default length is 12 characters.
+shortest: |
+  `shortest([min_len])`: Returns the shortest unique prefix as a [ShortestIdPrefix](jj://template-method-shortestidprefix/prefix).

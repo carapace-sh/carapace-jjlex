@@ -1,0 +1,8 @@
+prefix: |
+  `prefix()`: Returns the shortest unique prefix string.
+rest: |
+  `rest()`: Returns the remaining part of the ID after the prefix.
+upper: |
+  `upper()`: Returns an uppercase version of the shortest ID prefix.
+lower: |
+  `lower()`: Returns a lowercase version of the shortest ID prefix.

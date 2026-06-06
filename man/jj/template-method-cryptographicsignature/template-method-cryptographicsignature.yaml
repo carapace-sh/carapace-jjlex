@@ -1,0 +1,6 @@
+status: |
+  `status()`: Returns the signature verification status as a [String](jj://template-method-string/len).
+key: |
+  `key()`: Returns the key that signed the commit as a [String](jj://template-method-string/len).
+display: |
+  `display()`: Returns a display string for the signature as a [String](jj://template-method-string/len).

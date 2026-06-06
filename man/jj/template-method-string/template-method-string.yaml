@@ -1,0 +1,36 @@
+len: |
+  `len()`: Returns the length of the string as an [Integer](jj://template-method-string/len).
+contains: |
+  `contains(needle)`: Returns `true` if the string contains the given needle.
+match: |
+  `match(pattern)`: Matches the string against a string pattern.
+starts_with: |
+  `starts_with(needle)`: Returns `true` if the string starts with the given needle.
+ends_with: |
+  `ends_with(needle)`: Returns `true` if the string ends with the given needle.
+remove_prefix: |
+  `remove_prefix(needle)`: Removes the prefix if present, otherwise returns the string unchanged.
+remove_suffix: |
+  `remove_suffix(needle)`: Removes the suffix if present, otherwise returns the string unchanged.
+trim: |
+  `trim()`: Trims whitespace from both ends of the string.
+trim_start: |
+  `trim_start()`: Trims whitespace from the start of the string.
+trim_end: |
+  `trim_end()`: Trims whitespace from the end of the string.
+substr: |
+  `substr(start, [end])`: Extracts a substring by character index.
+first_line: |
+  `first_line()`: Returns the first line of the string.
+lines: |
+  `lines()`: Splits the string into a `List<String>` of lines.
+split: |
+  `split(separator, [limit])`: Splits the string by a separator pattern.
+replace: |
+  `replace(pattern, replacement, [limit])`: Replaces matches with the replacement string.
+upper: |
+  `upper()`: Converts the string to uppercase.
+lower: |
+  `lower()`: Converts the string to lowercase.
+escape_json: |
+  `escape_json()`: Escapes the string for safe embedding in a JSON string literal.

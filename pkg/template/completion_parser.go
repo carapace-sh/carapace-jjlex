@@ -41,6 +41,7 @@ type compParser struct {
 	funcStack     []*funcParseState
 	innermostFunc *FunctionContext
 	lastExpr      *Expression
+	currentType   string
 }
 
 type funcParseState struct {

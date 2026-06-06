@@ -1,0 +1,8 @@
+"lower": |
+  `lower()`: Returns the lower bound as an Integer.
+upper: |
+  `upper()`: Returns the upper bound as `Option<Integer>`.
+exact: |
+  `exact()`: Returns the exact count as `Option<Integer>` if lower == upper.
+zero: |
+  `zero()`: Returns `true` if the count is exactly zero.

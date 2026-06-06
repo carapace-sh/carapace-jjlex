@@ -1,0 +1,6 @@
+normal_hex: |
+  `normal_hex()`: Returns the normal hex representation of the change ID as a [String](jj://template-method-string/len).
+short: |
+  `short([len])`: Returns a shortened hex string. Default length is 12 characters.
+shortest: |
+  `shortest([min_len])`: Returns the shortest unique prefix as a [ShortestIdPrefix](jj://template-method-shortestidprefix/prefix).

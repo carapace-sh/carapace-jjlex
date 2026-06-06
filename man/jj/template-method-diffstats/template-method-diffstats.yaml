@@ -1,0 +1,6 @@
+files: |
+  `files()`: Returns the list of [DiffStatEntry](jj://template-method-diffstatentry/path) files.
+total_added: |
+  `total_added()`: Returns the total lines added as an Integer.
+total_removed: |
+  `total_removed()`: Returns the total lines removed as an Integer.

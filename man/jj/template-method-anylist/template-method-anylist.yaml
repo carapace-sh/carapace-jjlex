@@ -1,0 +1,2 @@
+join: |
+  `join(separator)`: Joins list items with the separator Template.

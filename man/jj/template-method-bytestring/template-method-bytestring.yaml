@@ -1,0 +1,34 @@
+len: |
+  `len()`: Returns the length of the byte string as an Integer.
+contains: |
+  `contains(needle)`: Returns `true` if the byte string contains the given needle.
+match: |
+  `match(pattern)`: Matches the byte string against a string pattern.
+starts_with: |
+  `starts_with(needle)`: Returns `true` if the byte string starts with the given needle.
+ends_with: |
+  `ends_with(needle)`: Returns `true` if the byte string ends with the given needle.
+remove_prefix: |
+  `remove_prefix(needle)`: Removes the prefix if present, otherwise returns the byte string unchanged.
+remove_suffix: |
+  `remove_suffix(needle)`: Removes the suffix if present, otherwise returns the byte string unchanged.
+trim: |
+  `trim()`: Trims whitespace from both ends of the byte string.
+trim_start: |
+  `trim_start()`: Trims whitespace from the start of the byte string.
+trim_end: |
+  `trim_end()`: Trims whitespace from the end of the byte string.
+substr: |
+  `substr(start, [end])`: Extracts a substring by byte index.
+first_line: |
+  `first_line()`: Returns the first line of the byte string.
+lines: |
+  `lines()`: Splits the byte string into a `List<ByteString>` of lines.
+split: |
+  `split(separator, [limit])`: Splits the byte string by a separator pattern.
+replace: |
+  `replace(pattern, replacement, [limit])`: Replaces matches with the replacement byte string.
+upper: |
+  `upper()`: Converts the byte string to uppercase.
+lower: |
+  `lower()`: Converts the byte string to lowercase.

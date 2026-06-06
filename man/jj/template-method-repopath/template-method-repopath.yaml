@@ -1,0 +1,6 @@
+absolute: |
+  `absolute()`: Returns the absolute path as a [String](jj://template-method-string/len).
+display: |
+  `display()`: Returns the display path as a [String](jj://template-method-string/len).
+parent: |
+  `parent()`: Returns the parent directory as `Option<RepoPath>`.

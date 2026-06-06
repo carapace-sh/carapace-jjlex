@@ -1,0 +1,8 @@
+commit: |
+  `commit()`: Returns the [Commit](jj://template-method-commit/description) being evolved.
+operation: |
+  `operation()`: Returns the [Operation](jj://template-method-operation/description) that created this evolution entry.
+predecessors: |
+  `predecessors()`: Returns the list of predecessor [Commit](jj://template-method-commit/description) objects.
+inter_diff: |
+  `inter_diff([files])`: Returns the [TreeDiff](jj://template-method-treediff/files) between the predecessor and this commit, optionally filtered by a fileset expression.

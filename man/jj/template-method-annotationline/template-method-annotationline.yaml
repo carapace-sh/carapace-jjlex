@@ -1,0 +1,10 @@
+commit: |
+  `commit()`: Returns the [Commit](jj://template-method-commit/description) this annotation line belongs to.
+content: |
+  `content()`: Returns the line content as a ByteString.
+line_number: |
+  `line_number()`: Returns the line number as an Integer.
+original_line_number: |
+  `original_line_number()`: Returns the original line number before annotation as an Integer.
+first_line_in_hunk: |
+  `first_line_in_hunk()`: Returns `true` if this is the first line in a diff hunk.

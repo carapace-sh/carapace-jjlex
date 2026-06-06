@@ -1,0 +1,20 @@
+current_operation: |
+  `current_operation()`: Returns `true` if this is the current operation.
+description: |
+  `description()`: Returns the operation description as a [String](jj://template-method-string/len).
+id: |
+  `id()`: Returns the [OperationId](jj://template-method-operationid/short) of the operation.
+attributes: |
+  `attributes()`: Returns the operation attributes as a [String](jj://template-method-string/len).
+time: |
+  `time()`: Returns the [TimestampRange](jj://template-method-timestamprange/duration) of the operation.
+user: |
+  `user()`: Returns the user who performed the operation as a [String](jj://template-method-string/len).
+snapshot: |
+  `snapshot()`: Returns `true` if this is a snapshot operation.
+workspace_name: |
+  `workspace_name()`: Returns the workspace name for the operation as a [String](jj://template-method-string/len).
+root: |
+  `root()`: Returns `true` if this is the root operation.
+parents: |
+  `parents()`: Returns the list of parent Operations.

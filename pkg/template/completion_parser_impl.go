@@ -204,10 +204,18 @@ func (p *compParser) parseTermComp() {
 		}
 		if p.peek() == '.' {
 			saved := p.pos
+			savedType := p.currentType
 			p.advance()
 			p.skipWS()
-			if p.atCursorOrEnd() || !isIdentifierStart(p.peek()) {
+			if p.atCursorOrEnd() {
+				// Cursor right after dot — completing method name
+				p.ctx.MethodType = savedType
+				p.beforeExpression()
+				return
+			}
+			if !isIdentifierStart(p.peek()) {
 				p.pos = saved
+				p.currentType = savedType
 				return
 			}
 			identStart := p.pos
@@ -217,13 +225,16 @@ func (p *compParser) parseTermComp() {
 			if p.atCursorOrEnd() {
 				// Completing method name
 				p.ctx.PartialIdent = ident
+				p.ctx.MethodType = savedType
 				p.beforeExpression()
 				return
 			}
 			if p.peek() == '(' && isFunctionName(ident) {
+				p.currentType = methodReturnType(savedType, ident)
 				p.parseFunctionCallComp(ident, true, nil)
 			} else {
 				p.pos = saved
+				p.currentType = savedType
 				return
 			}
 		} else {
@@ -247,8 +258,10 @@ func (p *compParser) parsePrimaryComp() {
 		p.parseParenthesizedComp()
 	case ch == '"':
 		p.parseStringLiteralComp('"')
+		p.currentType = "String"
 	case ch == '\'':
 		p.parseStringLiteralComp('\'')
+		p.currentType = "String"
 	case ch == '|':
 		p.parseLambdaComp()
 	case ch >= '0' && ch <= '9':
@@ -256,6 +269,7 @@ func (p *compParser) parsePrimaryComp() {
 			p.advance()
 		}
 		p.consumed = true
+		p.currentType = "Integer"
 	case isIdentifierStart(ch):
 		p.parseIdentFuncOrPatternComp()
 	default:
@@ -410,12 +424,18 @@ func (p *compParser) parseIdentFuncOrPatternComp() {
 
 	// Boolean literals
 	if ident == "true" || ident == "false" {
+		p.currentType = "Boolean"
 		p.skipWS()
 		if p.atCursorOrEnd() {
 			p.afterExpression()
 			return
 		}
 		return
+	}
+
+	// self keyword
+	if ident == "self" {
+		p.currentType = "Commit"
 	}
 
 	p.skipWS()
@@ -428,6 +448,7 @@ func (p *compParser) parseIdentFuncOrPatternComp() {
 	// Function call (function names cannot contain dashes)
 	baseIdent := p.input[identStart:baseIdentEnd]
 	if p.peek() == '(' && isFunctionName(baseIdent) {
+		p.currentType = globalFunctionReturnType(baseIdent)
 		p.pos = baseIdentEnd
 		p.parseFunctionCallComp(baseIdent, false, nil)
 		return
@@ -455,6 +476,10 @@ func (p *compParser) parseIdentFuncOrPatternComp() {
 
 	// Not a pattern — backtrack to base identifier (without dash suffix)
 	// so that "x-y" becomes identifier "x" with "-y" parsed as infix subtraction
+	// Check if it's a commit keyword (e.g. "description" resolves to self.description())
+	if kt, ok := commitKeywords[baseIdent]; ok {
+		p.currentType = kt
+	}
 	p.pos = baseIdentEnd
 }
 

@@ -1,0 +1,6 @@
+len: |
+  `len()`: Returns the number of capture groups as an Integer.
+get: |
+  `get(index)`: Returns the capture group at the given index as a ByteString.
+name: |
+  `name(name)`: Returns the named capture group as a ByteString.

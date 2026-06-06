@@ -1,0 +1,4 @@
+key: |
+  `key()`: Returns the trailer key as a [String](jj://template-method-string/len).
+value: |
+  `value()`: Returns the trailer value as a [String](jj://template-method-string/len).

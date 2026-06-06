@@ -1,0 +1,14 @@
+ago: |
+  `ago()`: Returns a relative time string (e.g. "2 hours ago") as a [String](jj://template-method-string/len).
+format: |
+  `format(pattern)`: Formats the timestamp using a strftime-like pattern.
+utc: |
+  `utc()`: Converts the timestamp to UTC timezone.
+local: |
+  `local()`: Converts the timestamp to local timezone.
+after: |
+  `after(date)`: Returns `true` if the timestamp is at or after the given date.
+before: |
+  `before(date)`: Returns `true` if the timestamp is before the given date.
+since: |
+  `since(start)`: Returns a [TimestampRange](jj://template-method-timestamprange/duration) from the given start timestamp.

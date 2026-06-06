@@ -1,0 +1,12 @@
+path: |
+  `path()`: Returns the [RepoPath](jj://template-method-repopath/display) of the file.
+display_diff_path: |
+  `display_diff_path()`: Returns the display path as a [String](jj://template-method-string/len).
+status: |
+  `status()`: Returns the status as a [String](jj://template-method-string/len) (e.g. "Added", "Modified", "Removed").
+status_char: |
+  `status_char()`: Returns the status character as a [String](jj://template-method-string/len) (e.g. "A", "M", "R").
+source: |
+  `source()`: Returns the source [TreeEntry](jj://template-method-treeentry/path) (before the change).
+target: |
+  `target()`: Returns the target [TreeEntry](jj://template-method-treeentry/path) (after the change).

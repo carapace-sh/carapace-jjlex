@@ -1,0 +1,24 @@
+name: |
+  `name()`: Returns the ref name as a RefSymbol.
+remote: |
+  `remote()`: Returns the optional remote name as `Option<RefSymbol>`.
+present: |
+  `present()`: Returns `true` if the ref is present.
+conflict: |
+  `conflict()`: Returns `true` if the ref is in a conflict state.
+normal_target: |
+  `normal_target()`: Returns the normal target `Option<Commit>` if the ref is not in conflict.
+removed_targets: |
+  `removed_targets()`: Returns the list of removed target Commits.
+added_targets: |
+  `added_targets()`: Returns the list of added target Commits.
+tracked: |
+  `tracked()`: Returns `true` if the ref is tracked.
+tracking_present: |
+  `tracking_present()`: Returns `true` if a tracking ref exists.
+tracking_ahead_count: |
+  `tracking_ahead_count()`: Returns the ahead count as a SizeHint.
+tracking_behind_count: |
+  `tracking_behind_count()`: Returns the behind count as a SizeHint.
+synced: |
+  `synced()`: Returns `true` if the tracking ref is synced (ahead and behind counts are zero).

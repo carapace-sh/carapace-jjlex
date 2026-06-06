@@ -1,0 +1,8 @@
+as_boolean: |
+  `as_boolean()`: Converts the config value to a Boolean.
+as_integer: |
+  `as_integer()`: Converts the config value to an Integer.
+as_string: |
+  `as_string()`: Converts the config value to a [String](jj://template-method-string/len).
+as_string_list: |
+  `as_string_list()`: Converts the config value to a `List<String>`.
