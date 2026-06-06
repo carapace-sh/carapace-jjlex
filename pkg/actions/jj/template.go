@@ -78,8 +78,7 @@ func ActionCommitKeywords() carapace.Action {
 		"conflict", "Whether this commit has conflicts",
 		"empty", "Whether this commit modifies no files",
 		"root", "Whether this is the root commit",
-	).Suffix("()").
-		Uid("jj", "template-method-commit", "args", "false").
+	).Uid("jj", "template-method-commit", "args", "false").
 		Tag("commit keywords")
 }
 
