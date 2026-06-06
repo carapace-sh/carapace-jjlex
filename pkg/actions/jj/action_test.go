@@ -290,3 +290,32 @@ func TestParseLinesTrailingNewline(t *testing.T) {
 		t.Errorf("expected 2 lines, got %d: %v", len(lines), lines)
 	}
 }
+
+func TestFlattenConfig(t *testing.T) {
+	input := map[string]any{
+		"ui": map[string]any{
+			"color":  "auto",
+			"editor": "hx",
+		},
+		"signing": map[string]any{
+			"enabled": true,
+		},
+	}
+	result := flattenConfig(input)
+	if result["ui.color"] != "auto" {
+		t.Errorf("expected 'auto', got %q", result["ui.color"])
+	}
+	if result["ui.editor"] != "hx" {
+		t.Errorf("expected 'hx', got %q", result["ui.editor"])
+	}
+	if result["signing.enabled"] != "true" {
+		t.Errorf("expected 'true', got %q", result["signing.enabled"])
+	}
+}
+
+func TestFlattenConfigEmpty(t *testing.T) {
+	result := flattenConfig(map[string]any{})
+	if len(result) != 0 {
+		t.Errorf("expected 0 entries, got %d", len(result))
+	}
+}

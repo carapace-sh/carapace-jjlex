@@ -73,8 +73,10 @@ func ActionRevsets(opts RevOpts) carapace.Action {
 		prefix := c.Value[:len(c.Value)-len(ctx.PartialIdent)]
 
 		if ctx.InRemoteSymbol {
-			// Completing a remote name after @ (e.g. "main@ori")
-			// Strip the remote part from the prefix so ActionRemotes filters correctly
+			// Completing after @ in a name@... expression.
+			// This could be a remote name (e.g. "main@origin") or
+			// a workspace name (e.g. "other@").
+			// Strip the remote/workspace part from the prefix so actions filter correctly.
 			if ctx.PartialRemote != "" {
 				prefix = c.Value[:len(c.Value)-len(ctx.PartialRemote)]
 			} else if ctx.PartialString != "" {
@@ -84,13 +86,16 @@ func ActionRevsets(opts RevOpts) carapace.Action {
 					prefix = c.Value[:atIdx+1]
 				}
 			} else {
-				// Bare @ with no remote text yet (e.g. "main@")
+				// Bare @ with no text yet (e.g. "main@")
 				atIdx := strings.LastIndex(c.Value, "@")
 				if atIdx >= 0 {
 					prefix = c.Value[:atIdx+1]
 				}
 			}
-			return ActionRemotes().Prefix(prefix).NoSpace()
+			return carapace.Batch(
+				ActionRemotes(),
+				ActionWorkspaces(),
+			).ToA().Prefix(prefix).NoSpace()
 		}
 
 		if ctx.InPattern {
@@ -275,7 +280,10 @@ func actionForFunctionArg(ctx *revset.CompletionContext, opts RevOpts) carapace.
 
 	// Fileset expression
 	case "files":
-		return ActionFilesetPatterns().Suffix(":").NoSpace()
+		return carapace.Batch(
+			ActionFilesetPatterns().Suffix(":"),
+			ActionRevFiles("@"),
+		).ToA().NoSpace()
 
 	// Bookmark/tag functions: ([name_pattern], [remote=remote_pattern])
 	case "bookmarks", "remote_bookmarks", "tracked_remote_bookmarks", "untracked_remote_bookmarks",
@@ -314,6 +322,7 @@ func actionRevsetArg(opts RevOpts) carapace.Action {
 		ActionRevsetPatterns().Suffix(":"),
 		ActionSpecialSymbols(),
 		ActionRevsetAliases(true),
+		ActionWorkspaces(),
 	).ToA()
 }
 

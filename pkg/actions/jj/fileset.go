@@ -91,6 +91,7 @@ func actionFilesetExpression(_ *fileset.CompletionContext) carapace.Action {
 	return carapace.Batch(
 		ActionFilesetFunctions(),
 		ActionFilesetPatterns().Suffix(":"),
+		ActionRevFiles("@"),
 	).ToA().NoSpace()
 }
 
@@ -101,6 +102,7 @@ func actionForFilesetFunctionArg(ctx *fileset.CompletionContext) carapace.Action
 	return carapace.Batch(
 		ActionFilesetFunctions(),
 		ActionFilesetPatterns().Suffix(":"),
+		ActionRevFiles("@"),
 	).ToA().NoSpace()
 }
 

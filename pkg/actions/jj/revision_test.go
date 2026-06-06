@@ -174,3 +174,75 @@ func TestActionRevsetAliasesEmpty(t *testing.T) {
 
 // TODO(fixture): TestActionRecentCommits - shortest commit IDs are non-deterministic
 // and differ between runs. Same issue as TestActionChangeIds.
+
+func TestActionWorkspaces(t *testing.T) {
+	sandbox.Action(t, ActionWorkspaces)(func(s *sandbox.Sandbox) {
+		fixture.InitT(t, s)
+
+		// Verify workspace action returns results (description is non-deterministic)
+		s.Run("").ExpectNot(carapace.ActionValues())
+	})
+}
+
+func TestActionRevFiles(t *testing.T) {
+	sandbox.Action(t, func() carapace.Action { return ActionRevFiles("@") })(func(s *sandbox.Sandbox) {
+		f := fixture.InitT(t, s)
+		f.CommitAdd("a.txt", "a", "first commit")
+		f.CommitAdd("b.txt", "b", "second commit")
+
+		s.Run("").Expect(carapace.ActionValues(
+			"a.txt",
+			"b.txt",
+		).MultiParts("/").StyleF(style.ForPathExt).Tag("files"))
+	})
+}
+
+func TestActionRevFilesDefaultRevision(t *testing.T) {
+	sandbox.Action(t, func() carapace.Action { return ActionRevFiles("") })(func(s *sandbox.Sandbox) {
+		f := fixture.InitT(t, s)
+		f.CommitAdd("a.txt", "a", "first commit")
+
+		s.Run("").Expect(carapace.ActionValues(
+			"a.txt",
+		).MultiParts("/").StyleF(style.ForPathExt).Tag("files"))
+	})
+}
+
+func TestActionConfigs(t *testing.T) {
+	sandbox.Action(t, func() carapace.Action { return ActionConfigs(false) })(func(s *sandbox.Sandbox) {
+		f := fixture.InitT(t, s)
+		f.ConfigSet("ui.color", "never")
+
+		s.Run("ui.c").Expect(carapace.ActionValuesDescribed(
+			"ui.color", "never",
+		))
+	})
+}
+
+func TestActionConflictsEmpty(t *testing.T) {
+	sandbox.Action(t, func() carapace.Action { return ActionConflicts("@") })(func(s *sandbox.Sandbox) {
+		fixture.InitT(t, s)
+
+		s.Run("").Expect(carapace.ActionValues())
+	})
+}
+
+func TestActionRevDiffs(t *testing.T) {
+	sandbox.Action(t, func() carapace.Action { return ActionRevDiffs() })(func(s *sandbox.Sandbox) {
+		f := fixture.InitT(t, s)
+		f.CommitAdd("a.txt", "a", "first commit")
+		f.CommitAdd("b.txt", "b", "second commit")
+
+		// Working copy diff against parent: the new file in working copy
+		s.Run("").Expect(carapace.ActionValues(
+		).StyleF(style.ForPathExt).Tag("changed files"))
+	})
+}
+
+func TestActionRevDiffsTooManyArgs(t *testing.T) {
+	sandbox.Action(t, func() carapace.Action { return ActionRevDiffs("a", "b", "c") })(func(s *sandbox.Sandbox) {
+		fixture.InitT(t, s)
+
+		s.Run("").Expect(carapace.ActionMessage("ActionRevDiffs: at most 2 revision arguments"))
+	})
+}

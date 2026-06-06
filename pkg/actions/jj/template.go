@@ -148,10 +148,16 @@ func actionForTemplateFunctionArg(ctx *template.CompletionContext) carapace.Acti
 	if ctx.Function.IsZeroArg {
 		return carapace.ActionValues(")")
 	}
-	return carapace.Batch(
-		ActionTemplateFunctions(),
-		ActionStringPatterns().Suffix(":"),
-	).ToA().NoSpace()
+
+	switch ctx.Function.Name {
+	case "config":
+		return ActionConfigs(true).NoSpace()
+	default:
+		return carapace.Batch(
+			ActionTemplateFunctions(),
+			ActionStringPatterns().Suffix(":"),
+		).ToA().NoSpace()
+	}
 }
 
 func actionForTemplatePatternValue(ctx *template.CompletionContext) carapace.Action {
