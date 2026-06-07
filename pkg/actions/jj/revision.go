@@ -148,6 +148,61 @@ func ActionOperations(limit int) carapace.Action {
 	})
 }
 
+// ActionPrevCommits completes previous commits (ancestors of @) with numeric indices.
+//
+//	01 (commit message)
+//	02 (another message)
+func ActionPrevCommits(limit int) carapace.Action {
+	return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
+		return actionExecJJ("log", "--no-graph", "--template", `commit_id.short() ++ "\t" ++ description.first_line() ++ "\n"`, "--revisions", "::@", "--limit", strconv.Itoa(limit))(func(output []byte) carapace.Action {
+			lines := parseLines(output)
+			format := "%0" + strconv.Itoa(len(strconv.Itoa(limit-1))) + "d"
+
+			batch := carapace.Batch()
+			for i, line := range lines[1:] {
+				parts := strings.SplitN(line, "\t", 2)
+				if len(parts) < 2 {
+					continue
+				}
+				commit, description := parts[0], parts[1]
+				batch = append(batch,
+					carapace.ActionValuesDescribed(fmt.Sprintf(format, i), description).
+						UidF(Uid("commit", "id", commit)),
+				)
+			}
+			return batch.ToA().Tag("previous commits").Style(style.Blue)
+		})
+	})
+}
+
+// ActionNextCommits completes next commits (descendants of @-) with numeric indices.
+//
+//	01 (commit message)
+//	02 (another message)
+func ActionNextCommits(limit int) carapace.Action {
+	return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
+		return actionExecJJ("log", "--no-graph", "--template", `commit_id.short() ++ "\t" ++ description.first_line() ++ "\n"`, "--revisions", "@-::", "--limit", strconv.Itoa(limit))(func(output []byte) carapace.Action {
+			lines := parseLines(output)
+			format := "%0" + strconv.Itoa(len(strconv.Itoa(limit-1))) + "d"
+
+			batch := carapace.Batch()
+			total := len(lines) - 1
+			for i, line := range lines[1:] {
+				parts := strings.SplitN(line, "\t", 2)
+				if len(parts) < 2 {
+					continue
+				}
+				commit, description := parts[0], parts[1]
+				batch = append(batch,
+					carapace.ActionValuesDescribed(fmt.Sprintf(format, total-1-i), description).
+						UidF(Uid("commit", "id", commit)),
+				)
+			}
+			return batch.ToA().Tag("next commits").Style(style.Blue)
+		})
+	})
+}
+
 // ActionAncestors completes ancestor postfix operators for a given revset.
 //
 //   - (message)
