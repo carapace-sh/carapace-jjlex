@@ -138,29 +138,28 @@ func ActionRemotes() carapace.Action {
 //	Steve Klabnik
 //	Martin Thomson
 func ActionAuthors() carapace.Action {
-	return actionExecJJ("log", "--no-graph", "--template", `author.name() ++ "\n" ++ author.email() ++ "\n"`, "--limit", "100", "--revision", "::")(func(output []byte) carapace.Action {
+	return actionExecJJ("log", "--no-graph", "--template", `author.name() ++ "\t" ++ author.email() ++ "\n"`, "--limit", "1000", "--revision", "::")(func(output []byte) carapace.Action {
 		lines := parseLines(output)
 		seen := make(map[string]bool)
-		var names []string
-		var emails []string
-		for i := 0; i < len(lines)-1; i += 2 {
-			name := lines[i]
-			email := lines[i+1]
-			if name != "" && !seen[name] {
-				seen[name] = true
-				names = append(names, name)
-			}
-			if email != "" && !seen[email] {
-				seen[email] = true
-				emails = append(emails, email)
+		names := carapace.Batch()
+		emails := carapace.Batch()
+		for _, line := range lines {
+			if name, email, ok := strings.Cut(line, "\t"); ok {
+				if name != "" && !seen[name] {
+					seen[name] = true
+					names = append(names, carapace.ActionValuesDescribed(name, email))
+				}
+				if email != "" && !seen[email] {
+					seen[email] = true
+					emails = append(emails, carapace.ActionValuesDescribed(email, name))
+				}
 			}
 		}
-		if len(names) == 0 && len(emails) == 0 {
-			return carapace.ActionValues()
-		}
-		vals := append(names, emails...)
-		return carapace.ActionValues(vals...).Tag("authors").Style(style.Dim)
-	}).UidF(Uid("author"))
+		return carapace.Batch(
+			names.ToA(),
+			emails.ToA(),
+		).ToA()
+	}).Tag("authors").UidF(Uid("author"))
 }
 
 // ActionOperations completes operation IDs.

@@ -270,11 +270,16 @@ func actionForFunctionArg(ctx *revset.CompletionContext, opts RevOpts) carapace.
 		"description", "subject":
 		// Complete authors with proper quoting
 		if fn.InStringArg || fn.ArgIndex == 0 {
-			quote := "'"
+			quote := `"`
 			if ctx.StringQuote != 0 {
 				quote = string(ctx.StringQuote)
 			}
-			// Wrap with quote prefix and quote+parens suffix
+			// Only add prefix quote if we haven't already consumed one
+			if ctx.PartialString == "" && ctx.StringQuote != 0 {
+				// At opening quote like author(' — quote already typed, don't add it again
+				return ActionAuthors().Suffix(quote + ")")
+			}
+			// No quote yet: add quote prefix and quote+parens suffix
 			return ActionAuthors().Prefix(quote).Suffix(quote + ")")
 		}
 		return ActionStringPatterns().Suffix(":").NoSpace()

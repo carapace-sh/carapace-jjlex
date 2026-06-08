@@ -57,3 +57,30 @@ func TestActionRevsetAliasesUser(t *testing.T) {
 			Tag("revset aliases"))
 	})
 }
+
+func TestActionRevsetAuthor(t *testing.T) {
+	sandbox.Action(t, func() carapace.Action {
+		return ActionRevsets(RevOpts{}.Default())
+	})(func(s *sandbox.Sandbox) {
+		f := fixture.InitT(t, s)
+		f.CommitAdd("a.txt", "a", "first commit")
+
+		s.Run("author(").Expect(carapace.ActionValuesDescribed(
+			"fixture", "fixture@nowhere",
+			"fixture@nowhere", "fixture",
+		).Prefix("author(\"").Suffix("\")").
+			Tag("authors"))
+
+		s.Run("author('").Expect(carapace.ActionValuesDescribed(
+			"fixture", "fixture@nowhere",
+			"fixture@nowhere", "fixture",
+		).Prefix("author('").Suffix("')").
+			Tag("authors"))
+
+		s.Run("author(\"").Expect(carapace.ActionValuesDescribed(
+			"fixture", "fixture@nowhere",
+			"fixture@nowhere", "fixture",
+		).Prefix("author(\"").Suffix("\")").
+			Tag("authors"))
+	})
+}
