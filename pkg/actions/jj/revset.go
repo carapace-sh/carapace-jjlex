@@ -268,13 +268,14 @@ func actionForFunctionArg(ctx *revset.CompletionContext, opts RevOpts) carapace.
 	case "author", "author_name", "author_email",
 		"committer", "committer_name", "committer_email",
 		"description", "subject":
-		// Complete authors when at arg 0 or inside string literal
-		// Always add closing quote since bare author names aren't valid
+		// Complete authors with proper quoting
 		if fn.InStringArg || fn.ArgIndex == 0 {
+			quote := "'"
 			if ctx.StringQuote != 0 {
-				return ActionAuthors().Suffix(string(ctx.StringQuote))
+				quote = string(ctx.StringQuote)
 			}
-			return ActionAuthors().Suffix("'")
+			// Wrap with quote prefix and quote+parens suffix
+			return ActionAuthors().Prefix(quote).Suffix(quote + ")")
 		}
 		return ActionStringPatterns().Suffix(":").NoSpace()
 
