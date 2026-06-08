@@ -268,8 +268,8 @@ func actionForFunctionArg(ctx *revset.CompletionContext, opts RevOpts) carapace.
 	case "author", "author_name", "author_email",
 		"committer", "committer_name", "committer_email",
 		"description", "subject":
-		if fn.InStringArg || (fn.ArgIndex == 0 && ctx.StringQuote == 0 && ctx.PartialString == "") {
-			return ActionAuthors().Suffix(string(ctx.StringQuote)).NoSpace()
+		if fn.InStringArg {
+			return ActionAuthors().Suffix(string(ctx.StringQuote))
 		}
 		return ActionStringPatterns().Suffix(":").NoSpace()
 
