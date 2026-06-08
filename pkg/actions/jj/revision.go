@@ -159,7 +159,7 @@ func ActionAuthors() carapace.Action {
 			return carapace.ActionValues()
 		}
 		vals := append(names, emails...)
-		return carapace.ActionValues(vals...).Tag("authors")
+		return carapace.ActionValues(vals...).Tag("authors").Style(style.Dim)
 	}).UidF(Uid("author"))
 }
 
