@@ -744,6 +744,15 @@ func (p *compParser) parseFunctionCallCompletion(name string) {
 		// Regular positional argument
 		p.parseExpr()
 
+		// If we're at the cursor with a partial string, mark InStringArg.
+		// PartialString may be empty (just opening quote typed) — still in string.
+		if p.atCursorOrEnd() && p.ctx.StringQuote != 0 {
+			p.setFunctionContext(fs, argIndex)
+			if p.ctx.Function != nil {
+				p.ctx.Function.InStringArg = true
+			}
+		}
+
 		// If the parsed expression ended with a partial identifier at the
 		// cursor, the user is still typing this argument — don't count it as
 		// a completed arg. It might also be a keyword arg name (e.g.,

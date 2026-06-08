@@ -67,10 +67,16 @@ func ActionRevsets(opts RevOpts) carapace.Action {
 	return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
 		ctx := revset.ParseForCompletion(c.Value)
 
-		// Compute the prefix: everything before the partial identifier being typed.
+		// Compute the prefix: everything before the partial identifier or string being typed.
 		// Sub-actions filter against c.Value, so we need to strip this prefix
 		// before invoking them and re-attach it to the completion values.
-		prefix := c.Value[:len(c.Value)-len(ctx.PartialIdent)]
+		var prefix string
+		if ctx.PartialString != "" {
+			// We're inside a string literal — find the opening quote
+			prefix = c.Value[:len(c.Value)-len(ctx.PartialString)]
+		} else {
+			prefix = c.Value[:len(c.Value)-len(ctx.PartialIdent)]
+		}
 
 		if ctx.InRemoteSymbol {
 			// Completing after @ in a name@... expression.
@@ -262,6 +268,9 @@ func actionForFunctionArg(ctx *revset.CompletionContext, opts RevOpts) carapace.
 	case "author", "author_name", "author_email",
 		"committer", "committer_name", "committer_email",
 		"description", "subject":
+		if fn.InStringArg {
+			return ActionAuthors().NoSpace()
+		}
 		return ActionStringPatterns().Suffix(":").NoSpace()
 
 	// Date pattern functions

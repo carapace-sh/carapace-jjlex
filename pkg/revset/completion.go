@@ -74,6 +74,9 @@ type FunctionContext struct {
 	// IsZeroArg is true when the function takes no arguments
 	// (e.g. root(), all(), none())
 	IsZeroArg bool `json:"isZeroArg"`
+	// InStringArg is true when the current argument is a partial string literal
+	// (e.g. completing author("Ste) — the string value is in PartialString)
+	InStringArg bool `json:"inStringArg"`
 }
 
 // CompletionContext describes what is expected at the completion position.
