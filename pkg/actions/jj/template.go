@@ -49,28 +49,22 @@ func ActionTemplateFunctions() carapace.Action {
 
 // ActionCommitKeywords completes Commit keyword identifiers available in
 // commit templates (equivalent to self.method() calls).
+// Only includes keywords that return types directly usable as Template output
+// (String, Boolean, Integer, Option<T>) — excludes List<T> types that would
+// cause "Expected expression of type Template" errors.
 //
 //	change_id (ChangeId of the commit)
 //	description (commit description as String)
 func ActionCommitKeywords() carapace.Action {
 	return carapace.ActionValuesDescribed(
 		"description", "Commit description as String",
-		"trailers", "List of Trailer objects",
 		"change_id", "ChangeId of the commit",
 		"commit_id", "CommitId of the commit",
-		"parents", "List of parent Commits",
 		"author", "Signature of the author",
 		"committer", "Signature of the committer",
 		"signature", "Cryptographic signature",
 		"mine", "Whether authored by current user",
-		"working_copies", "List of WorkspaceRef objects",
 		"current_working_copy", "Whether this is the current working copy",
-		"bookmarks", "List of all CommitRef bookmarks",
-		"local_bookmarks", "List of local CommitRef bookmarks",
-		"remote_bookmarks", "List of remote CommitRef bookmarks",
-		"tags", "List of all CommitRef tags",
-		"local_tags", "List of local CommitRef tags",
-		"remote_tags", "List of remote CommitRef tags",
 		"divergent", "Whether this commit is divergent",
 		"hidden", "Whether this commit is hidden",
 		"change_offset", "Change offset for divergent commits",
