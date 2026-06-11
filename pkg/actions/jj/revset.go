@@ -117,6 +117,12 @@ func ActionRevsets(opts RevOpts) carapace.Action {
 			// postfix chain or close the function call.
 			if expectsToken(ctx, revset.ExpectedOperator) && hasPostfixOps(ctx) {
 				batch := carapace.Batch(fnAction)
+				if expectsToken(ctx, revset.ExpectedClosingParen) {
+					batch = append(batch, carapace.ActionValues(")"))
+				}
+				if expectsToken(ctx, revset.ExpectedComma) {
+					batch = append(batch, carapace.ActionValues(","))
+				}
 				for _, op := range ctx.ValidOperators {
 					batch = append(batch, carapace.ActionValuesDescribed(op.Op, op.Description))
 				}

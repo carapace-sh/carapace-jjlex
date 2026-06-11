@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/carapace-sh/carapace"
+	"github.com/carapace-sh/carapace-jjlex/pkg/revset"
 	"github.com/carapace-sh/carapace/pkg/sandbox"
 )
 
@@ -317,5 +318,33 @@ func TestFlattenConfigEmpty(t *testing.T) {
 	result := flattenConfig(map[string]any{})
 	if len(result) != 0 {
 		t.Errorf("expected 0 entries, got %d", len(result))
+	}
+}
+
+func TestHasPostfixOps(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected bool
+	}{
+		{"", false},
+		{"@", false},
+		{"bookmark", false},
+		{"all()", false},
+		{"bookmark-", true},
+		{"bookmark+", true},
+		{"bookmark--", true},
+		{"bookmark++", true},
+		{"parents(bookmark)-", true},
+		{"parents(bookmark)+", true},
+		{"parents(bookmark)", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			ctx := revset.ParseForCompletion(tt.input)
+			if result := hasPostfixOps(ctx); result != tt.expected {
+				t.Errorf("hasPostfixOps(%q) = %v, want %v (AttachedRevset=%q)", tt.input, result, tt.expected, ctx.AttachedRevset)
+			}
+		})
 	}
 }
