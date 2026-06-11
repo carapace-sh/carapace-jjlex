@@ -70,6 +70,11 @@ type compParser struct {
 	// started (set at the beginning of parsePostfixOps). Used to compute
 	// AttachedRevset.
 	postfixStart int
+
+	// hasPostfixOps is true when the current postfix chain has consumed
+	// at least one - or + operator. Used to distinguish postfix chains
+	// that have postfix operators from those that don't.
+	hasPostfixOps bool
 }
 
 type funcParseState struct {
@@ -148,9 +153,15 @@ func (p *compParser) afterExpression() {
 	// Set AttachedRevset to the input from the start of the current postfix
 	// chain to the current position. This tells the action layer what revset
 	// the postfix operators are attached to (e.g. "@-" or "main--").
-	// Don't set if we're right after an operator (before RHS started).
-	if p.postfixStart < p.pos && p.ctx.AttachedRevset == "" && !p.afterOperator {
-		p.ctx.AttachedRevset = p.input[p.postfixStart:p.pos]
+	// When the current postfix chain has consumed postfix operators (-/+),
+	// always overwrite: the innermost chain with operators is what the user
+	// is completing (e.g. "parents(bookmark)-" not "bookmark").
+	// When there are no postfix operators, only set if not already set
+	// (for simple expressions like "@" or "foo").
+	if p.postfixStart < p.pos && !p.afterOperator {
+		if p.hasPostfixOps || p.ctx.AttachedRevset == "" {
+			p.ctx.AttachedRevset = p.input[p.postfixStart:p.pos]
+		}
 	}
 
 	// If inside a function, also expect ) and ,
@@ -430,7 +441,10 @@ func (p *compParser) parseInfixRangeOp() {
 }
 
 func (p *compParser) parsePostfixOps() {
+	savedPostfixStart := p.postfixStart
+	savedHasPostfixOps := p.hasPostfixOps
 	p.postfixStart = p.pos
+	p.hasPostfixOps = false
 	p.parsePrimary()
 	for {
 		p.skipWS()
@@ -438,14 +452,20 @@ func (p *compParser) parsePostfixOps() {
 			if p.lastExpr != nil {
 				p.afterExpression()
 			}
+			p.postfixStart = savedPostfixStart
+			p.hasPostfixOps = savedHasPostfixOps
 			return
 		}
 		ch := p.peek()
 		if ch == '-' {
 			p.advance()
+			p.hasPostfixOps = true
 		} else if ch == '+' {
 			p.advance()
+			p.hasPostfixOps = true
 		} else {
+			p.postfixStart = savedPostfixStart
+			p.hasPostfixOps = savedHasPostfixOps
 			return
 		}
 	}

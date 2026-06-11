@@ -697,6 +697,10 @@ func TestCompletionAttachedRevset(t *testing.T) {
 		{"", ""},
 		{"@- |", ""},
 		{"foo | @-", "@-"},
+		{"parents(bookmark)-", "parents(bookmark)-"},
+		{"parents(bookmark)--", "parents(bookmark)--"},
+		{"(bookmark)-", "(bookmark)-"},
+		{"foo | parents(bookmark)-", "parents(bookmark)-"},
 	}
 
 	for _, tt := range tests {

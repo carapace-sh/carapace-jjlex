@@ -1,6 +1,7 @@
 package jj
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/carapace-sh/carapace"
@@ -109,7 +110,20 @@ func ActionRevsets(opts RevOpts) carapace.Action {
 		}
 
 		if ctx.Function != nil {
-			return actionForFunctionArg(ctx, opts).Prefix(prefix)
+			fnAction := actionForFunctionArg(ctx, opts)
+			// When inside a function but the cursor is after a postfix operator
+			// on an argument (e.g. "parents(bookmark-)"), also include
+			// operator and postfix actions so the user can continue the
+			// postfix chain or close the function call.
+			if expectsToken(ctx, revset.ExpectedOperator) && hasPostfixOps(ctx) {
+				batch := carapace.Batch(fnAction)
+				for _, op := range ctx.ValidOperators {
+					batch = append(batch, carapace.ActionValuesDescribed(op.Op, op.Description))
+				}
+				batch = append(batch, postfixActions(ctx)...)
+				return batch.ToA().NoSpace().Prefix(prefix)
+			}
+			return fnAction.Prefix(prefix)
 		}
 
 		if expectsToken(ctx, revset.ExpectedPatternValue) {
@@ -157,6 +171,17 @@ func ActionRevsets(opts RevOpts) carapace.Action {
 	})
 }
 
+// hasPostfixOps returns true when the AttachedRevset ends with a postfix
+// operator (- or +), meaning the user is completing after a postfix chain.
+func hasPostfixOps(ctx *revset.CompletionContext) bool {
+	attached := ctx.AttachedRevset
+	if attached == "" {
+		return false
+	}
+	last := attached[len(attached)-1]
+	return last == '-' || last == '+'
+}
+
 func expectsToken(ctx *revset.CompletionContext, token revset.ExpectedToken) bool {
 	for _, t := range ctx.ExpectedTokens {
 		if t == token {
@@ -168,9 +193,13 @@ func expectsToken(ctx *revset.CompletionContext, token revset.ExpectedToken) boo
 
 // postfixActions returns additional actions for postfix operator completion
 // based on the AttachedRevset from the completion parser. Only returns
-// ActionAncestors when the attached revset ends with "-", and only returns
-// ActionDescendants when it ends with "+". This avoids the expensive
+// ancestor actions when the attached revset ends with "-", and only returns
+// descendant actions when it ends with "+". This avoids the expensive
 // ActionDescendants (which runs 20 jj show commands) when not needed.
+//
+// The returned actions produce only the operator suffixes (e.g. "-", "--")
+// without the revset prefix, since the caller already applies .Prefix(prefix)
+// where prefix includes the full AttachedRevset text.
 func postfixActions(ctx *revset.CompletionContext) []carapace.Action {
 	attached := ctx.AttachedRevset
 	if attached == "" {
@@ -179,15 +208,98 @@ func postfixActions(ctx *revset.CompletionContext) []carapace.Action {
 	var actions []carapace.Action
 	if before, ok := strings.CutSuffix(attached, "-"); ok {
 		actions = append(actions,
-			ActionAncestors(before).Suppress("doesn't exist"),
+			ancestorSuffixes(before).Suppress("doesn't exist"),
 		)
 	}
 	if before, ok := strings.CutSuffix(attached, "+"); ok {
 		actions = append(actions,
-			ActionDescendants(before).Suppress("doesn't exist"),
+			descendantSuffixes(before).Suppress("doesn't exist"),
 		)
 	}
 	return actions
+}
+
+// ancestorSuffixes returns completions for parent postfix operators,
+// producing only the operator suffixes (e.g. "-", "--") with descriptions.
+// The revset prefix is NOT included since the caller handles prefixing.
+func ancestorSuffixes(revset string) carapace.Action {
+	return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
+		if revset == "" {
+			revset = "@"
+		}
+		return actionExecJJ("log", "--no-graph", "--template", `description.first_line() ++ "\n"`, "--revisions", fmt.Sprintf("first_ancestors(%v)", revset), "--limit", "20")(func(output []byte) carapace.Action {
+			lines := parseLines(output)
+			vals := make([]string, 0)
+			for i, line := range lines {
+				if i == 0 {
+					continue
+				}
+				vals = append(vals, strings.Repeat("-", i), line)
+			}
+			return carapace.ActionValuesDescribed(vals...).Tag("ancestors")
+		})
+	}).UidF(Uid("revset"))
+}
+
+// descendantSuffixes returns completions for child postfix operators,
+// producing only the operator suffixes (e.g. "+", "++") with descriptions.
+// The revset prefix is NOT included since the caller handles prefixing.
+func descendantSuffixes(revset string) carapace.Action {
+	return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
+		if revset == "" {
+			revset = "@"
+		}
+		revsetArgs := make([]string, 0, 20)
+		for d := 1; d <= 20; d++ {
+			revsetArgs = append(revsetArgs, fmt.Sprintf("children(%v, %d)", revset, d))
+		}
+		revsetExpr := strings.Join(revsetArgs, " | ")
+		depthChecks := ""
+		for d := 20; d >= 1; d-- {
+			inner := fmt.Sprintf(`self.contained_in("children(%v, %d)")`, revset, d)
+			if depthChecks == "" {
+				depthChecks = fmt.Sprintf(`if(%s, "%d", "unknown")`, inner, d)
+			} else {
+				depthChecks = fmt.Sprintf(`if(%s, "%d", %s)`, inner, d, depthChecks)
+			}
+		}
+		tmpl := fmt.Sprintf(`%s ++ "\t" ++ description.first_line() ++ "\n"`, depthChecks)
+		return actionExecJJ("log", "--no-graph", "--template", tmpl, "--revisions", revsetExpr, "--limit", "100")(func(output []byte) carapace.Action {
+			lines := parseLines(output)
+			byDepth := make(map[int][]string)
+			maxDepth := 0
+			for _, line := range lines {
+				parts := strings.SplitN(line, "\t", 2)
+				if len(parts) < 2 {
+					continue
+				}
+				var d int
+				if _, err := fmt.Sscanf(parts[0], "%d", &d); err != nil || d < 1 || d > 20 {
+					continue
+				}
+				byDepth[d] = append(byDepth[d], parts[1])
+				if d > maxDepth {
+					maxDepth = d
+				}
+			}
+			vals := make([]string, 0)
+			for d := 1; d <= maxDepth; d++ {
+				descs := byDepth[d]
+				if len(descs) == 0 {
+					continue
+				}
+				if len(descs) == 1 {
+					vals = append(vals, strings.Repeat("+", d), descs[0])
+				} else {
+					vals = append(vals, strings.Repeat("+", d), fmt.Sprintf("%d children", len(descs)))
+				}
+			}
+			if len(vals) == 0 {
+				return carapace.ActionValues()
+			}
+			return carapace.ActionValuesDescribed(vals...).Tag("descendants")
+		})
+	}).UidF(Uid("revset"))
 }
 
 func actionExpression(opts RevOpts, ctx *revset.CompletionContext) carapace.Action {
