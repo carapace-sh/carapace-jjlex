@@ -8,6 +8,16 @@ import (
 	"github.com/carapace-sh/carapace/pkg/uid"
 )
 
+// uidWithPrefix is like Uid but prepends prefix to the value before using it
+// as the URL path. This is needed for postfix operator completions where the
+// value is just the operator suffix (e.g. "--") but the UID path should
+// contain the full revset expression (e.g. "main--").
+func uidWithPrefix(host string, prefix string, opts ...string) func(s string, uc uid.Context) (*url.URL, error) {
+	return func(s string, uc uid.Context) (*url.URL, error) {
+		return Uid(host, opts...)(prefix+s, uc)
+	}
+}
+
 func Uid(host string, opts ...string) func(s string, uc uid.Context) (*url.URL, error) {
 	return func(s string, uc uid.Context) (*url.URL, error) {
 		if length := len(opts); length%2 != 0 {

@@ -243,8 +243,8 @@ func ancestorSuffixes(revset string) carapace.Action {
 				vals = append(vals, strings.Repeat("-", i), line)
 			}
 			return carapace.ActionValuesDescribed(vals...).Tag("ancestors")
-		})
-	}).UidF(Uid("revset"))
+		}).UidF(uidWithPrefix("revset", revset))
+	})
 }
 
 // descendantSuffixes returns completions for child postfix operators,
@@ -305,7 +305,7 @@ func descendantSuffixes(revset string) carapace.Action {
 			}
 			return carapace.ActionValuesDescribed(vals...).Tag("descendants")
 		})
-	}).UidF(Uid("revset"))
+	}).UidF(uidWithPrefix("revset", revset))
 }
 
 func actionExpression(opts RevOpts, ctx *revset.CompletionContext) carapace.Action {
