@@ -9,12 +9,15 @@ import (
 
 // ActionRevDiffs completes changed files between revisions.
 // Accepts up to two revision arguments:
+//
 //   - 0: compare working copy to parent
+//
 //   - 1: compare given revision to its parent
+//
 //   - 2: compare first revision to second revision
 //
-//	go.mod (M)
-//	go.sum (A)
+//     go.mod (M)
+//     go.sum (A)
 func ActionRevDiffs(revisions ...string) carapace.Action {
 	return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
 		var from, to string

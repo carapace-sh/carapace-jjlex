@@ -64,9 +64,8 @@ type compParser struct {
 }
 
 type funcParseState struct {
-	name     string
-	args     []*Expression
-	argIndex int
+	name string
+	args []*Expression
 }
 
 func (p *compParser) atCursorOrEnd() bool {

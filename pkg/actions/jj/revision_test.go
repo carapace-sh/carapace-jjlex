@@ -268,8 +268,7 @@ func TestActionRevDiffs(t *testing.T) {
 		f.CommitAdd("b.txt", "b", "second commit")
 
 		// Working copy diff against parent: the new file in working copy
-		s.Run("").Expect(carapace.ActionValues(
-		).StyleF(style.ForPathExt).Tag("changed files"))
+		s.Run("").Expect(carapace.ActionValues().StyleF(style.ForPathExt).Tag("changed files"))
 	})
 }
 

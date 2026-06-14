@@ -81,7 +81,6 @@ type funcParseState struct {
 	name        string
 	args        []*Expression
 	keywordArgs []KeywordArg
-	argIndex    int
 }
 
 // atCursorOrEnd returns true if we're at or past the effective end (cursor or input end).
