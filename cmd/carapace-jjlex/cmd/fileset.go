@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/carapace-sh/carapace"
-	"github.com/carapace-sh/carapace-jjlex/pkg/actions/jj"
+	"github.com/carapace-sh/carapace-jjlex/pkg/actions/tools/jj"
 	"github.com/carapace-sh/carapace-jjlex/pkg/fileset"
 	"github.com/spf13/cobra"
 )
