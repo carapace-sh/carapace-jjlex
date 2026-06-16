@@ -1,6 +1,7 @@
 package jj
 
 import (
+	"strconv"
 	"testing"
 
 	"github.com/carapace-sh/carapace"
@@ -85,6 +86,49 @@ func TestActionRevsetAuthor(t *testing.T) {
 	})
 }
 
+func TestActionRevsetsAncestorsDepth(t *testing.T) {
+	sandbox.Action(t, func() carapace.Action {
+		return ActionRevsets(RevOpts{}.Default())
+	})(func(s *sandbox.Sandbox) {
+		f := fixture.InitT(t, s)
+		f.CommitAdd("a.txt", "a", "first commit")
+		f.CreateBookmark("feature-x")
+
+		depthVals := make([]string, 20)
+		for i := 1; i <= 20; i++ {
+			depthVals[i-1] = strconv.Itoa(i)
+		}
+
+		s.Run("ancestors(feature-x,").Expect(carapace.Batch(
+			carapace.ActionValues(")").Prefix("ancestors(feature-x,"),
+			carapace.ActionValuesDescribed(
+				"&", "intersection",
+				"|", "union",
+				"~", "difference",
+				"::", "DAG range",
+				"..", "range",
+				"-", "parents",
+				"+", "children",
+			).Prefix("ancestors(feature-x,"),
+			carapace.ActionValues(depthVals...).Style(style.Blue).Tag("depth").Prefix("ancestors(feature-x,"),
+		).ToA().NoSpace())
+
+		s.Run("ancestors(feature-x, ").Expect(carapace.Batch(
+			carapace.ActionValues(")").Prefix("ancestors(feature-x, "),
+			carapace.ActionValuesDescribed(
+				"&", "intersection",
+				"|", "union",
+				"~", "difference",
+				"::", "DAG range",
+				"..", "range",
+				"-", "parents",
+				"+", "children",
+			).Prefix("ancestors(feature-x, "),
+			carapace.ActionValues(depthVals...).Style(style.Blue).Tag("depth").Prefix("ancestors(feature-x, "),
+		).ToA().NoSpace())
+	})
+}
+
 func TestActionRevsetsPostfixInFunction(t *testing.T) {
 	sandbox.Action(t, func() carapace.Action {
 		return ActionRevsets(RevOpts{}.Default())
@@ -93,6 +137,11 @@ func TestActionRevsetsPostfixInFunction(t *testing.T) {
 		f.CommitAdd("a.txt", "a", "first commit")
 		f.CommitAdd("b.txt", "b", "second commit")
 		f.CommitAdd("c.txt", "c", "third commit")
+
+		depthVals := make([]string, 20)
+		for i := 1; i <= 20; i++ {
+			depthVals[i-1] = strconv.Itoa(i)
+		}
 
 		s.Run("parents(@-").Expect(carapace.Batch(
 			carapace.ActionValuesDescribed(
@@ -109,6 +158,7 @@ func TestActionRevsetsPostfixInFunction(t *testing.T) {
 				"..", "range",
 				"+", "children",
 			).Prefix("parents(@-"),
+			carapace.ActionValues(depthVals...).Tag("depth").Style(style.Blue).Prefix("parents(@-"),
 		).ToA().NoSpace())
 	})
 }

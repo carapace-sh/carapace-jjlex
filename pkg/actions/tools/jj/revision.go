@@ -233,6 +233,18 @@ func ActionNextCommits(limit int) carapace.Action {
 	})
 }
 
+// ActionDepth completes integer depth values for traversal functions.
+//
+//	1 (1st ancestor/parent/descendant)
+//	2 (2nd ancestor/parent/descendant)
+func ActionDepth() carapace.Action {
+	vals := make([]string, 0, 20)
+	for i := 1; i <= 20; i++ {
+		vals = append(vals, strconv.Itoa(i))
+	}
+	return carapace.ActionValues(vals...).Tag("depth").Style(style.Blue).Uid("jj", "depth")
+}
+
 // ActionAncestors completes ancestor postfix operators for a given revset.
 //
 //   - (message)

@@ -1,6 +1,7 @@
 package jj
 
 import (
+	"strconv"
 	"testing"
 
 	"github.com/carapace-sh/carapace"
@@ -82,6 +83,16 @@ func TestActionHeadCommits(t *testing.T) {
 			"@--", "first commit",
 		).Style("blue").
 			Tag("head commits"))
+	})
+}
+
+func TestActionDepth(t *testing.T) {
+	sandbox.Action(t, ActionDepth)(func(s *sandbox.Sandbox) {
+		vals := make([]string, 20)
+		for i := 1; i <= 20; i++ {
+			vals[i-1] = strconv.Itoa(i)
+		}
+		s.Run("").Expect(carapace.ActionValues(vals...).Style("blue").Tag("depth"))
 	})
 }
 

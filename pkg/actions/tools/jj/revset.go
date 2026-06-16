@@ -134,6 +134,22 @@ func ActionRevsets(opts RevOpts) carapace.Action {
 				}
 				return mergeWithPostfix(batch.ToA().NoSpace().Prefix(prefix), ctx)
 			}
+			// When at an optional function parameter (e.g. depth in
+			// "ancestors(x, [depth])"), include closing paren and
+			// operators so the user can close the call or apply
+			// operators to the preceding expression.
+			if isOptionalDepthArg(ctx) {
+				batch := carapace.Batch(fnAction)
+				if expectsToken(ctx, revset.ExpectedClosingParen) {
+					batch = append(batch, carapace.ActionValues(")"))
+				}
+				for _, op := range ctx.ValidOperators {
+					if !suppressOps[op.Op] {
+						batch = append(batch, carapace.ActionValuesDescribed(op.Op, op.Description))
+					}
+				}
+				return batch.ToA().NoSpace().Prefix(prefix)
+			}
 			return fnAction.Prefix(prefix)
 		}
 
@@ -226,6 +242,22 @@ func hasPostfixOps(ctx *revset.CompletionContext) bool {
 	}
 	last := attached[len(attached)-1]
 	return last == '-' || last == '+'
+}
+
+// isOptionalDepthArg returns true when the cursor is at an optional depth
+// parameter of a traversal function (e.g. ancestors(x, [depth])). These
+// functions allow closing the paren or applying operators to the preceding
+// expression even without providing the depth.
+func isOptionalDepthArg(ctx *revset.CompletionContext) bool {
+	if ctx.Function == nil {
+		return false
+	}
+	switch ctx.Function.Name {
+	case "parents", "children", "ancestors", "descendants",
+		"first_parent", "first_ancestors":
+		return ctx.Function.ArgIndex >= 1
+	}
+	return false
 }
 
 func expectsToken(ctx *revset.CompletionContext, token revset.ExpectedToken) bool {
@@ -323,7 +355,7 @@ func actionForFunctionArg(ctx *revset.CompletionContext, opts RevOpts) carapace.
 		if fn.ArgIndex == 0 {
 			return actionRevsetArg(opts).NoSpace()
 		}
-		return carapace.ActionValues()
+		return ActionDepth()
 
 	// Set operations with revset arg(s)
 	case "heads", "roots", "fork_point", "bisect", "present", "connected":
