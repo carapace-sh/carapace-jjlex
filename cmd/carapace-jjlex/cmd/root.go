@@ -5,6 +5,8 @@ import (
 	"os"
 
 	"github.com/carapace-sh/carapace"
+	"github.com/carapace-sh/carapace-jjlex/pkg/actions/tools/jj"
+	spec "github.com/carapace-sh/carapace-spec"
 	"github.com/spf13/cobra"
 )
 
@@ -21,5 +23,10 @@ func Execute() {
 }
 
 func init() {
-	carapace.Gen(rootCmd).Standalone()
+	carapace.Gen(rootCmd)
+
+	// TODO add other actions as macros
+	spec.AddMacroI(jj.ActionAncestors)
+	spec.AddMacroI(jj.ActionDescendants)
+	spec.Register(rootCmd)
 }

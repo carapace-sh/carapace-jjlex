@@ -95,21 +95,21 @@ func TestActionRevsetsPostfixInFunction(t *testing.T) {
 		f.CommitAdd("c.txt", "c", "third commit")
 
 		s.Run("parents(@-").Expect(carapace.Batch(
-			carapace.ActionValues(")", ","),
+			carapace.ActionValuesDescribed(
+				"-", "third commit",
+				"--", "second commit",
+				"---", "first commit",
+			).Tag("ancestors").Prefix("parents(@"),
+			carapace.ActionValues(")", ",").Prefix("parents(@-"),
 			carapace.ActionValuesDescribed(
 				"&", "intersection",
 				"|", "union",
 				"~", "difference",
 				"::", "DAG range",
 				"..", "range",
-				"-", "parents",
 				"+", "children",
-			),
-			carapace.ActionValuesDescribed(
-				"-", "second commit",
-				"--", "first commit",
-			).Tag("ancestors"),
-		).ToA().Prefix("parents(@-").NoSpace())
+			).Prefix("parents(@-"),
+		).ToA().NoSpace())
 	})
 }
 
@@ -124,18 +124,93 @@ func TestActionRevsetsPostfixNoDoublePrefix(t *testing.T) {
 
 		s.Run("@-").Expect(carapace.Batch(
 			carapace.ActionValuesDescribed(
+				"-", "third commit",
+				"--", "second commit",
+				"---", "first commit",
+			).Tag("ancestors").Prefix("@"),
+			carapace.ActionValuesDescribed(
+				"&", "intersection",
+				"|", "union",
+				"~", "difference",
+				"::", "DAG range",
+				"..", "range",
+				"+", "children",
+			).Prefix("@-"),
+		).ToA().NoSpace())
+	})
+}
+
+func TestActionRevsetsBookmarkPostfixNoDoublePrefix(t *testing.T) {
+	sandbox.Action(t, func() carapace.Action {
+		return ActionRevsets(RevOpts{}.Default())
+	})(func(s *sandbox.Sandbox) {
+		f := fixture.InitT(t, s)
+		f.CommitAdd("a.txt", "a", "first commit")
+		f.CommitAdd("b.txt", "b", "second commit")
+		f.CommitAdd("c.txt", "c", "third commit")
+		f.CreateBookmark("feature-x")
+
+		s.Run("feature-x-").Expect(carapace.Batch(
+			carapace.ActionValuesDescribed(
+				"-", "third commit",
+				"--", "second commit",
+				"---", "first commit",
+			).Tag("ancestors").Prefix("feature-x"),
+			carapace.ActionValuesDescribed(
+				"&", "intersection",
+				"|", "union",
+				"~", "difference",
+				"::", "DAG range",
+				"..", "range",
+				"+", "children",
+			).Prefix("feature-x-"),
+		).ToA().NoSpace())
+	})
+}
+
+func TestActionRevsetsPostfixDescendants(t *testing.T) {
+	sandbox.Action(t, func() carapace.Action {
+		return ActionRevsets(RevOpts{}.Default())
+	})(func(s *sandbox.Sandbox) {
+		f := fixture.InitT(t, s)
+		f.CommitAdd("a.txt", "a", "first commit")
+		f.CommitAdd("b.txt", "b", "second commit")
+		f.CommitAdd("c.txt", "c", "third commit")
+
+		s.Run("@+").Expect(carapace.Batch(
+			carapace.ActionValuesDescribed(
 				"&", "intersection",
 				"|", "union",
 				"~", "difference",
 				"::", "DAG range",
 				"..", "range",
 				"-", "parents",
-				"+", "children",
-			),
+			).Prefix("@+"),
+		).ToA().NoSpace())
+	})
+}
+
+func TestActionRevsetsPostfixMultiLevel(t *testing.T) {
+	sandbox.Action(t, func() carapace.Action {
+		return ActionRevsets(RevOpts{}.Default())
+	})(func(s *sandbox.Sandbox) {
+		f := fixture.InitT(t, s)
+		f.CommitAdd("a.txt", "a", "first commit")
+		f.CommitAdd("b.txt", "b", "second commit")
+		f.CommitAdd("c.txt", "c", "third commit")
+
+		s.Run("@---").Expect(carapace.Batch(
 			carapace.ActionValuesDescribed(
-				"-", "second commit",
-				"--", "first commit",
-			).Tag("ancestors"),
-		).ToA().Prefix("@-").NoSpace())
+				"-", "first commit",
+			).Tag("ancestors").Prefix("@--"),
+			carapace.ActionValuesDescribed(
+				"&", "intersection",
+				"|", "union",
+				"~", "difference",
+				"::", "DAG range",
+				"..", "range",
+				"+", "children",
+			).Prefix("@---"),
+		).ToA().NoSpace())
 	})
 }

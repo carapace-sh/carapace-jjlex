@@ -119,4 +119,13 @@ type CompletionContext struct {
 	// attached to (e.g. "@-" has AttachedRevset "@-"). Used to determine
 	// whether ActionAncestors or ActionDescendants should be invoked.
 	AttachedRevset string `json:"attachedRevset,omitempty"`
+
+	// PostfixOpStart is the byte offset in the input where postfix operators
+	// begin within the AttachedRevset (e.g. for "bookmark-" with
+	// AttachedRevset "bookmark-", PostfixOpStart is 8 — the position of "-").
+	// When no postfix operators are present, this is 0.
+	// Used to strip already-typed postfix operators from the prefix
+	// so that postfix action values (which include the full operator chain)
+	// don't double up with the prefix.
+	PostfixOpStart int `json:"postfixOpStart,omitempty"`
 }
