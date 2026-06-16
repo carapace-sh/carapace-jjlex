@@ -75,6 +75,13 @@ type compParser struct {
 	// at least one - or + operator. Used to distinguish postfix chains
 	// that have postfix operators from those that don't.
 	hasPostfixOps bool
+
+	// postfixOpStart is the input position where the first postfix operator
+	// (-/+) was consumed in the current postfix chain. Set when
+	// hasPostfixOps becomes true. Used to compute PostfixOpStart in
+	// CompletionContext so the action layer can strip already-typed
+	// postfix operators from the prefix.
+	postfixOpStart int
 }
 
 type funcParseState struct {
@@ -160,6 +167,9 @@ func (p *compParser) afterExpression() {
 	if p.postfixStart < p.pos && !p.afterOperator {
 		if p.hasPostfixOps || p.ctx.AttachedRevset == "" {
 			p.ctx.AttachedRevset = p.input[p.postfixStart:p.pos]
+			if p.hasPostfixOps {
+				p.ctx.PostfixOpStart = p.postfixOpStart - p.postfixStart
+			}
 		}
 	}
 
@@ -442,8 +452,10 @@ func (p *compParser) parseInfixRangeOp() {
 func (p *compParser) parsePostfixOps() {
 	savedPostfixStart := p.postfixStart
 	savedHasPostfixOps := p.hasPostfixOps
+	savedPostfixOpStart := p.postfixOpStart
 	p.postfixStart = p.pos
 	p.hasPostfixOps = false
+	p.postfixOpStart = 0
 	p.parsePrimary()
 	for {
 		p.skipWS()
@@ -453,18 +465,26 @@ func (p *compParser) parsePostfixOps() {
 			}
 			p.postfixStart = savedPostfixStart
 			p.hasPostfixOps = savedHasPostfixOps
+			p.postfixOpStart = savedPostfixOpStart
 			return
 		}
 		ch := p.peek()
 		if ch == '-' {
+			if !p.hasPostfixOps {
+				p.postfixOpStart = p.pos
+			}
 			p.advance()
 			p.hasPostfixOps = true
 		} else if ch == '+' {
+			if !p.hasPostfixOps {
+				p.postfixOpStart = p.pos
+			}
 			p.advance()
 			p.hasPostfixOps = true
 		} else {
 			p.postfixStart = savedPostfixStart
 			p.hasPostfixOps = savedHasPostfixOps
+			p.postfixOpStart = savedPostfixOpStart
 			return
 		}
 	}

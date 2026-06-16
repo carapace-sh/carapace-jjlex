@@ -93,24 +93,11 @@ func TestActionAncestors(t *testing.T) {
 		f.CommitAdd("c.txt", "c", "third commit")
 
 		s.Run("").Expect(carapace.ActionValuesDescribed(
-			"-", "second commit",
-			"--", "first commit",
+			"-", "third commit",
+			"--", "second commit",
+			"---", "first commit",
 		).Prefix("@").
 			Tag("ancestors"))
-	})
-}
-
-func TestAncestorSuffixes(t *testing.T) {
-	sandbox.Action(t, func() carapace.Action { return ancestorSuffixes("") })(func(s *sandbox.Sandbox) {
-		f := fixture.InitT(t, s)
-		f.CommitAdd("a.txt", "a", "first commit")
-		f.CommitAdd("b.txt", "b", "second commit")
-		f.CommitAdd("c.txt", "c", "third commit")
-
-		s.Run("").Expect(carapace.ActionValuesDescribed(
-			"-", "second commit",
-			"--", "first commit",
-		).Tag("ancestors"))
 	})
 }
 

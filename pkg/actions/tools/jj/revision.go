@@ -2,6 +2,7 @@ package jj
 
 import (
 	"fmt"
+	"os/exec"
 	"strconv"
 	"strings"
 
@@ -241,18 +242,40 @@ func ActionAncestors(revset string) carapace.Action {
 		if revset == "" {
 			revset = "@"
 		}
-		return actionExecJJ("log", "--no-graph", "--template", `description.first_line() ++ "\n"`, "--revisions", fmt.Sprintf("first_ancestors(%v)", revset), "--limit", "20")(func(output []byte) carapace.Action {
-			lines := parseLines(output)
-			vals := make([]string, 0)
-			for i, line := range lines {
-				if i == 0 {
-					continue
+		batch := carapace.Batch()
+		limit := 20
+		for ancestor := range limit {
+			batch = append(batch, actionExecJJE("show", "--no-patch", "--template", `description.first_line() ++ "\n"`, fmt.Sprintf("parents(%s, %v)", revset, ancestor+1))(func(output []byte, err error) carapace.Action {
+				value := strings.Repeat("-", ancestor+1)
+				if err != nil {
+					if exitErr, ok := err.(*exec.ExitError); ok {
+						firstline, parents, _ := strings.Cut(string(exitErr.Stderr), "\n")
+						if strings.Contains(firstline, "resolved to more than one revision") {
+							var description string
+							switch count := strings.Count(parents, "\n") - 1; {
+							case count > 5:
+								description = fmt.Sprintf("%v+ parents", count)
+							default:
+								description = fmt.Sprintf("%v parents", count)
+							}
+							return carapace.ActionValuesDescribed(value, description).
+								Style(style.Carapace.KeywordAmbiguous).
+								Prefix(revset)
+						}
+						return carapace.ActionMessage(firstline).Suppress("didn't resolve to any revisions")
+					}
+					return carapace.ActionMessage(err.Error())
 				}
-				vals = append(vals, strings.Repeat("-", i), line)
-			}
-			return carapace.ActionValuesDescribed(vals...).Prefix(revset).Tag("ancestors")
-		})
-	}).UidF(Uid("revset"))
+				description, _, _ := strings.Cut(string(output), "\n")
+				if description == "" {
+					return carapace.ActionValues() // root commit with no description
+				}
+				return carapace.ActionValuesDescribed(value, description).Prefix(revset)
+			}))
+		}
+		return batch.ToA()
+	}).Tag("ancestors").UidF(Uid("revset"))
+
 }
 
 // ActionDescendants completes descendant postfix operators for a given revset.

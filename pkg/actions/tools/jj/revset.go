@@ -1,7 +1,7 @@
 package jj
 
 import (
-	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/carapace-sh/carapace"
@@ -109,6 +109,10 @@ func ActionRevsets(opts RevOpts) carapace.Action {
 			return actionForPatternValue(ctx).Prefix(prefix)
 		}
 
+		// Compute postfix actions and suppressed operators early so we can
+		// filter operators when building the main action.
+		_, suppressOps := postfixActions(ctx)
+
 		if ctx.Function != nil {
 			fnAction := actionForFunctionArg(ctx, opts)
 			// When inside a function but the cursor is after a postfix operator
@@ -124,10 +128,11 @@ func ActionRevsets(opts RevOpts) carapace.Action {
 					batch = append(batch, carapace.ActionValues(","))
 				}
 				for _, op := range ctx.ValidOperators {
-					batch = append(batch, carapace.ActionValuesDescribed(op.Op, op.Description))
+					if !suppressOps[op.Op] {
+						batch = append(batch, carapace.ActionValuesDescribed(op.Op, op.Description))
+					}
 				}
-				batch = append(batch, postfixActions(ctx)...)
-				return batch.ToA().NoSpace().Prefix(prefix)
+				return mergeWithPostfix(batch.ToA().NoSpace().Prefix(prefix), ctx)
 			}
 			return fnAction.Prefix(prefix)
 		}
@@ -142,23 +147,21 @@ func ActionRevsets(opts RevOpts) carapace.Action {
 
 		if expectsToken(ctx, revset.ExpectedExpression) && expectsToken(ctx, revset.ExpectedOperator) {
 			// Both expression and operator are valid - combine both actions.
-			// When there's a partialIdent, the user is typing an expression
-			// so don't show postfix operators (attachedRevset is just the
-			// partial identifier, not a completed revset).
-			hasPartial := ctx.PartialIdent != ""
 			batch := carapace.Batch(
 				actionExpression(opts, ctx),
-				actionOperator(opts, ctx, !hasPartial),
+				actionOperator(opts, ctx, suppressOps),
 			)
-			return batch.ToA().Prefix(prefix)
+			return mergeWithPostfix(batch.ToA().Prefix(prefix), ctx)
 		}
 
 		if expectsToken(ctx, revset.ExpectedExpression) {
-			return actionExpression(opts, ctx).Prefix(prefix)
+			batch := carapace.Batch(actionExpression(opts, ctx))
+			return mergeWithPostfix(batch.ToA().Prefix(prefix), ctx)
 		}
 
 		if expectsToken(ctx, revset.ExpectedOperator) {
-			return actionOperator(opts, ctx, true).Prefix(prefix)
+			batch := carapace.Batch(actionOperator(opts, ctx, suppressOps))
+			return mergeWithPostfix(batch.ToA().Prefix(prefix), ctx)
 		}
 
 		if expectsToken(ctx, revset.ExpectedClosingParen) {
@@ -177,6 +180,43 @@ func ActionRevsets(opts RevOpts) carapace.Action {
 	})
 }
 
+// mergeWithPostfix combines a main action (with prefix already applied) with
+// postfix actions. Postfix actions (ancestors/descendants) have their prefix
+// set to the base revset (e.g. "@"), but when the AttachedRevset appears
+// inside a larger expression (e.g. "parents(@-"), the values need an
+// additional outer prefix prepended. mergeWithPostfix computes this
+// outer prefix from the input and the AttachedRevset position.
+func mergeWithPostfix(main carapace.Action, ctx *revset.CompletionContext) carapace.Action {
+	postfix, _ := postfixActions(ctx)
+	if len(postfix) == 0 {
+		return main
+	}
+	postfixBatch := carapace.Batch()
+	for _, a := range postfix {
+		postfixBatch = append(postfixBatch, a)
+	}
+	return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
+		// Compute outer prefix: the part of the input before the AttachedRevset.
+		// For "parents(@-", AttachedRevset="@-", outerPrefix="parents(".
+		outerPrefix := ""
+		attachedLen := len(ctx.AttachedRevset)
+		if idx := len(c.Value) - attachedLen; idx > 0 {
+			outerPrefix = c.Value[:idx]
+		}
+		// Invoke postfix actions with a trimmed c.Value so that the
+		// .Prefix(baseRevset) on ActionAncestors matches correctly.
+		// For "parents(@-", set c.Value to "@-" (the AttachedRevset).
+		if attachedLen > 0 && len(c.Value) >= attachedLen {
+			c.Value = c.Value[len(c.Value)-attachedLen:]
+		}
+		invoked := postfixBatch.ToA().NoSpace().Invoke(c)
+		if outerPrefix != "" {
+			invoked = invoked.Prefix(outerPrefix)
+		}
+		return carapace.Batch(main, invoked.ToA()).ToA()
+	})
+}
+
 // hasPostfixOps returns true when the AttachedRevset ends with a postfix
 // operator (- or +), meaning the user is completing after a postfix chain.
 func hasPostfixOps(ctx *revset.CompletionContext) bool {
@@ -189,12 +229,7 @@ func hasPostfixOps(ctx *revset.CompletionContext) bool {
 }
 
 func expectsToken(ctx *revset.CompletionContext, token revset.ExpectedToken) bool {
-	for _, t := range ctx.ExpectedTokens {
-		if t == token {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(ctx.ExpectedTokens, token)
 }
 
 // postfixActions returns additional actions for postfix operator completion
@@ -203,130 +238,64 @@ func expectsToken(ctx *revset.CompletionContext, token revset.ExpectedToken) boo
 // descendant actions when it ends with "+". This avoids the expensive
 // ActionDescendants (which runs 20 jj show commands) when not needed.
 //
-// The returned actions produce only the operator suffixes (e.g. "-", "--")
-// without the revset prefix, since the caller already applies .Prefix(prefix)
-// where prefix includes the full AttachedRevset text.
-func postfixActions(ctx *revset.CompletionContext) []carapace.Action {
+// The base revset is the full AttachedRevset (what the user typed). The
+// returned actions produce suffixes that continue from what was typed.
+// For example, for "@-" (user typed 1 dash), the completions are "-"
+// (current level), "--" (one more parent), etc.
+//
+// The returned actions already have the correct prefix baked in via
+// .Prefix(postfixPrefix). The caller should NOT apply an additional
+// .Prefix() to these actions.
+//
+// The returned suppressOps set contains operator strings that should be
+// suppressed from the operator list because they are already covered by
+// the postfix suffix actions (which provide commit descriptions).
+func postfixActions(ctx *revset.CompletionContext) ([]carapace.Action, map[string]bool) {
 	attached := ctx.AttachedRevset
 	if attached == "" {
-		return nil
+		return nil, nil
 	}
 	var actions []carapace.Action
-	if before, ok := strings.CutSuffix(attached, "-"); ok {
+	suppressOps := make(map[string]bool)
+	if hasPostfixOp(attached, '-') {
+		attached = strings.TrimSuffix(attached, "-") // include current revset for convenience
 		actions = append(actions,
-			ancestorSuffixes(before).Suppress("doesn't exist"),
+			ActionAncestors(attached).Suppress("doesn't exist"),
 		)
+		suppressOps["-"] = true
 	}
-	if before, ok := strings.CutSuffix(attached, "+"); ok {
+	if hasPostfixOp(attached, '+') {
+		attached = strings.TrimSuffix(attached, "+") // include current revset for convenience
 		actions = append(actions,
-			descendantSuffixes(before).Suppress("doesn't exist"),
+			ActionDescendants(attached).Suppress("doesn't exist"),
 		)
+		suppressOps["+"] = true
 	}
-	return actions
+	return actions, suppressOps
 }
 
-// ancestorSuffixes returns completions for parent postfix operators,
-// producing only the operator suffixes (e.g. "-", "--") with descriptions.
-// The revset prefix is NOT included since the caller handles prefixing.
-func ancestorSuffixes(revset string) carapace.Action {
-	return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
-		if revset == "" {
-			revset = "@"
-		}
-		return actionExecJJ("log", "--no-graph", "--template", `description.first_line() ++ "\n"`, "--revisions", fmt.Sprintf("first_ancestors(%v)", revset), "--limit", "20")(func(output []byte) carapace.Action {
-			lines := parseLines(output)
-			vals := make([]string, 0)
-			for i, line := range lines {
-				if i == 0 {
-					continue
-				}
-				vals = append(vals, strings.Repeat("-", i), line)
-			}
-			return carapace.ActionValuesDescribed(vals...).Tag("ancestors")
-		}).UidF(uidWithPrefix("revset", revset))
-	})
+// hasPostfixOp returns true when the AttachedRevset ends with the given
+// postfix operator character.
+func hasPostfixOp(attached string, op byte) bool {
+	if len(attached) == 0 {
+		return false
+	}
+	return attached[len(attached)-1] == op
 }
 
-// descendantSuffixes returns completions for child postfix operators,
-// producing only the operator suffixes (e.g. "+", "++") with descriptions.
-// The revset prefix is NOT included since the caller handles prefixing.
-func descendantSuffixes(revset string) carapace.Action {
-	return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
-		if revset == "" {
-			revset = "@"
-		}
-		revsetArgs := make([]string, 0, 20)
-		for d := 1; d <= 20; d++ {
-			revsetArgs = append(revsetArgs, fmt.Sprintf("children(%v, %d)", revset, d))
-		}
-		revsetExpr := strings.Join(revsetArgs, " | ")
-		depthChecks := ""
-		for d := 20; d >= 1; d-- {
-			inner := fmt.Sprintf(`self.contained_in("children(%v, %d)")`, revset, d)
-			if depthChecks == "" {
-				depthChecks = fmt.Sprintf(`if(%s, "%d", "unknown")`, inner, d)
-			} else {
-				depthChecks = fmt.Sprintf(`if(%s, "%d", %s)`, inner, d, depthChecks)
-			}
-		}
-		tmpl := fmt.Sprintf(`%s ++ "\t" ++ description.first_line() ++ "\n"`, depthChecks)
-		return actionExecJJ("log", "--no-graph", "--template", tmpl, "--revisions", revsetExpr, "--limit", "100")(func(output []byte) carapace.Action {
-			lines := parseLines(output)
-			byDepth := make(map[int][]string)
-			maxDepth := 0
-			for _, line := range lines {
-				parts := strings.SplitN(line, "\t", 2)
-				if len(parts) < 2 {
-					continue
-				}
-				var d int
-				if _, err := fmt.Sscanf(parts[0], "%d", &d); err != nil || d < 1 || d > 20 {
-					continue
-				}
-				byDepth[d] = append(byDepth[d], parts[1])
-				if d > maxDepth {
-					maxDepth = d
-				}
-			}
-			vals := make([]string, 0)
-			for d := 1; d <= maxDepth; d++ {
-				descs := byDepth[d]
-				if len(descs) == 0 {
-					continue
-				}
-				if len(descs) == 1 {
-					vals = append(vals, strings.Repeat("+", d), descs[0])
-				} else {
-					vals = append(vals, strings.Repeat("+", d), fmt.Sprintf("%d children", len(descs)))
-				}
-			}
-			if len(vals) == 0 {
-				return carapace.ActionValues()
-			}
-			return carapace.ActionValuesDescribed(vals...).Tag("descendants")
-		})
-	}).UidF(uidWithPrefix("revset", revset))
-}
-
-func actionExpression(opts RevOpts, ctx *revset.CompletionContext) carapace.Action {
+func actionExpression(opts RevOpts, _ *revset.CompletionContext) carapace.Action {
 	batch := carapace.Batch(actionRevsetArg(opts))
-
-	batch = append(batch, postfixActions(ctx)...)
-
 	return batch.ToA().NoSpace()
 }
 
-func actionOperator(_ RevOpts, ctx *revset.CompletionContext, allowPostfix bool) carapace.Action {
+func actionOperator(_ RevOpts, ctx *revset.CompletionContext, suppressOps map[string]bool) carapace.Action {
 	// If ValidOperators is populated, filter to only those operators
 	if len(ctx.ValidOperators) > 0 {
 		batch := carapace.Batch()
 		for _, op := range ctx.ValidOperators {
-			batch = append(batch, carapace.ActionValuesDescribed(op.Op, op.Description))
-		}
-
-		attached := allowPostfix && ctx.AttachedRevset != ""
-		if attached {
-			batch = append(batch, postfixActions(ctx)...)
+			if !suppressOps[op.Op] {
+				batch = append(batch, carapace.ActionValuesDescribed(op.Op, op.Description))
+			}
 		}
 
 		return batch.ToA().NoSpace()
@@ -453,6 +422,22 @@ func actionForFunctionArg(ctx *revset.CompletionContext, opts RevOpts) carapace.
 	}
 }
 
+func actionForPatternValue(ctx *revset.CompletionContext) carapace.Action {
+	switch ctx.PatternName {
+	case "exact", "exact-i", "substring", "substring-i", "glob", "glob-i", "regex", "regex-i":
+		return ActionStringPatterns().Suffix(":").NoSpace()
+	case "after", "before":
+		return ActionDatePatterns().Suffix(":").NoSpace()
+	case "cwd", "file", "cwd-file", "prefix-glob", "cwd-prefix-glob",
+		"root", "root-file", "root-glob", "root-prefix-glob",
+		"cwd-glob-i", "prefix-glob-i", "cwd-prefix-glob-i",
+		"root-glob-i", "root-prefix-glob-i":
+		return ActionFilesetPatterns().Suffix(":").NoSpace()
+	default:
+		return carapace.ActionValues()
+	}
+}
+
 // keywordArgValue returns the formatted value of the first keyword argument
 // with the given name, or "" if not present.
 func keywordArgValue(fn *revset.FunctionContext, name string) string {
@@ -474,20 +459,4 @@ func actionRevsetArg(opts RevOpts) carapace.Action {
 		ActionRevsetAliases(true),
 		ActionWorkspaces(),
 	).ToA()
-}
-
-func actionForPatternValue(ctx *revset.CompletionContext) carapace.Action {
-	switch ctx.PatternName {
-	case "exact", "exact-i", "substring", "substring-i", "glob", "glob-i", "regex", "regex-i":
-		return ActionStringPatterns().Suffix(":").NoSpace()
-	case "after", "before":
-		return ActionDatePatterns().Suffix(":").NoSpace()
-	case "cwd", "file", "cwd-file", "prefix-glob", "cwd-prefix-glob",
-		"root", "root-file", "root-glob", "root-prefix-glob",
-		"cwd-glob-i", "prefix-glob-i", "cwd-prefix-glob-i",
-		"root-glob-i", "root-prefix-glob-i":
-		return ActionFilesetPatterns().Suffix(":").NoSpace()
-	default:
-		return carapace.ActionValues()
-	}
 }

@@ -683,30 +683,31 @@ func TestCompletionKeywordArgEqualsExpr(t *testing.T) {
 
 func TestCompletionAttachedRevset(t *testing.T) {
 	tests := []struct {
-		input    string
-		expected string
+		input           string
+		expected        string
+		expectedOpStart int
 	}{
-		{"@", "@"},
-		{"@-", "@-"},
-		{"@--", "@--"},
-		{"@+", "@+"},
-		{"foo", "foo"},
-		{"foo-", "foo-"},
-		{"foo++", "foo++"},
-		{"all()", "all()"},
-		{"", ""},
-		{"@- |", ""},
-		{"foo | @-", "@-"},
-		{"parents(bookmark)-", "parents(bookmark)-"},
-		{"parents(bookmark)--", "parents(bookmark)--"},
-		{"(bookmark)-", "(bookmark)-"},
-		{"foo | parents(bookmark)-", "parents(bookmark)-"},
-		{"parents(bookmark)+", "parents(bookmark)+"},
-		{"children(bookmark)+", "children(bookmark)+"},
-		{"foo@origin-", "foo@origin-"},
-		{"parents(foo@origin)-", "parents(foo@origin)-"},
-		{"parents(all())-", "parents(all())-"},
-		{"parents(foo)-+", "parents(foo)-+"},
+		{"@", "@", 0},
+		{"@-", "@-", 1},
+		{"@--", "@--", 1},
+		{"@+", "@+", 1},
+		{"foo", "foo", 0},
+		{"foo-", "foo-", 3},
+		{"foo++", "foo++", 3},
+		{"all()", "all()", 0},
+		{"", "", 0},
+		{"@- |", "", 0},
+		{"foo | @-", "@-", 1},
+		{"parents(bookmark)-", "parents(bookmark)-", 17},
+		{"parents(bookmark)--", "parents(bookmark)--", 17},
+		{"(bookmark)-", "(bookmark)-", 10},
+		{"foo | parents(bookmark)-", "parents(bookmark)-", 17},
+		{"parents(bookmark)+", "parents(bookmark)+", 17},
+		{"children(bookmark)+", "children(bookmark)+", 18},
+		{"foo@origin-", "foo@origin-", 10},
+		{"parents(foo@origin)-", "parents(foo@origin)-", 19},
+		{"parents(all())-", "parents(all())-", 14},
+		{"parents(foo)-+", "parents(foo)-+", 12},
 	}
 
 	for _, tt := range tests {
@@ -714,6 +715,9 @@ func TestCompletionAttachedRevset(t *testing.T) {
 			ctx := ParseForCompletion(tt.input)
 			if ctx.AttachedRevset != tt.expected {
 				t.Errorf("expected AttachedRevset %q, got %q", tt.expected, ctx.AttachedRevset)
+			}
+			if ctx.PostfixOpStart != tt.expectedOpStart {
+				t.Errorf("expected PostfixOpStart %d, got %d", tt.expectedOpStart, ctx.PostfixOpStart)
 			}
 		})
 	}
