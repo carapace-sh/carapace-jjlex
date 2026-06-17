@@ -142,6 +142,34 @@ func ActionRevsets(opts RevOpts) carapace.Action {
 				}
 				return mergeWithPostfix(batch.ToA().NoSpace().Prefix(prefix), ctx)
 			}
+			// When inside a partial string argument of a function that doesn't
+			// handle string quoting itself (e.g. parents("paren), add closing
+			// quotes and paren to the completions.
+			// String-aware functions (author, committer, etc.) already add
+			// closing quote+paren in their actionForFunctionArg, so skip them.
+			if ctx.Function.InStringArg && expectsToken(ctx, revset.ExpectedStringClose) && !isFunctionStringAware(ctx.Function.Name) {
+				quote := string(ctx.StringQuote)
+				closeSuffix := quote
+				if expectsToken(ctx, revset.ExpectedClosingParen) {
+					closeSuffix += ")"
+				}
+				// Offer identifiers/bookmarks wrapped in quotes with function
+				// context (e.g. parents("paren → "parents(")").
+				identAction := carapace.ActionCallback(func(c carapace.Context) carapace.Action {
+					c.Value = ctx.PartialString
+					return fnAction.Invoke(c).Prefix(prefix).Suffix(closeSuffix).ToA().NoSpace()
+				})
+				// Also offer string patterns (e.g. exact:, regex:) as string content.
+				patternAction := carapace.ActionCallback(func(c carapace.Context) carapace.Action {
+					c.Value = ctx.PartialString
+					patternSuffix := ":"
+					if ctx.PartialString != "" {
+						patternSuffix = ":" + ctx.PartialString
+					}
+					return ActionStringPatterns().Suffix(patternSuffix).Invoke(c).Prefix(prefix).Suffix(quote).ToA().NoSpace()
+				})
+				return carapace.Batch(identAction, patternAction).ToA()
+			}
 			return fnAction.Prefix(prefix)
 		}
 
@@ -149,8 +177,24 @@ func ActionRevsets(opts RevOpts) carapace.Action {
 			return ActionStringPatterns().Suffix(":").NoSpace().Prefix(prefix)
 		}
 
-		if expectsToken(ctx, revset.ExpectedStringClose) && ctx.PartialString != "" {
-			return ActionStringPatterns().Suffix(":").Prefix(ctx.PartialString)
+		if expectsToken(ctx, revset.ExpectedStringClose) && ctx.StringQuote != 0 {
+			quote := string(ctx.StringQuote)
+			// Offer identifiers (bookmarks, commits, etc.) that match the partial
+			// string content, wrapped in quotes to form valid quoted identifier references.
+			identAction := carapace.ActionCallback(func(c carapace.Context) carapace.Action {
+				c.Value = ctx.PartialString
+				return ActionRevs(opts).Invoke(c).Prefix(prefix).Suffix(quote).ToA().NoSpace()
+			})
+			// Offer string patterns (e.g. exact:, regex:) as content of the string.
+			patternAction := carapace.ActionCallback(func(c carapace.Context) carapace.Action {
+				c.Value = ctx.PartialString
+				patternSuffix := ":"
+				if ctx.PartialString != "" {
+					patternSuffix = ":" + ctx.PartialString
+				}
+				return ActionStringPatterns().Suffix(patternSuffix).Invoke(c).Prefix(prefix).ToA().NoSpace()
+			})
+			return carapace.Batch(identAction, patternAction).ToA()
 		}
 
 		if expectsToken(ctx, revset.ExpectedExpression) && expectsToken(ctx, revset.ExpectedOperator) {
@@ -301,6 +345,20 @@ func hasPostfixOp(attached string, op byte) bool {
 		return false
 	}
 	return attached[len(attached)-1] == op
+}
+
+// isFunctionStringAware returns true for functions that handle partial
+// string argument quoting in their actionForFunctionArg case (e.g. author,
+// committer). These functions already add closing quotes and parens to their
+// completion values, so the caller should not add them again.
+func isFunctionStringAware(name string) bool {
+	switch name {
+	case "author", "author_name", "author_email",
+		"committer", "committer_name", "committer_email",
+		"description", "subject":
+		return true
+	}
+	return false
 }
 
 func actionExpression(opts RevOpts, _ *revset.CompletionContext) carapace.Action {

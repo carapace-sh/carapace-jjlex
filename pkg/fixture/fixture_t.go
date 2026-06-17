@@ -192,6 +192,13 @@ func (t *T) GetState() *State {
 	return state
 }
 
+func (t *T) RunGit(args ...string) {
+	t.t.Helper()
+	if err := t.f.git(args...); err != nil {
+		t.t.Fatalf("git %s: %v", strings.Join(args, " "), err)
+	}
+}
+
 func (t *T) AddRemote(name string) error {
 	t.t.Helper()
 	return t.f.AddRemote(name)

@@ -265,3 +265,60 @@ func TestActionRevsetsBookmarkWithSlashPostfix(t *testing.T) {
 		).ToA().NoSpace())
 	})
 }
+
+func TestActionRevsetsPartialString(t *testing.T) {
+	// Completing inside a partial string should offer matching identifiers
+	// with proper quoting (e.g. "feature → "feature-x").
+	sandbox.Action(t, func() carapace.Action {
+		return ActionRevsets(RevOpts{LocalBookmarks: true, RemoteBookmarks: false, Commits: 0, HeadCommits: 0, Tags: false, ChangeIds: false})
+	})(func(s *sandbox.Sandbox) {
+		f := fixture.InitT(t, s)
+		f.CommitAdd("a.txt", "a", "first commit")
+		f.CreateBookmark("feature-x")
+
+		// Top-level partial string: "feature should offer "feature-x" as a completion
+		s.Run(`"feature`).Expect(carapace.ActionValuesDescribed(
+			"feature-x", "(empty) (no description set)",
+		).Prefix(`"`).Suffix(`"`).NoSpace().
+			Style(style.Blue).
+			Tag("local bookmarks"))
+	})
+}
+
+func TestActionRevsetsPartialStringInFunction(t *testing.T) {
+	// Completing inside a partial string in a function arg should offer
+	// matching identifiers with closing quote+paren.
+	sandbox.Action(t, func() carapace.Action {
+		return ActionRevsets(RevOpts{LocalBookmarks: true, RemoteBookmarks: false, Commits: 0, HeadCommits: 0, Tags: false, ChangeIds: false})
+	})(func(s *sandbox.Sandbox) {
+		f := fixture.InitT(t, s)
+		f.CommitAdd("a.txt", "a", "first commit")
+		f.CreateBookmark("feature-x")
+
+		// In function: parents("feature should complete to parents("feature-x")
+		s.Run(`parents("feature`).Expect(carapace.ActionValuesDescribed(
+			"feature-x", "(empty) (no description set)",
+		).Prefix(`parents("`).Suffix(`")`).NoSpace().
+			Style(style.Blue).
+			Tag("local bookmarks"))
+	})
+}
+
+func TestActionRevsetsPartialStringQuotedBookmark(t *testing.T) {
+	// Quoted identifier for a bookmark containing special characters like - which
+	// can also look like a postfix operator. Verify that "feature-x- matches correctly.
+	sandbox.Action(t, func() carapace.Action {
+		return ActionRevsets(RevOpts{LocalBookmarks: true, RemoteBookmarks: false, Commits: 0, HeadCommits: 0, Tags: false, ChangeIds: false})
+	})(func(s *sandbox.Sandbox) {
+		f := fixture.InitT(t, s)
+		f.CommitAdd("a.txt", "a", "first commit")
+		f.CreateBookmark("parents-x")
+
+		// Top-level partial string: "paren should match bookmark "parents-x"
+		s.Run(`"parents`).Expect(carapace.ActionValuesDescribed(
+			"parents-x", "(empty) (no description set)",
+		).Prefix(`"`).Suffix(`"`).NoSpace().
+			Style(style.Blue).
+			Tag("local bookmarks"))
+	})
+}

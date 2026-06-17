@@ -847,3 +847,36 @@ func TestCompletionPartialRemoteWithDoublePostfix(t *testing.T) {
 		t.Errorf("expected PostfixOpStart 11, got %d", ctx.PostfixOpStart)
 	}
 }
+
+func TestCompletionPartialStringWithSpecialChars(t *testing.T) {
+	// `"paren` — partial string that could match a quoted identifier
+	ctx := ParseForCompletion(`"paren`)
+	if ctx.PartialString != "paren" {
+		t.Errorf("expected PartialString 'paren', got %q", ctx.PartialString)
+	}
+	if ctx.StringQuote != '"' {
+		t.Errorf("expected StringQuote \", got %c", ctx.StringQuote)
+	}
+	assertHasExpected(t, ctx, ExpectedStringClose)
+}
+
+func TestCompletionPartialStringInFunction(t *testing.T) {
+	// `parents("paren` — partial string in function arg
+	ctx := ParseForCompletion(`parents("paren`)
+	if ctx.PartialString != "paren" {
+		t.Errorf("expected PartialString 'paren', got %q", ctx.PartialString)
+	}
+	if ctx.StringQuote != '"' {
+		t.Errorf("expected StringQuote \", got %c", ctx.StringQuote)
+	}
+	assertHasExpected(t, ctx, ExpectedStringClose)
+	if ctx.Function == nil {
+		t.Fatal("expected Function context")
+	}
+	if ctx.Function.Name != "parents" {
+		t.Errorf("expected function name 'parents', got %q", ctx.Function.Name)
+	}
+	if !ctx.Function.InStringArg {
+		t.Error("expected InStringArg")
+	}
+}
