@@ -722,3 +722,69 @@ func TestCompletionAttachedRevset(t *testing.T) {
 		})
 	}
 }
+
+func TestCompletionPartialIdentWithConnector(t *testing.T) {
+	// When an identifier ends with a connector (-, +, .) at the cursor,
+	// the connector should be included in the partial identifier since
+	// the user might be typing a dash-containing identifier (e.g. "book-mark").
+	// Both expression completion and operator completion should be available.
+
+	tests := []struct {
+		input       string
+		partialIdent string
+		partialOp   int
+	}{
+		{"book-", "book-", 4},
+		{"book+", "book+", 4},
+		{"foo.bar", "foo.bar", 0},
+		{"foo--", "foo--", 3},
+		{"foo-v1+", "foo-v1+", 6},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			ctx := ParseForCompletion(tt.input)
+			// Should have both Expression and Operator expected
+			assertHasExpected(t, ctx, ExpectedExpression)
+			assertHasExpected(t, ctx, ExpectedOperator)
+			// PartialIdent should include the trailing connector
+			if ctx.PartialIdent != tt.partialIdent {
+				t.Errorf("expected PartialIdent %q, got %q", tt.partialIdent, ctx.PartialIdent)
+			}
+			// PostfixOpStart should be set for trailing -/+
+			if ctx.PostfixOpStart != tt.partialOp {
+				t.Errorf("expected PostfixOpStart %d, got %d", tt.partialOp, ctx.PostfixOpStart)
+			}
+		})
+	}
+}
+
+func TestCompletionPartialIdentConnectorContinues(t *testing.T) {
+	// When typing after a connector (e.g. "book-m"), the partial
+	// identifier should still include the connector.
+	ctx := ParseForCompletion("book-m")
+	if ctx.PartialIdent != "book-m" {
+		t.Errorf("expected PartialIdent 'book-m', got %q", ctx.PartialIdent)
+	}
+	assertHasExpected(t, ctx, ExpectedExpression)
+	assertHasExpected(t, ctx, ExpectedOperator)
+}
+
+func TestCompletionPartialRemoteWithConnector(t *testing.T) {
+	// When a remote name ends with a connector at the cursor,
+	// the connector should be included in the partial remote.
+	ctx := ParseForCompletion("foo@origin-")
+	if ctx.PartialRemote != "origin-" {
+		t.Errorf("expected PartialRemote 'origin-', got %q", ctx.PartialRemote)
+	}
+	if !ctx.InRemoteSymbol {
+		t.Error("expected InRemoteSymbol")
+	}
+	if ctx.RemoteBookmarkName != "foo" {
+		t.Errorf("expected RemoteBookmarkName 'foo', got %q", ctx.RemoteBookmarkName)
+	}
+	// PostfixOpStart should be set for the trailing -
+	if ctx.PostfixOpStart != 10 {
+		t.Errorf("expected PostfixOpStart 10, got %d", ctx.PostfixOpStart)
+	}
+}
