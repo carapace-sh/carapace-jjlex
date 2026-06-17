@@ -1,10 +1,12 @@
 package jj
 
 import (
+	"net/url"
 	"strings"
 
 	"github.com/carapace-sh/carapace"
 	"github.com/carapace-sh/carapace/pkg/style"
+	"github.com/carapace-sh/carapace/pkg/uid"
 	"github.com/pelletier/go-toml/v2"
 )
 
@@ -208,7 +210,7 @@ func ActionRevsetAliases(includeDefaults bool) carapace.Action {
 		return actionExecJJ(args...)(func(output []byte) carapace.Action {
 			return parseTomlAliases(output, "revset-aliases")
 		}).Style(style.Dim)
-	}).Tag("revset aliases").NoSpace().UidF(Uid("revset"))
+	}).Tag("revset aliases").NoSpace()
 }
 
 // ActionRevsetKeywordArgs completes keyword argument names for revset functions.
@@ -255,12 +257,15 @@ func parseTomlAliases(output []byte, topLevelKey string) carapace.Action {
 	if !ok || len(aliases) == 0 {
 		return carapace.ActionValues()
 	}
-	vals := make([]string, 0, len(aliases)*2)
+	batch := carapace.Batch()
 	for name, val := range aliases {
 		displayName := cleanAliasName(name)
-		vals = append(vals, displayName, val)
+		batch = append(batch, carapace.ActionValuesDescribed(displayName, val).
+			UidF(func(s string, uc uid.Context) (*url.URL, error) {
+				return Uid("revset")(val, uc)
+			}))
 	}
-	return carapace.ActionValuesDescribed(vals...)
+	return batch.ToA()
 }
 
 func cleanAliasName(name string) string {
