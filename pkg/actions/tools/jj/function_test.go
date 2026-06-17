@@ -214,3 +214,54 @@ func TestActionRevsetsPostfixMultiLevel(t *testing.T) {
 		).ToA().NoSpace())
 	})
 }
+
+func TestActionRevsetsRemoteBookmarkPostfix(t *testing.T) {
+	// Verify that ActionAncestors works with remote bookmark syntax (@remote).
+	// Uses the implicit @git remote which always exists in colocated repos.
+	sandbox.Action(t, func() carapace.Action {
+		return ActionAncestors("book-mark@git")
+	})(func(s *sandbox.Sandbox) {
+		f := fixture.InitT(t, s)
+		f.CommitAdd("a.txt", "a", "first commit")
+		f.CommitAdd("b.txt", "b", "second commit")
+		f.CommitAdd("c.txt", "c", "third commit")
+		f.CreateBookmark("book-mark")
+		f.AddRemote("origin")
+		f.Run("git", "push", "--remote", "origin")
+
+		s.Run("").Expect(carapace.ActionValuesDescribed(
+			"-", "third commit",
+			"--", "second commit",
+			"---", "first commit",
+		).Tag("ancestors").Prefix("book-mark@git"))
+	})
+}
+
+func TestActionRevsetsBookmarkWithSlashPostfix(t *testing.T) {
+	// Verify postfix completion works for bookmarks containing '/'.
+	sandbox.Action(t, func() carapace.Action {
+		return ActionRevsets(RevOpts{}.Default())
+	})(func(s *sandbox.Sandbox) {
+		f := fixture.InitT(t, s)
+		f.CommitAdd("a.txt", "a", "first commit")
+		f.CommitAdd("b.txt", "b", "second commit")
+		f.CommitAdd("c.txt", "c", "third commit")
+		f.CreateBookmark("fix/book-mark")
+
+		s.Run("fix/book-mark-").Expect(carapace.Batch(
+			carapace.ActionValuesDescribed(
+				"-", "third commit",
+				"--", "second commit",
+				"---", "first commit",
+			).Tag("ancestors").Prefix("fix/book-mark"),
+			carapace.ActionValuesDescribed(
+				"&", "intersection",
+				"|", "union",
+				"~", "difference",
+				"::", "DAG range",
+				"..", "range",
+				"+", "children",
+			).Prefix("fix/book-mark-"),
+		).ToA().NoSpace())
+	})
+}

@@ -730,9 +730,9 @@ func TestCompletionPartialIdentWithConnector(t *testing.T) {
 	// Both expression completion and operator completion should be available.
 
 	tests := []struct {
-		input       string
+		input        string
 		partialIdent string
-		partialOp   int
+		partialOp    int
 	}{
 		{"book-", "book-", 4},
 		{"book+", "book+", 4},
@@ -771,11 +771,14 @@ func TestCompletionPartialIdentConnectorContinues(t *testing.T) {
 }
 
 func TestCompletionPartialRemoteWithConnector(t *testing.T) {
-	// When a remote name ends with a connector at the cursor,
-	// the connector should be included in the partial remote.
+	// When a remote name ends with a connector (-/+) at the cursor,
+	// the trailing connector is treated as a postfix operator:
+	// PartialRemote is trimmed, AttachedRevset includes the postfix,
+	// and ExpectedOperator is set so the action layer can provide
+	// both remote name and postfix operator completions.
 	ctx := ParseForCompletion("foo@origin-")
-	if ctx.PartialRemote != "origin-" {
-		t.Errorf("expected PartialRemote 'origin-', got %q", ctx.PartialRemote)
+	if ctx.PartialRemote != "origin" {
+		t.Errorf("expected PartialRemote 'origin', got %q", ctx.PartialRemote)
 	}
 	if !ctx.InRemoteSymbol {
 		t.Error("expected InRemoteSymbol")
@@ -783,8 +786,64 @@ func TestCompletionPartialRemoteWithConnector(t *testing.T) {
 	if ctx.RemoteBookmarkName != "foo" {
 		t.Errorf("expected RemoteBookmarkName 'foo', got %q", ctx.RemoteBookmarkName)
 	}
-	// PostfixOpStart should be set for the trailing -
+	if ctx.AttachedRevset != "foo@origin-" {
+		t.Errorf("expected AttachedRevset 'foo@origin-', got %q", ctx.AttachedRevset)
+	}
 	if ctx.PostfixOpStart != 10 {
 		t.Errorf("expected PostfixOpStart 10, got %d", ctx.PostfixOpStart)
+	}
+	if !slices.Contains(ctx.ExpectedTokens, ExpectedOperator) {
+		t.Error("expected ExpectedOperator token")
+	}
+}
+
+func TestCompletionPartialRemoteWithSlashAndPostfix(t *testing.T) {
+	// Bookmarks containing '/' with '@remote' and trailing postfix operator
+	ctx := ParseForCompletion("fix/book-mark@origin-")
+	if ctx.PartialRemote != "origin" {
+		t.Errorf("expected PartialRemote 'origin', got %q", ctx.PartialRemote)
+	}
+	if !ctx.InRemoteSymbol {
+		t.Error("expected InRemoteSymbol")
+	}
+	if ctx.RemoteBookmarkName != "fix/book-mark" {
+		t.Errorf("expected RemoteBookmarkName 'fix/book-mark', got %q", ctx.RemoteBookmarkName)
+	}
+	if ctx.AttachedRevset != "fix/book-mark@origin-" {
+		t.Errorf("expected AttachedRevset 'fix/book-mark@origin-', got %q", ctx.AttachedRevset)
+	}
+	if ctx.PostfixOpStart != 20 {
+		t.Errorf("expected PostfixOpStart 20, got %d", ctx.PostfixOpStart)
+	}
+	if !slices.Contains(ctx.ExpectedTokens, ExpectedOperator) {
+		t.Error("expected ExpectedOperator token")
+	}
+}
+
+func TestCompletionPartialRemoteWithChildren(t *testing.T) {
+	// Remote with trailing + (children operator)
+	ctx := ParseForCompletion("main@upstream+")
+	if ctx.PartialRemote != "upstream" {
+		t.Errorf("expected PartialRemote 'upstream', got %q", ctx.PartialRemote)
+	}
+	if ctx.AttachedRevset != "main@upstream+" {
+		t.Errorf("expected AttachedRevset 'main@upstream+', got %q", ctx.AttachedRevset)
+	}
+	if ctx.PostfixOpStart != 13 {
+		t.Errorf("expected PostfixOpStart 13, got %d", ctx.PostfixOpStart)
+	}
+}
+
+func TestCompletionPartialRemoteWithDoublePostfix(t *testing.T) {
+	// Remote with -- (two parent operators)
+	ctx := ParseForCompletion("main@origin--")
+	if ctx.PartialRemote != "origin" {
+		t.Errorf("expected PartialRemote 'origin', got %q", ctx.PartialRemote)
+	}
+	if ctx.AttachedRevset != "main@origin--" {
+		t.Errorf("expected AttachedRevset 'main@origin--', got %q", ctx.AttachedRevset)
+	}
+	if ctx.PostfixOpStart != 11 {
+		t.Errorf("expected PostfixOpStart 11, got %d", ctx.PostfixOpStart)
 	}
 }

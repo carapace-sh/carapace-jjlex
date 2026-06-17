@@ -99,10 +99,18 @@ func ActionRevsets(opts RevOpts) carapace.Action {
 					prefix = c.Value[:atIdx+1]
 				}
 			}
-			return carapace.Batch(
+			remoteAction := carapace.Batch(
 				ActionRemotes(),
 				ActionWorkspaces(),
 			).ToA().Prefix(prefix).NoSpace()
+
+			// When the partial remote name ends with trailing -/+ that are
+			// postfix operators (e.g. "fix/book-mark@origin-"), also offer
+			// ancestor/descendant completions.
+			if ctx.PostfixOpStart > 0 {
+				return mergeWithPostfix(remoteAction, ctx)
+			}
+			return remoteAction
 		}
 
 		if ctx.InPattern {

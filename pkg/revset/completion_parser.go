@@ -689,10 +689,22 @@ func (p *compParser) parseSymbolOrFunctionCompletion() {
 				p.ctx.InRemoteSymbol = true
 				p.ctx.RemoteBookmarkName = ident
 				// When the partial remote name ends with a connector (-, +) that could
-				// also be a postfix operator, set PostfixOpStart relative to the
-				// beginning of the full remote symbol expression.
+				// also be a postfix operator, treat it like a partial identifier with
+				// trailing postfix ops: trim the remote to the base name, set
+				// AttachedRevset and PostfixOpStart, and add ExpectedOperator so the
+				// action layer can offer both remote name completion and postfix
+				// operator completions (ancestors/descendants).
 				if offset := trailingPostfixOffset(p.ctx.PartialRemote); offset > 0 {
-					p.ctx.PostfixOpStart = (remoteStart - identStart) + offset
+					fullSymStart := identStart
+					// AttachedRevset includes the postfix ops (e.g. "fix/book-mark@origin-")
+					// so that postfixActions can detect trailing -/+ via hasPostfixOp.
+					p.ctx.AttachedRevset = p.input[fullSymStart:p.cursor]
+					p.ctx.PostfixOpStart = (remoteStart - fullSymStart) + offset
+					p.ctx.PartialRemote = p.ctx.PartialRemote[:offset]
+					remote = p.input[remoteStart : remoteStart+offset]
+					p.lastExpr = &Expression{Kind: KindRemoteSymbol, Span: Span{Start: identStart, End: remoteStart + offset}, payload: &RemoteSymbolExpr{Name: ident, Remote: remote}}
+					p.afterExpression()
+					return
 				}
 			} else {
 				remote = p.input[remoteStart:p.pos]
@@ -1049,10 +1061,11 @@ func dedupOperators(ops []ValidOperator) []ValidOperator {
 // trailingPostfixOffset returns the byte offset within ident where a trailing
 // sequence of -/+ characters begins. Returns 0 if the identifier doesn't end
 // with -/+. For example:
-//   "feature-x-" → 9  (the trailing - could be a postfix operator)
-//   "foo--"      → 3  (the trailing -- could be postfix operators)
-//   "bar"       → 0  (no trailing -/+)
-//   "baz."      → 0  (. is not a postfix operator)
+//
+//	"feature-x-" → 9  (the trailing - could be a postfix operator)
+//	"foo--"      → 3  (the trailing -- could be postfix operators)
+//	"bar"       → 0  (no trailing -/+)
+//	"baz."      → 0  (. is not a postfix operator)
 func trailingPostfixOffset(ident string) int {
 	if len(ident) == 0 {
 		return 0
