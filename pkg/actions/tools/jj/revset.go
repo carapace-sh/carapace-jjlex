@@ -59,6 +59,24 @@ func ActionRevs(opts RevOpts) carapace.Action {
 	})
 }
 
+// ActionQuotedRevs completes revision references that are NOT simple revset
+// identifiers (e.g. bookmarks containing special characters like parentheses).
+// These require quoting in revset expressions (e.g. "parents(").
+func ActionQuotedRevs(opts RevOpts) carapace.Action {
+	return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
+		batch := carapace.Batch()
+
+		if opts.LocalBookmarks {
+			batch = append(batch, ActionLocalQuotedBookmarks())
+		}
+		if opts.RemoteBookmarks {
+			batch = append(batch, ActionRemoteQuotedBookmarks(""))
+		}
+
+		return batch.ToA()
+	})
+}
+
 // ActionRevsets completes revset expressions with full context-awareness
 // using the revset completion parser to determine what is expected at the cursor.
 //
@@ -153,11 +171,12 @@ func ActionRevsets(opts RevOpts) carapace.Action {
 				if expectsToken(ctx, revset.ExpectedClosingParen) {
 					closeSuffix += ")"
 				}
-				// Offer identifiers/bookmarks wrapped in quotes with function
-				// context (e.g. parents("paren → "parents(")").
+				// Offer non-simple bookmarks (needing quoting) with closing
+				// quote+paren. Simple identifiers are excluded since jj
+				// rejects quoted simple identifiers like "main".
 				identAction := carapace.ActionCallback(func(c carapace.Context) carapace.Action {
 					c.Value = ctx.PartialString
-					return fnAction.Invoke(c).Prefix(prefix).Suffix(closeSuffix).ToA().NoSpace()
+					return ActionQuotedRevs(opts).Invoke(c).Prefix(prefix).Suffix(closeSuffix).ToA().NoSpace()
 				})
 				// Also offer string patterns (e.g. exact:, regex:) as string content.
 				patternAction := carapace.ActionCallback(func(c carapace.Context) carapace.Action {
@@ -179,11 +198,12 @@ func ActionRevsets(opts RevOpts) carapace.Action {
 
 		if expectsToken(ctx, revset.ExpectedStringClose) && ctx.StringQuote != 0 {
 			quote := string(ctx.StringQuote)
-			// Offer identifiers (bookmarks, commits, etc.) that match the partial
-			// string content, wrapped in quotes to form valid quoted identifier references.
+			// Offer non-simple bookmarks (needing quoting) with the closing
+			// quote. Simple identifiers are excluded since jj rejects
+			// quoted simple identifiers.
 			identAction := carapace.ActionCallback(func(c carapace.Context) carapace.Action {
 				c.Value = ctx.PartialString
-				return ActionRevs(opts).Invoke(c).Prefix(prefix).Suffix(quote).ToA().NoSpace()
+				return ActionQuotedRevs(opts).Invoke(c).Prefix(prefix).Suffix(quote).ToA().NoSpace()
 			})
 			// Offer string patterns (e.g. exact:, regex:) as content of the string.
 			patternAction := carapace.ActionCallback(func(c carapace.Context) carapace.Action {

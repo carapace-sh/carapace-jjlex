@@ -267,58 +267,88 @@ func TestActionRevsetsBookmarkWithSlashPostfix(t *testing.T) {
 }
 
 func TestActionRevsetsPartialString(t *testing.T) {
-	// Completing inside a partial string should offer matching identifiers
-	// with proper quoting (e.g. "feature → "feature-x").
+	// Typing a prefix that matches a bookmark needing quoting should offer
+	// the bookmark. Non-simple bookmarks appear from ActionRevs alongside
+	// the local bookmarks tag.
 	sandbox.Action(t, func() carapace.Action {
 		return ActionRevsets(RevOpts{LocalBookmarks: true, RemoteBookmarks: false, Commits: 0, HeadCommits: 0, Tags: false, ChangeIds: false})
 	})(func(s *sandbox.Sandbox) {
 		f := fixture.InitT(t, s)
 		f.CommitAdd("a.txt", "a", "first commit")
-		f.CreateBookmark("feature-x")
+		f.RunGit("branch", "parents(")
 
-		// Top-level partial string: "feature should offer "feature-x" as a completion
-		s.Run(`"feature`).Expect(carapace.ActionValuesDescribed(
-			"feature-x", "(empty) (no description set)",
-		).Prefix(`"`).Suffix(`"`).NoSpace().
-			Style(style.Blue).
-			Tag("local bookmarks"))
+		// Top-level: paren should offer parents( as a local bookmark entry
+		s.Run(`paren`).Expect(carapace.ActionValuesDescribed(
+			`parents(`, "first commit",
+		).Tag("local bookmarks").Style(style.Blue).NoSpace())
+	})
+}
+
+func TestActionRevsetsPartialStringSimpleFiltered(t *testing.T) {
+	// Simple bookmarks like "main" should NOT be offered by ActionQuotedRevs
+	// since jj rejects quoted simple identifiers.
+	sandbox.Action(t, func() carapace.Action {
+		return ActionQuotedRevs(RevOpts{LocalBookmarks: true, RemoteBookmarks: false, Commits: 0, HeadCommits: 0, Tags: false, ChangeIds: false})
+	})(func(s *sandbox.Sandbox) {
+		f := fixture.InitT(t, s)
+		f.CommitAdd("a.txt", "a", "first commit")
+		f.CreateBookmark("main")
+
+		// Simple bookmarks should not appear in quoted form
+		s.Run(`m`).Expect(carapace.ActionValues())
 	})
 }
 
 func TestActionRevsetsPartialStringInFunction(t *testing.T) {
 	// Completing inside a partial string in a function arg should offer
-	// matching identifiers with closing quote+paren.
+	// bookmarks needing quoting with closing quote+paren.
 	sandbox.Action(t, func() carapace.Action {
 		return ActionRevsets(RevOpts{LocalBookmarks: true, RemoteBookmarks: false, Commits: 0, HeadCommits: 0, Tags: false, ChangeIds: false})
 	})(func(s *sandbox.Sandbox) {
 		f := fixture.InitT(t, s)
 		f.CommitAdd("a.txt", "a", "first commit")
-		f.CreateBookmark("feature-x")
+		f.RunGit("branch", "parents(")
 
-		// In function: parents("feature should complete to parents("feature-x")
-		s.Run(`parents("feature`).Expect(carapace.ActionValuesDescribed(
-			"feature-x", "(empty) (no description set)",
+		// In function: parents("paren should complete to parents("parents(")
+		s.Run(`parents("paren`).Expect(carapace.ActionValuesDescribed(
+			`parents(`, "first commit",
 		).Prefix(`parents("`).Suffix(`")`).NoSpace().
-			Style(style.Blue).
-			Tag("local bookmarks"))
+			Tag("quoted bookmarks").Style(style.Blue))
 	})
 }
 
 func TestActionRevsetsPartialStringQuotedBookmark(t *testing.T) {
-	// Quoted identifier for a bookmark containing special characters like - which
-	// can also look like a postfix operator. Verify that "feature-x- matches correctly.
+	// ExpectedStringClose path: when parser sees a closing quote is expected,
+	// offer bookmarks needing quoting and string patterns.
 	sandbox.Action(t, func() carapace.Action {
 		return ActionRevsets(RevOpts{LocalBookmarks: true, RemoteBookmarks: false, Commits: 0, HeadCommits: 0, Tags: false, ChangeIds: false})
 	})(func(s *sandbox.Sandbox) {
 		f := fixture.InitT(t, s)
 		f.CommitAdd("a.txt", "a", "first commit")
-		f.CreateBookmark("parents-x")
+		f.CreateBookmark("main")
+		f.RunGit("branch", "parents(")
 
-		// Top-level partial string: "paren should match bookmark "parents-x"
-		s.Run(`"parents`).Expect(carapace.ActionValuesDescribed(
-			"parents-x", "(empty) (no description set)",
-		).Prefix(`"`).Suffix(`"`).NoSpace().
-			Style(style.Blue).
-			Tag("local bookmarks"))
+		// Top-level " should only offer bookmarks needing quoting and patterns.
+		// Note: Invoke().Prefix().Suffix() pipeline strips Uids from the
+		// string pattern values, so we build the expected action without them.
+		patternsAction := carapace.ActionValuesDescribed(
+			"exact", "Exact match",
+			"exact-i", "Exact match (case-insensitive)",
+			"glob", "Glob pattern match",
+			"glob-i", "Glob pattern match (case-insensitive)",
+			"regex", "Regular expression match",
+			"regex-i", "Regular expression match (case-insensitive)",
+			"substring", "Substring match (default)",
+			"substring-i", "Substring match (case-insensitive)",
+		).Suffix(":").Prefix(`"`).NoSpace().Tag("string patterns")
+
+		quotedBookmarkAction := carapace.ActionValuesDescribed(
+			`parents(`, "first commit",
+		).Prefix(`"`).Suffix(`"`).NoSpace().Tag("quoted bookmarks").Style(style.Blue)
+
+		s.Run(`"`).Expect(carapace.Batch(
+			quotedBookmarkAction,
+			patternsAction,
+		).ToA())
 	})
 }

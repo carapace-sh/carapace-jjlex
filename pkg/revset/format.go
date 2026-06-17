@@ -112,10 +112,10 @@ func formatExprInner(e *Expression) string {
 		return fmt.Sprintf("%s:%s", p.Name, formatExpression(p.Value, precPostfix))
 	case KindRemoteSymbol:
 		r := e.payload.(*RemoteSymbolExpr)
-		return fmt.Sprintf("%s@%s", quoteIfNeeded(r.Name), quoteIfNeeded(r.Remote))
+		return fmt.Sprintf("%s@%s", QuoteIfNeeded(r.Name), QuoteIfNeeded(r.Remote))
 	case KindAtWorkspace:
 		a := e.payload.(*AtWorkspaceExpr)
-		return fmt.Sprintf("%s@", quoteIfNeeded(a.Name))
+		return fmt.Sprintf("%s@", QuoteIfNeeded(a.Name))
 	case KindAtCurrentWorkspace:
 		return "@"
 	case KindDagRangeAll:
@@ -195,27 +195,76 @@ func formatFunctionCall(f *FunctionCallExpr) string {
 	return fmt.Sprintf("%s(%s)", f.Name, strings.Join(args, ","))
 }
 
-func quoteIfNeeded(s string) string {
-	if isSimpleIdentifier(s) {
+func QuoteIfNeeded(s string) string {
+	if IsSimpleIdentifier(s) {
 		return s
 	}
 	return fmt.Sprintf("%q", s)
 }
 
-func isSimpleIdentifier(s string) bool {
+func IsSimpleIdentifier(s string) bool {
 	if len(s) == 0 {
 		return false
 	}
-	for i, ch := range s {
-		if i == 0 {
-			if !isIdentifierStart(ch) {
-				return false
-			}
-		} else {
-			if !isIdentifierPart(ch) {
-				return false
-			}
-		}
+	// Match the full revset identifier grammar:
+	//   identifier = identifier_part ~ (("." | "-"+ | "+") ~ identifier_part)*
+	// Each identifier_part is one or more characters from (XID_CONTINUE | "_" | "*" | "/").
+	pos := 0
+	runes := []rune(s)
+
+	// First part: must be a valid identifier_part
+	n := scanIdentifierPart(runes)
+	if n == 0 {
+		return false
 	}
-	return true
+	pos += n
+
+	for pos < len(runes) {
+		// Connector: ".", one or more "-", or "+"
+		connectorLen := scanConnector(runes[pos:])
+		if connectorLen == 0 {
+			return false
+		}
+		pos += connectorLen
+
+		// After connector: must be another identifier_part
+		n = scanIdentifierPart(runes[pos:])
+		if n == 0 {
+			return false
+		}
+		pos += n
+	}
+	return pos == len(runes)
+}
+
+// scanIdentifierPart scans one or more characters matching isIdentifierPart.
+// Returns the number of runes consumed.
+func scanIdentifierPart(runes []rune) int {
+	n := 0
+	for n < len(runes) && isIdentifierPart(runes[n]) {
+		n++
+	}
+	return n
+}
+
+// scanConnector scans a valid identifier connector: ".", one or more "-", or "+".
+// Returns the number of runes consumed.
+func scanConnector(runes []rune) int {
+	if len(runes) == 0 {
+		return 0
+	}
+	switch runes[0] {
+	case '.':
+		return 1
+	case '-':
+		// One or more dashes
+		n := 0
+		for n < len(runes) && runes[n] == '-' {
+			n++
+		}
+		return n
+	case '+':
+		return 1
+	}
+	return 0
 }

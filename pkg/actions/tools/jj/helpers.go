@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/carapace-sh/carapace-jjlex/pkg/revset"
 )
 
 var (
@@ -56,29 +58,62 @@ func parseTabSeparatedLines(output []byte) []string {
 }
 
 func parseBookmarkValues(output []byte, remoteOnly bool) []string {
+	simple, nonSimple := parseBookmarkValuesSplit(output, remoteOnly)
+	return append(simple, nonSimple...)
+}
+
+// parseBookmarkValuesSplit splits bookmark values into simple identifiers
+// (valid bare revset identifiers) and non-simple ones (needing quotes).
+// Both lists are returned as [value, description, value, description, ...] pairs.
+func parseBookmarkValuesSplit(output []byte, remoteOnly bool) (simple []string, nonSimple []string) {
 	lines := strings.Split(string(output), "\n")
-	vals := make([]string, 0)
+	simple = make([]string, 0)
+	nonSimple = make([]string, 0)
 	bookmark := ""
 	for _, line := range lines[:len(lines)-1] {
 		switch {
 		case strings.HasPrefix(line, "  @"):
 			if matches := rTracking.FindStringSubmatch(line); matches != nil {
 				if remoteOnly {
-					vals = append(vals, fmt.Sprintf("%v@%v", bookmark, matches[1]), matches[4])
+					remote := stripDisplayQuotes(matches[1])
+					val := fmt.Sprintf("%v@%v", bookmark, remote)
+					classifyBookmark(val, matches[4], &simple, &nonSimple)
 				}
 			}
 		default:
 			if matches := rRemote.FindStringSubmatch(line); matches != nil {
 				if remoteOnly {
-					vals = append(vals, fmt.Sprintf("%v@%v", matches[1], matches[2]), matches[5])
+					val := fmt.Sprintf("%v@%v", stripDisplayQuotes(matches[1]), stripDisplayQuotes(matches[2]))
+					classifyBookmark(val, matches[5], &simple, &nonSimple)
 				}
 			} else if matches := rLocal.FindStringSubmatch(line); matches != nil {
-				bookmark = matches[1]
+				bookmark = stripDisplayQuotes(matches[1])
 				if !remoteOnly {
-					vals = append(vals, matches[1], matches[4])
+					classifyBookmark(bookmark, matches[4], &simple, &nonSimple)
 				}
 			}
 		}
 	}
-	return vals
+	return simple, nonSimple
+}
+
+// classifyBookmark appends the bookmark value to the appropriate list
+// based on whether it's a simple revset identifier.
+func classifyBookmark(name, description string, simple, nonSimple *[]string) {
+	if revset.IsSimpleIdentifier(name) {
+		*simple = append(*simple, name, description)
+	} else {
+		*nonSimple = append(*nonSimple, name, description)
+	}
+}
+
+// stripDisplayQuotes removes surrounding double quotes that jj adds to
+// bookmark names containing special characters (e.g. "parents(" → parents().
+// jj's bookmark list output quotes identifiers that aren't simple revset
+// identifiers, but the raw name is what we need for completion values.
+func stripDisplayQuotes(s string) string {
+	if len(s) >= 2 && s[0] == '"' && s[len(s)-1] == '"' {
+		return s[1 : len(s)-1]
+	}
+	return s
 }

@@ -44,6 +44,21 @@ func ActionLocalBookmarks() carapace.Action {
 	}).UidF(Uid("bookmark"))
 }
 
+// ActionLocalQuotedBookmarks completes local bookmarks whose names are not
+// simple revset identifiers (e.g. names containing special characters like
+// parentheses). These bookmarks require quoting in revset expressions.
+//
+//	parents( (last commit message)
+func ActionLocalQuotedBookmarks() carapace.Action {
+	return actionExecJJ("bookmark", "list")(func(output []byte) carapace.Action {
+		_, nonSimple := parseBookmarkValuesSplit(output, false)
+		if len(nonSimple) == 0 {
+			return carapace.ActionValues()
+		}
+		return carapace.ActionValuesDescribed(nonSimple...).Tag("quoted bookmarks").Style(style.Blue)
+	}).UidF(Uid("bookmark"))
+}
+
 // ActionRemoteBookmarks completes remote bookmarks.
 //
 //	main@origin (last commit message)
@@ -61,6 +76,24 @@ func ActionRemoteBookmarks(remote string) carapace.Action {
 			return carapace.ActionValues()
 		}
 		return carapace.ActionValuesDescribed(vals...).Tag("remote bookmarks").Style(style.Cyan)
+	}).UidF(Uid("remote-bookmark"))
+}
+
+// ActionRemoteQuotedBookmarks completes remote bookmarks whose names are not
+// simple revset identifiers. These bookmarks require quoting in revset expressions.
+func ActionRemoteQuotedBookmarks(remote string) carapace.Action {
+	args := []string{"bookmark", "list"}
+	if remote != "" {
+		args = append(args, "--remote", remote)
+	} else {
+		args = append(args, "--all-remotes")
+	}
+	return actionExecJJ(args...)(func(output []byte) carapace.Action {
+		_, nonSimple := parseBookmarkValuesSplit(output, true)
+		if len(nonSimple) == 0 {
+			return carapace.ActionValues()
+		}
+		return carapace.ActionValuesDescribed(nonSimple...).Tag("quoted bookmarks").Style(style.Cyan)
 	}).UidF(Uid("remote-bookmark"))
 }
 
