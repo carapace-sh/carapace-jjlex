@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/carapace-sh/carapace"
+	"github.com/carapace-sh/carapace-jjlex/pkg/fixture"
 	"github.com/carapace-sh/carapace-jjlex/pkg/revset"
 	"github.com/carapace-sh/carapace/pkg/sandbox"
 )
@@ -262,6 +263,7 @@ func TestParseTomlAliases(t *testing.T) {
 	sandbox.Action(t, func() carapace.Action {
 		return action
 	})(func(s *sandbox.Sandbox) {
+		fixture.InitT(t, s)
 		s.Run("").Expect(carapace.ActionValuesDescribed(
 			"HEAD", "@-",
 			"trunk", "main@origin",
