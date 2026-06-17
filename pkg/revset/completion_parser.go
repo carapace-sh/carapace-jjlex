@@ -601,6 +601,13 @@ func (p *compParser) parseSymbolOrFunctionCompletion() {
 		p.ctx.PartialIdent = p.input[identStart:p.cursor]
 		p.lastExpr = &Expression{Kind: KindIdentifier, Span: Span{Start: identStart, End: p.cursor}, payload: &IdentifierExpr{Name: p.ctx.PartialIdent}}
 		p.beforeExpression()
+		// When the partial identifier ends with a connector (-, +) that could
+		// also be a postfix operator, set PostfixOpStart so the action layer
+		// can offer postfix completions (ancestors/descendants) as well.
+		// Find the position of the first -/+ in a trailing sequence.
+		if offset := trailingPostfixOffset(p.ctx.PartialIdent); offset > 0 {
+			p.ctx.PostfixOpStart = offset
+		}
 		return
 	}
 
@@ -681,6 +688,24 @@ func (p *compParser) parseSymbolOrFunctionCompletion() {
 				p.ctx.PartialIdent = ""
 				p.ctx.InRemoteSymbol = true
 				p.ctx.RemoteBookmarkName = ident
+				// When the partial remote name ends with a connector (-, +) that could
+				// also be a postfix operator, treat it like a partial identifier with
+				// trailing postfix ops: trim the remote to the base name, set
+				// AttachedRevset and PostfixOpStart, and add ExpectedOperator so the
+				// action layer can offer both remote name completion and postfix
+				// operator completions (ancestors/descendants).
+				if offset := trailingPostfixOffset(p.ctx.PartialRemote); offset > 0 {
+					fullSymStart := identStart
+					// AttachedRevset includes the postfix ops (e.g. "fix/book-mark@origin-")
+					// so that postfixActions can detect trailing -/+ via hasPostfixOp.
+					p.ctx.AttachedRevset = p.input[fullSymStart:p.cursor]
+					p.ctx.PostfixOpStart = (remoteStart - fullSymStart) + offset
+					p.ctx.PartialRemote = p.ctx.PartialRemote[:offset]
+					remote = p.input[remoteStart : remoteStart+offset]
+					p.lastExpr = &Expression{Kind: KindRemoteSymbol, Span: Span{Start: identStart, End: remoteStart + offset}, payload: &RemoteSymbolExpr{Name: ident, Remote: remote}}
+					p.afterExpression()
+					return
+				}
 			} else {
 				remote = p.input[remoteStart:p.pos]
 			}
@@ -908,7 +933,10 @@ func (p *compParser) scanIdentifierCompletion() {
 		if ch == '.' {
 			saved := p.pos
 			p.advance()
-			if p.atCursorOrEnd() || !p.scanIdentPartCompletion() {
+			if p.atCursorOrEnd() {
+				break
+			}
+			if !p.scanIdentPartCompletion() {
 				p.pos = saved
 				break
 			}
@@ -917,7 +945,10 @@ func (p *compParser) scanIdentifierCompletion() {
 			for !p.atCursorOrEnd() && p.peek() == '-' {
 				p.advance()
 			}
-			if p.pos > saved && !p.atCursorOrEnd() && p.scanIdentPartCompletion() {
+			if p.atCursorOrEnd() {
+				break
+			}
+			if p.pos > saved && p.scanIdentPartCompletion() {
 				continue
 			}
 			p.pos = saved
@@ -925,7 +956,10 @@ func (p *compParser) scanIdentifierCompletion() {
 		} else if ch == '+' {
 			saved := p.pos
 			p.advance()
-			if p.atCursorOrEnd() || !p.scanIdentPartCompletion() {
+			if p.atCursorOrEnd() {
+				break
+			}
+			if !p.scanIdentPartCompletion() {
 				p.pos = saved
 				break
 			}
@@ -1022,4 +1056,30 @@ func dedupOperators(ops []ValidOperator) []ValidOperator {
 		}
 	}
 	return result
+}
+
+// trailingPostfixOffset returns the byte offset within ident where a trailing
+// sequence of -/+ characters begins. Returns 0 if the identifier doesn't end
+// with -/+. For example:
+//
+//	"feature-x-" → 9  (the trailing - could be a postfix operator)
+//	"foo--"      → 3  (the trailing -- could be postfix operators)
+//	"bar"       → 0  (no trailing -/+)
+//	"baz."      → 0  (. is not a postfix operator)
+func trailingPostfixOffset(ident string) int {
+	if len(ident) == 0 {
+		return 0
+	}
+	last := ident[len(ident)-1]
+	if last != '-' && last != '+' {
+		return 0
+	}
+	// Find the first position of a consecutive -/+ sequence at the end.
+	// Walk backwards to find the earliest -/+ in the trailing sequence,
+	// but stop if we hit a different connector (.) since that's not postfix.
+	i := len(ident) - 1
+	for i > 0 && (ident[i-1] == '-' || ident[i-1] == '+') {
+		i--
+	}
+	return i
 }

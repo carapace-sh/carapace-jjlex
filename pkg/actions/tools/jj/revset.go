@@ -99,10 +99,18 @@ func ActionRevsets(opts RevOpts) carapace.Action {
 					prefix = c.Value[:atIdx+1]
 				}
 			}
-			return carapace.Batch(
+			remoteAction := carapace.Batch(
 				ActionRemotes(),
 				ActionWorkspaces(),
 			).ToA().Prefix(prefix).NoSpace()
+
+			// When the partial remote name ends with trailing -/+ that are
+			// postfix operators (e.g. "fix/book-mark@origin-"), also offer
+			// ancestor/descendant completions.
+			if ctx.PostfixOpStart > 0 {
+				return mergeWithPostfix(remoteAction, ctx)
+			}
+			return remoteAction
 		}
 
 		if ctx.InPattern {
@@ -147,11 +155,20 @@ func ActionRevsets(opts RevOpts) carapace.Action {
 
 		if expectsToken(ctx, revset.ExpectedExpression) && expectsToken(ctx, revset.ExpectedOperator) {
 			// Both expression and operator are valid - combine both actions.
+			// When PartialIdent includes a trailing connector (e.g. "feature-x-"),
+			// the prefix is empty (the PartialIdent was stripped from c.Value).
+			// Expression completions (bookmarks, etc.) need the empty prefix since
+			// they produce full identifiers. But operator completions need the
+			// full user input as prefix since operators are appended after it.
+			operatorPrefix := prefix
+			if operatorPrefix == "" && ctx.PostfixOpStart > 0 {
+				operatorPrefix = c.Value
+			}
 			batch := carapace.Batch(
-				actionExpression(opts, ctx),
-				actionOperator(opts, ctx, suppressOps),
+				actionExpression(opts, ctx).Prefix(prefix),
+				actionOperator(opts, ctx, suppressOps).Prefix(operatorPrefix),
 			)
-			return mergeWithPostfix(batch.ToA().Prefix(prefix), ctx)
+			return mergeWithPostfix(batch.ToA(), ctx)
 		}
 
 		if expectsToken(ctx, revset.ExpectedExpression) {
@@ -217,15 +234,13 @@ func mergeWithPostfix(main carapace.Action, ctx *revset.CompletionContext) carap
 	})
 }
 
-// hasPostfixOps returns true when the AttachedRevset ends with a postfix
-// operator (- or +), meaning the user is completing after a postfix chain.
+// hasPostfixOps returns true when the completion parser determined that
+// postfix operators are present in the AttachedRevset (indicated by
+// PostfixOpStart > 0). This correctly distinguishes between a dash that's
+// part of an identifier (e.g. "book-" in "book-mark") and a postfix operator
+// (e.g. "-" in "bookmark-").
 func hasPostfixOps(ctx *revset.CompletionContext) bool {
-	attached := ctx.AttachedRevset
-	if attached == "" {
-		return false
-	}
-	last := attached[len(attached)-1]
-	return last == '-' || last == '+'
+	return ctx.PostfixOpStart > 0
 }
 
 func expectsToken(ctx *revset.CompletionContext, token revset.ExpectedToken) bool {
@@ -238,13 +253,18 @@ func expectsToken(ctx *revset.CompletionContext, token revset.ExpectedToken) boo
 // descendant actions when it ends with "+". This avoids the expensive
 // ActionDescendants (which runs 20 jj show commands) when not needed.
 //
-// The base revset is the full AttachedRevset (what the user typed). The
-// returned actions produce suffixes that continue from what was typed.
+// The base revset is computed by trimming one trailing "-"/"+" at a time.
+// For example, for "@-", base="@"; for "@--", base="@-"; for "bookmark-+", base="bookmark-".
+// This ensures ActionAncestors/ActionDescendants start from the correct
+// parent/child level rather than from the root, so the completion suffixes
+// continue from what the user already typed.
+//
+// The returned actions produce suffixes that continue from what was typed.
 // For example, for "@-" (user typed 1 dash), the completions are "-"
 // (current level), "--" (one more parent), etc.
 //
 // The returned actions already have the correct prefix baked in via
-// .Prefix(postfixPrefix). The caller should NOT apply an additional
+// .Prefix(base). The caller should NOT apply an additional
 // .Prefix() to these actions.
 //
 // The returned suppressOps set contains operator strings that should be
@@ -252,20 +272,20 @@ func expectsToken(ctx *revset.CompletionContext, token revset.ExpectedToken) boo
 // the postfix suffix actions (which provide commit descriptions).
 func postfixActions(ctx *revset.CompletionContext) ([]carapace.Action, map[string]bool) {
 	attached := ctx.AttachedRevset
-	if attached == "" {
+	if attached == "" || ctx.PostfixOpStart == 0 {
 		return nil, nil
 	}
 	var actions []carapace.Action
 	suppressOps := make(map[string]bool)
 	if hasPostfixOp(attached, '-') {
-		attached = strings.TrimSuffix(attached, "-") // include current revset for convenience
+		attached = strings.TrimSuffix(attached, "-")
 		actions = append(actions,
 			ActionAncestors(attached).Suppress("doesn't exist"),
 		)
 		suppressOps["-"] = true
 	}
 	if hasPostfixOp(attached, '+') {
-		attached = strings.TrimSuffix(attached, "+") // include current revset for convenience
+		attached = strings.TrimSuffix(attached, "+")
 		actions = append(actions,
 			ActionDescendants(attached).Suppress("doesn't exist"),
 		)
