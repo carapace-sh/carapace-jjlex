@@ -261,6 +261,20 @@ func TestCompletionStringLiteralInFunction(t *testing.T) {
 	assertNotHasExpected(t, ctx, ExpectedOperator)
 }
 
+func TestCompletionCompleteStringInFunction(t *testing.T) {
+	// `parents("foo")` with cursor after closing quote — string complete,
+	// operators and ),  are valid
+	ctx := ParseForCompletion(`parents("foo"`)
+	if ctx.Function == nil {
+		t.Fatal("expected Function context")
+	}
+	if ctx.Function.InStringArg {
+		t.Error("did not expect InStringArg for complete string")
+	}
+	assertHasExpected(t, ctx, ExpectedOperator)
+	assertHasExpected(t, ctx, ExpectedClosingParen)
+	assertHasExpected(t, ctx, ExpectedComma)
+}
 
 func TestCompletionInPattern(t *testing.T) {
 	// "exact:" with cursor at end

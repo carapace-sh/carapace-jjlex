@@ -379,3 +379,27 @@ func TestActionRevsetQuotedEmptyInFunction(t *testing.T) {
 	})
 }
 
+func TestActionRevsetOperatorsAfterCompleteStringInFunction(t *testing.T) {
+	// After a complete quoted string in a function, operators, ), and ,
+	// should be offered (not expression completions).
+	sandbox.Action(t, func() carapace.Action {
+		return ActionRevsets(RevOpts{}.Default())
+	})(func(s *sandbox.Sandbox) {
+		f := fixture.InitT(t, s)
+		f.CommitAdd("a.txt", "a", "first commit")
+		f.CreateBookmark(`"parents("`)
+
+		s.Run(`parents("parents("`).Expect(carapace.Batch(
+			carapace.ActionValues(")", ","),
+			carapace.ActionValuesDescribed(
+				"|", "union",
+				"&", "intersection",
+				"~", "difference",
+				"::", "DAG range",
+				"..", "range",
+				"-", "parents",
+				"+", "children",
+			),
+		).ToA().Prefix(`parents("parents("`).NoSpace())
+	})
+}
