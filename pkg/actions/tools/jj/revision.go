@@ -65,7 +65,6 @@ func ActionRemoteBookmarks(remote string) carapace.Action {
 }
 
 // ActionTags completes tags.
-// ActionTags completes tags.
 //
 //	v1.0 (release message)
 //	v2.0 (another release)

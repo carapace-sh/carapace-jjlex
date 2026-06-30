@@ -238,7 +238,7 @@ When a complete expression (e.g. `"parents("`) is followed by the cursor inside 
 - `main_test.go` — integration tests with realistic examples from jj source code
 - `pkg/actions/tools/jj/action_test.go` — sandbox tests for carapace actions and unit tests for parsing helpers
 - `pkg/fixture/` — jj repo fixture for creating test repos with commits, bookmarks, tags, etc.
-- Parser/completion packages have no external dependencies (pure stdlib); `pkg/actions/jj` depends on carapace and cobra
+- Parser/completion packages have no external dependencies (pure stdlib); `pkg/actions/tools/jj` depends on carapace and cobra
 
 ## Skills
 
