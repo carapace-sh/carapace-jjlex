@@ -65,16 +65,36 @@ func ActionRemoteBookmarks(remote string) carapace.Action {
 }
 
 // ActionTags completes tags.
+// ActionTags completes tags.
 //
 //	v1.0 (release message)
 //	v2.0 (another release)
 func ActionTags() carapace.Action {
+	return actionTags(false).UidF(Uid("change"))
+}
+
+// actionTagsRaw completes tags with raw (unquoted) names.
+// Unlike ActionTags which returns display-quoted values, this returns
+// raw names so that quoting can be applied at the completion site.
+// Uses stripDisplayQuotes because tags is a List<CommitRef> in jj templates
+// and doesn't support substr like bookmark names do.
+func actionTagsRaw() carapace.Action {
+	return actionTags(true).UidF(Uid("change"))
+}
+
+// actionTags is the shared implementation for ActionTags and actionTagsRaw.
+// When raw is true, stripDisplayQuotes is applied to each tag name to
+// remove the display quoting that jj adds for special characters.
+func actionTags(raw bool) carapace.Action {
 	return actionExecJJ("log", "--no-graph", "--revisions", "tags()", "--template", `tags ++ "\t" ++ description.first_line() ++ "\n"`)(func(output []byte) carapace.Action {
 		lines := strings.Split(string(output), "\n")
 		vals := make([]string, 0)
 		for _, line := range lines[:len(lines)-1] {
 			splitted := strings.SplitN(line, "\t", 2)
 			for tag := range strings.SplitSeq(splitted[0], " ") {
+				if raw {
+					tag = stripDisplayQuotes(tag)
+				}
 				vals = append(vals, tag, splitted[1])
 			}
 		}
@@ -82,7 +102,7 @@ func ActionTags() carapace.Action {
 			return carapace.ActionValues()
 		}
 		return carapace.ActionValuesDescribed(vals...).Tag("tags").Style(style.Yellow)
-	}).UidF(Uid("change"))
+	})
 }
 
 // actionLocalBookmarksRaw completes local bookmarks with raw (unquoted) names.
@@ -90,6 +110,10 @@ func ActionTags() carapace.Action {
 // "parents(" for a bookmark named parents(), this returns the raw name
 // (e.g. parents() so that quoting can be applied at the completion site.
 // Uses name.substr() to bypass jj's display quoting of special characters.
+// ActionLocalBookmarks uses the default jj bookmark list format (which
+// display-quotes special names) and parseBookmarkValues, while this uses
+// a custom template with name.substr() and parseTabSeparatedLines. The
+// two cannot share implementation because the output formats differ.
 func actionLocalBookmarksRaw() carapace.Action {
 	return actionExecJJ("bookmark", "list", "-T", "name.substr(0,9999) ++ \"\t\" ++ normal_target.description().first_line() ++ \"\n\"")(func(output []byte) carapace.Action {
 		vals := parseTabSeparatedLines(output)
@@ -98,26 +122,6 @@ func actionLocalBookmarksRaw() carapace.Action {
 		}
 		return carapace.ActionValuesDescribed(vals...).Tag("local bookmarks").Style(style.Blue)
 	}).UidF(Uid("bookmark"))
-}
-
-// actionTagsRaw completes tags with raw (unquoted) names.
-// Unlike ActionTags which returns display-quoted values, this returns
-// raw names so that quoting can be applied at the completion site.
-func actionTagsRaw() carapace.Action {
-	return actionExecJJ("log", "--no-graph", "--revisions", "tags()", "--template", "tags ++ \"\t\" ++ description.first_line() ++ \"\n\"")(func(output []byte) carapace.Action {
-		lines := strings.Split(string(output), "\n")
-		vals := make([]string, 0)
-		for _, line := range lines[:len(lines)-1] {
-			splitted := strings.SplitN(line, "\t", 2)
-			for tag := range strings.SplitSeq(splitted[0], " ") {
-				vals = append(vals, stripDisplayQuotes(tag), splitted[1])
-			}
-		}
-		if len(vals) == 0 {
-			return carapace.ActionValues()
-		}
-		return carapace.ActionValuesDescribed(vals...).Tag("tags").Style(style.Yellow)
-	}).UidF(Uid("change"))
 }
 
 // stripDisplayQuotes removes outer double quotes that jj adds when displaying

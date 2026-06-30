@@ -402,7 +402,8 @@ func actionQuotedRevsetArg(opts RevOpts) carapace.Action {
 // string pattern (author, description, etc.) rather than a revset expression.
 // For these functions, a quoted string argument is the pattern value itself,
 // not a symbol reference, so InStringArg handling is done in the function's
-// case branch instead of the generic InStringArg path.
+// case branch in actionForFunctionArg instead of the generic InStringArg path.
+// Keep this list in sync with the switch cases in actionForFunctionArg.
 func isStringPatternFunction(name string) bool {
 	switch name {
 	case "author", "author_name", "author_email",
@@ -429,8 +430,8 @@ func actionForFunctionArg(ctx *revset.CompletionContext, opts RevOpts) carapace.
 	// revset expression (not a string pattern function like author/description),
 	// the quoted string is a symbol reference (bookmark, tag, commit ID).
 	// The outer Prefix(prefix) in ActionRevsets strips the function name and
-	// opening quote from c.Value, so we only need to add the closing quote
-	// as suffix here. The opening quote is already part of the prefix.
+	// opening quote from c.Value, so we only add the closing quote as suffix
+	// here. The opening quote is already part of the prefix.
 	if fn.InStringArg && !isStringPatternFunction(fn.Name) {
 		quote := string(ctx.StringQuote)
 		return actionQuotedRevsetArg(opts).Suffix(quote).NoSpace()
@@ -471,7 +472,9 @@ func actionForFunctionArg(ctx *revset.CompletionContext, opts RevOpts) carapace.
 	case "change_id", "commit_id":
 		return ActionRevs(opts).NoSpace()
 
-	// String pattern functions
+	// String pattern functions: quoted string argument is the pattern value
+	// itself, not a symbol reference. These are listed in
+	// isStringPatternFunction to keep the InStringArg guard above in sync.
 	case "author", "author_name", "author_email",
 		"committer", "committer_name", "committer_email",
 		"description", "subject":
@@ -496,6 +499,7 @@ func actionForFunctionArg(ctx *revset.CompletionContext, opts RevOpts) carapace.
 		return ActionDatePatterns().Suffix(":").NoSpace()
 
 	// Diff functions: (text_pattern, [files=])
+	// Also listed in isStringPatternFunction (see InStringArg guard above).
 	case "diff_lines", "diff_lines_added", "diff_lines_removed":
 		if fn.IsKeywordArg && fn.KeywordArgName == "files" {
 			return ActionFilesetPatterns().Suffix(":").NoSpace()
