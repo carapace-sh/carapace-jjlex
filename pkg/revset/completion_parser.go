@@ -521,9 +521,17 @@ func (p *compParser) parsePrimary() {
 	case ch == '"':
 		value := p.parseStringLiteralCompletion()
 		p.lastExpr = &Expression{Kind: KindString, Span: Span{Start: start, End: p.pos}, payload: &StringExpr{Value: value}}
+		// Check for @ suffix (remote symbol syntax: "name"@remote)
+		if p.lastExpr != nil && !p.atCursorOrEnd() && p.peek() == '@' {
+			p.parseAtSuffixCompletion(start, value)
+		}
 	case ch == '\'':
 		value := p.parseRawStringLiteralCompletion()
 		p.lastExpr = &Expression{Kind: KindString, Span: Span{Start: start, End: p.pos}, payload: &StringExpr{Value: value}}
+		// Check for @ suffix (remote symbol syntax: 'name'@remote)
+		if p.lastExpr != nil && !p.atCursorOrEnd() && p.peek() == '@' {
+			p.parseAtSuffixCompletion(start, value)
+		}
 	case ch == '@':
 		p.advance()
 		p.lastExpr = &Expression{Kind: KindAtCurrentWorkspace, Span: Span{Start: start, End: p.pos}}
@@ -664,69 +672,76 @@ func (p *compParser) parseSymbolOrFunctionCompletion() {
 	// Check for @ suffix
 	p.skipWS()
 	if !p.atCursorOrEnd() && p.peek() == '@' {
-		p.advance() // consume @
-		p.skipWS()
-		if p.atCursorOrEnd() {
-			// After @ at cursor: could be completing a remote name
-			// or the expression is complete as AtWorkspace
-			p.ctx.InRemoteSymbol = true
-			p.ctx.RemoteBookmarkName = ident
-			p.beforeExpression()
-			p.lastExpr = &Expression{Kind: KindAtWorkspace, Span: Span{Start: identStart, End: p.pos}, payload: &AtWorkspaceExpr{Name: ident}}
-			return
-		}
-		// Parse remote part
-		ch := p.peek()
-		var remote string
-		if ch == '"' {
-			remote = p.parseStringLiteralCompletion()
-			if p.atCursorOrEnd() {
-				p.ctx.InRemoteSymbol = true
-				p.ctx.RemoteBookmarkName = ident
-			}
-		} else if ch == '\'' {
-			remote = p.parseRawStringLiteralCompletion()
-			if p.atCursorOrEnd() {
-				p.ctx.InRemoteSymbol = true
-				p.ctx.RemoteBookmarkName = ident
-			}
-		} else if isIdentifierStart(ch) {
-			remoteStart := p.pos
-			p.scanIdentifierCompletion()
-			if p.pos >= p.cursor && remoteStart < p.cursor {
-				p.ctx.PartialRemote = p.input[remoteStart:p.cursor]
-				remote = p.ctx.PartialRemote
-				// Clear PartialIdent since this is a remote name, not a general identifier
-				p.ctx.PartialIdent = ""
-				p.ctx.InRemoteSymbol = true
-				p.ctx.RemoteBookmarkName = ident
-				// When the partial remote name ends with a connector (-, +) that could
-				// also be a postfix operator, treat it like a partial identifier with
-				// trailing postfix ops: trim the remote to the base name, set
-				// AttachedRevset and PostfixOpStart, and add ExpectedOperator so the
-				// action layer can offer both remote name completion and postfix
-				// operator completions (ancestors/descendants).
-				if offset := trailingPostfixOffset(p.ctx.PartialRemote); offset > 0 {
-					fullSymStart := identStart
-					// AttachedRevset includes the postfix ops (e.g. "fix/book-mark@origin-")
-					// so that postfixActions can detect trailing -/+ via hasPostfixOp.
-					p.ctx.AttachedRevset = p.input[fullSymStart:p.cursor]
-					p.ctx.PostfixOpStart = (remoteStart - fullSymStart) + offset
-					p.ctx.PartialRemote = p.ctx.PartialRemote[:offset]
-					remote = p.input[remoteStart : remoteStart+offset]
-					p.lastExpr = &Expression{Kind: KindRemoteSymbol, Span: Span{Start: identStart, End: remoteStart + offset}, payload: &RemoteSymbolExpr{Name: ident, Remote: remote}}
-					p.afterExpression()
-					return
-				}
-			} else {
-				remote = p.input[remoteStart:p.pos]
-			}
-		}
-		p.lastExpr = &Expression{Kind: KindRemoteSymbol, Span: Span{Start: identStart, End: p.pos}, payload: &RemoteSymbolExpr{Name: ident, Remote: remote}}
+		p.parseAtSuffixCompletion(identStart, ident)
 		return
 	}
 
 	p.lastExpr = &Expression{Kind: KindIdentifier, Span: Span{Start: identStart, End: identEnd}, payload: &IdentifierExpr{Name: ident}}
+}
+
+// parseAtSuffixCompletion handles the @ suffix after a symbol (identifier or
+// quoted string). It mirrors parseAtSuffix in the main parser, setting
+// InRemoteSymbol, RemoteBookmarkName, PartialRemote, etc. in the completion
+// context so the action layer can offer remote/workspace completions.
+func (p *compParser) parseAtSuffixCompletion(symStart int, name string) {
+	p.advance() // consume @
+	p.skipWS()
+	if p.atCursorOrEnd() {
+		// After @ at cursor: could be completing a remote name
+		// or the expression is complete as AtWorkspace
+		p.ctx.InRemoteSymbol = true
+		p.ctx.RemoteBookmarkName = name
+		p.beforeExpression()
+		p.lastExpr = &Expression{Kind: KindAtWorkspace, Span: Span{Start: symStart, End: p.pos}, payload: &AtWorkspaceExpr{Name: name}}
+		return
+	}
+	// Parse remote part
+	ch := p.peek()
+	var remote string
+	if ch == '"' {
+		remote = p.parseStringLiteralCompletion()
+		if p.atCursorOrEnd() {
+			p.ctx.InRemoteSymbol = true
+			p.ctx.RemoteBookmarkName = name
+		}
+	} else if ch == '\'' {
+		remote = p.parseRawStringLiteralCompletion()
+		if p.atCursorOrEnd() {
+			p.ctx.InRemoteSymbol = true
+			p.ctx.RemoteBookmarkName = name
+		}
+	} else if isIdentifierStart(ch) {
+		remoteStart := p.pos
+		p.scanIdentifierCompletion()
+		if p.pos >= p.cursor && remoteStart < p.cursor {
+			p.ctx.PartialRemote = p.input[remoteStart:p.cursor]
+			remote = p.ctx.PartialRemote
+			// Clear PartialIdent since this is a remote name, not a general identifier
+			p.ctx.PartialIdent = ""
+			p.ctx.InRemoteSymbol = true
+			p.ctx.RemoteBookmarkName = name
+			// When the partial remote name ends with a connector (-, +) that could
+			// also be a postfix operator, treat it like a partial identifier with
+			// trailing postfix ops: trim the remote to the base name, set
+			// AttachedRevset and PostfixOpStart, and add ExpectedOperator so the
+			// action layer can offer both remote name completion and postfix
+			// operator completions (ancestors/descendants).
+			if offset := trailingPostfixOffset(p.ctx.PartialRemote); offset > 0 {
+				// AttachedRevset includes the postfix ops (e.g. "fix/book-mark@origin-")
+				// so that postfixActions can detect trailing -/+ via hasPostfixOp.
+				p.ctx.AttachedRevset = p.input[symStart:p.cursor]
+				p.ctx.PostfixOpStart = (remoteStart - symStart) + offset
+				p.ctx.PartialRemote = p.ctx.PartialRemote[:offset]
+				remote = p.input[remoteStart : remoteStart+offset]
+				p.lastExpr = &Expression{Kind: KindRemoteSymbol, Span: Span{Start: symStart, End: remoteStart + offset}, payload: &RemoteSymbolExpr{Name: name, Remote: remote}}
+				p.afterExpression()
+				return
+			}
+		} else {
+			remote = p.input[remoteStart:p.pos]
+		}
+	}
+	p.lastExpr = &Expression{Kind: KindRemoteSymbol, Span: Span{Start: symStart, End: p.pos}, payload: &RemoteSymbolExpr{Name: name, Remote: remote}}
 }
 
 func (p *compParser) parsePatternValueCompletion() {
