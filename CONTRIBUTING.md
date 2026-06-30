@@ -1,6 +1,6 @@
 ## Clanker
 
-Use [crush](https://charm.land/crush/) with the `GLM-5.1` model ([hyper](https://hyper.charm.land)).
+Use [crush](https://charm.land/crush/) with the `GLM-5.2` model ([hyper](https://hyper.charm.land)).
 Make sure you have the `carapace` and `jj` skills.
 
 1. tell it what is wrong and what you expect
