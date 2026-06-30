@@ -350,3 +350,59 @@ func TestHasPostfixOps(t *testing.T) {
 		})
 	}
 }
+
+func TestStripDisplayQuotes(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{`"parents("`, `parents(`},
+		{`"main"`, `main`},
+		{`main`, `main`},
+		{``, ``},
+		{`"`, `"`},
+		{`""`, ``},
+		{`"unclosed`, `"unclosed`},
+		{`a"b"c`, `a"b"c`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			result := stripDisplayQuotes(tt.input)
+			if result != tt.expected {
+				t.Errorf("stripDisplayQuotes(%q) = %q, want %q", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestIsStringPatternFunction(t *testing.T) {
+	stringPatternFuncs := []string{
+		"author", "author_name", "author_email",
+		"committer", "committer_name", "committer_email",
+		"description", "subject",
+		"diff_lines", "diff_lines_added", "diff_lines_removed",
+	}
+	for _, name := range stringPatternFuncs {
+		t.Run(name, func(t *testing.T) {
+			if !isStringPatternFunction(name) {
+				t.Errorf("isStringPatternFunction(%q) = false, want true", name)
+			}
+		})
+	}
+
+	nonStringPatternFuncs := []string{
+		"parents", "children", "ancestors", "descendants",
+		"heads", "roots", "all", "none", "root",
+		"bookmarks", "tags", "files",
+		"change_id", "commit_id",
+		"author_date", "committer_date",
+		"at_operation", "coalesce", "present", "connected",
+	}
+	for _, name := range nonStringPatternFuncs {
+		t.Run(name, func(t *testing.T) {
+			if isStringPatternFunction(name) {
+				t.Errorf("isStringPatternFunction(%q) = true, want false", name)
+			}
+		})
+	}
+}
