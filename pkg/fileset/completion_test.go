@@ -1,6 +1,7 @@
 package fileset
 
 import (
+	"slices"
 	"testing"
 )
 
@@ -199,10 +200,8 @@ func TestCompletionTrailingComma(t *testing.T) {
 
 func assertHasExpected(t *testing.T, ctx *CompletionContext, expected ExpectedToken) {
 	t.Helper()
-	for _, tok := range ctx.ExpectedTokens {
-		if tok == expected {
-			return
-		}
+	if slices.Contains(ctx.ExpectedTokens, expected) {
+		return
 	}
 	t.Errorf("expected token %v not found in %v", expected, ctx.ExpectedTokens)
 }

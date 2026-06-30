@@ -1,6 +1,7 @@
 package jj
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/carapace-sh/carapace"
@@ -164,12 +165,7 @@ func ActionTemplates() carapace.Action {
 }
 
 func expectsTemplateToken(ctx *template.CompletionContext, token template.ExpectedToken) bool {
-	for _, t := range ctx.ExpectedTokens {
-		if t == token {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(ctx.ExpectedTokens, token)
 }
 
 func actionTemplateExpression(_ *template.CompletionContext) carapace.Action {

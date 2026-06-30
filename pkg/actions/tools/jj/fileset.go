@@ -1,6 +1,8 @@
 package jj
 
 import (
+	"slices"
+
 	"github.com/carapace-sh/carapace"
 	"github.com/carapace-sh/carapace-jjlex/pkg/fileset"
 )
@@ -79,12 +81,7 @@ func ActionFilesets() carapace.Action {
 }
 
 func expectsFilesetToken(ctx *fileset.CompletionContext, token fileset.ExpectedToken) bool {
-	for _, t := range ctx.ExpectedTokens {
-		if t == token {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(ctx.ExpectedTokens, token)
 }
 
 func actionFilesetExpression(_ *fileset.CompletionContext) carapace.Action {
