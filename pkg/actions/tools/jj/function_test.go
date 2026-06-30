@@ -403,3 +403,20 @@ func TestActionRevsetOperatorsAfterCompleteStringInFunction(t *testing.T) {
 		).ToA().Prefix(`parents("parents("`).NoSpace())
 	})
 }
+
+func TestActionRevsetExpressionAfterOperatorInFunction(t *testing.T) {
+	// After an infix operator within a function arg (e.g. parents("foo" |),
+	// general revset expressions should be offered for the RHS, along with
+	// operators, ), and ,. The result includes bookmarks, functions, special
+	// symbols, etc., so we verify it's non-empty (not the empty action that
+	// the function-arg-specific path would return for parents arg 1).
+	sandbox.Action(t, func() carapace.Action {
+		return ActionRevsets(RevOpts{}.Default())
+	})(func(s *sandbox.Sandbox) {
+		f := fixture.InitT(t, s)
+		f.CommitAdd("a.txt", "a", "first commit")
+		f.CreateBookmark("main")
+
+		s.Run(`parents("main" |`).ExpectNot(carapace.ActionValues())
+	})
+}

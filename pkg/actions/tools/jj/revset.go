@@ -161,6 +161,28 @@ func ActionRevsets(opts RevOpts) carapace.Action {
 				}
 				return mergeWithPostfix(batch.ToA().NoSpace().Prefix(prefix), ctx)
 			}
+			// When inside a function and both expression and operator are
+			// expected after an operator within an already-started argument
+			// (e.g. parents("foo" |), offer general revset expressions plus
+			// operators, ), and , — not the function-arg-specific action
+			// which may be empty (e.g. parents arg 1 is an integer, not a
+			// revset). Only do this when at least one arg has been parsed,
+			// so that first-arg completion (e.g. author() still uses the
+			// function-specific action.
+			if expectsToken(ctx, revset.ExpectedExpression) && expectsToken(ctx, revset.ExpectedOperator) &&
+				len(ctx.Function.Args) > 0 {
+				batch := carapace.Batch(
+					actionExpression(opts, ctx),
+					actionOperator(opts, ctx, suppressOps),
+				)
+				if expectsToken(ctx, revset.ExpectedClosingParen) {
+					batch = append(batch, carapace.ActionValues(")"))
+				}
+				if expectsToken(ctx, revset.ExpectedComma) {
+					batch = append(batch, carapace.ActionValues(","))
+				}
+				return mergeWithPostfix(batch.ToA().Prefix(prefix), ctx)
+			}
 			return fnAction.Prefix(prefix)
 		}
 
@@ -173,9 +195,9 @@ func ActionRevsets(opts RevOpts) carapace.Action {
 		// is a symbol reference (bookmark, tag, commit ID, change ID) —
 		// e.g. "parents(" is a bookmark whose name contains brackets.
 		// Invoke with the partial string content (without the opening quote)
-	        // so that both regular bookmarks (e.g. "main") and already-quoted
-	        // bookmarks (e.g. ""parents(") match correctly. Add the opening
-	        // quote as prefix and closing quote as suffix on the result.
+		// so that both regular bookmarks (e.g. "main") and already-quoted
+		// bookmarks (e.g. ""parents(") match correctly. Add the opening
+		// quote as prefix and closing quote as suffix on the result.
 		if expectsToken(ctx, revset.ExpectedStringClose) && ctx.StringQuote != 0 {
 			quote := string(ctx.StringQuote)
 			return actionQuotedRevsetArg(opts).Prefix(quote).Suffix(quote).NoSpace()

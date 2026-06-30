@@ -276,6 +276,22 @@ func TestCompletionCompleteStringInFunction(t *testing.T) {
 	assertHasExpected(t, ctx, ExpectedComma)
 }
 
+func TestCompletionOperatorInFunctionArg(t *testing.T) {
+	// `parents("foo" |` with cursor at end — after infix operator within
+	// a function argument, expression and operator are both expected.
+	ctx := ParseForCompletion(`parents("foo" |`)
+	if ctx.Function == nil {
+		t.Fatal("expected Function context")
+	}
+	if len(ctx.Function.Args) == 0 {
+		t.Fatal("expected at least one parsed arg")
+	}
+	assertHasExpected(t, ctx, ExpectedExpression)
+	assertHasExpected(t, ctx, ExpectedOperator)
+	assertHasExpected(t, ctx, ExpectedClosingParen)
+	assertHasExpected(t, ctx, ExpectedComma)
+}
+
 func TestCompletionInPattern(t *testing.T) {
 	// "exact:" with cursor at end
 	ctx := ParseForCompletion("exact:")
