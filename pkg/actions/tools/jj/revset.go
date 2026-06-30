@@ -72,8 +72,9 @@ func ActionRevsets(opts RevOpts) carapace.Action {
 		// Sub-actions filter against c.Value, so we need to strip this prefix
 		// before invoking them and re-attach it to the completion values.
 		var prefix string
-		if ctx.PartialString != "" {
-			// We're inside a string literal — find the opening quote
+		if ctx.StringQuote != 0 {
+			// We're inside a string literal — prefix is everything before
+			// the string content (includes the opening quote)
 			prefix = c.Value[:len(c.Value)-len(ctx.PartialString)]
 		} else {
 			prefix = c.Value[:len(c.Value)-len(ctx.PartialIdent)]
@@ -86,12 +87,24 @@ func ActionRevsets(opts RevOpts) carapace.Action {
 			// Strip the remote/workspace part from the prefix so actions filter correctly.
 			if ctx.PartialRemote != "" {
 				prefix = c.Value[:len(c.Value)-len(ctx.PartialRemote)]
-			} else if ctx.PartialString != "" {
-				// String literal remote (e.g. main@"ori)
+			} else if ctx.StringQuote != 0 {
+				// String literal remote (e.g. main@"ori) — a quoted remote
+				// name is a symbol reference, so offer remotes/workspaces
+				// with the opening quote as prefix and closing quote as suffix.
 				atIdx := strings.LastIndex(c.Value, "@")
 				if atIdx >= 0 {
 					prefix = c.Value[:atIdx+1]
 				}
+				quote := string(ctx.StringQuote)
+				remoteAction := carapace.Batch(
+					ActionRemotes(),
+					ActionWorkspaces(),
+				).ToA().Prefix(quote).Suffix(quote).NoSpace()
+
+				if ctx.PostfixOpStart > 0 {
+					return mergeWithPostfix(remoteAction, ctx)
+				}
+				return remoteAction
 			} else {
 				// Bare @ with no text yet (e.g. "main@")
 				atIdx := strings.LastIndex(c.Value, "@")
@@ -114,6 +127,13 @@ func ActionRevsets(opts RevOpts) carapace.Action {
 		}
 
 		if ctx.InPattern {
+			// When completing inside a quoted pattern value (e.g. exact:"foo),
+			// the quoted string is a symbol reference. Offer revision symbols
+			// with the opening quote as prefix and closing quote as suffix.
+			if expectsToken(ctx, revset.ExpectedStringClose) && ctx.StringQuote != 0 {
+				quote := string(ctx.StringQuote)
+				return actionQuotedRevsetArg(opts).Prefix(quote).Suffix(quote).NoSpace()
+			}
 			return actionForPatternValue(ctx).Prefix(prefix)
 		}
 
@@ -123,11 +143,10 @@ func ActionRevsets(opts RevOpts) carapace.Action {
 
 		if ctx.Function != nil {
 			fnAction := actionForFunctionArg(ctx, opts)
-			// When inside a function but the cursor is after a postfix operator
-			// on an argument (e.g. "parents(bookmark-)"), also include
-			// operator and postfix actions so the user can continue the
-			// postfix chain or close the function call.
-			if expectsToken(ctx, revset.ExpectedOperator) && hasPostfixOps(ctx) {
+			// When inside a function and operators are expected after a
+			// complete expression (not also expecting a new expression),
+			// include operators, ), and , along with the function arg action.
+			if expectsToken(ctx, revset.ExpectedOperator) && !expectsToken(ctx, revset.ExpectedExpression) {
 				batch := carapace.Batch(fnAction)
 				if expectsToken(ctx, revset.ExpectedClosingParen) {
 					batch = append(batch, carapace.ActionValues(")"))
@@ -149,8 +168,17 @@ func ActionRevsets(opts RevOpts) carapace.Action {
 			return ActionStringPatterns().Suffix(":").NoSpace().Prefix(prefix)
 		}
 
-		if expectsToken(ctx, revset.ExpectedStringClose) && ctx.PartialString != "" {
-			return ActionStringPatterns().Suffix(":").Prefix(ctx.PartialString)
+		// Handle partial string literals at the top level (not inside a
+		// function, pattern, or remote symbol). A quoted string in a revset
+		// is a symbol reference (bookmark, tag, commit ID, change ID) —
+		// e.g. "parents(" is a bookmark whose name contains brackets.
+		// Invoke with the partial string content (without the opening quote)
+	        // so that both regular bookmarks (e.g. "main") and already-quoted
+	        // bookmarks (e.g. ""parents(") match correctly. Add the opening
+	        // quote as prefix and closing quote as suffix on the result.
+		if expectsToken(ctx, revset.ExpectedStringClose) && ctx.StringQuote != 0 {
+			quote := string(ctx.StringQuote)
+			return actionQuotedRevsetArg(opts).Prefix(quote).Suffix(quote).NoSpace()
 		}
 
 		if expectsToken(ctx, revset.ExpectedExpression) && expectsToken(ctx, revset.ExpectedOperator) {
@@ -325,6 +353,49 @@ func actionOperator(_ RevOpts, ctx *revset.CompletionContext, suppressOps map[st
 	return carapace.ActionValues()
 }
 
+// actionQuotedRevsetArg returns completions for revision symbols that are
+// valid inside a quoted string literal. Unlike actionRevsetArg, this excludes
+// remote bookmarks (which have @remote suffixes that don't work inside quotes)
+// and revset functions/patterns (which are not symbol references).
+// It uses raw (unquoted) bookmark/tag names so that the caller can add
+// consistent quoting via Prefix/Suffix without double-quoting values that
+// jj would otherwise display with quotes (e.g. "parents(").
+func actionQuotedRevsetArg(opts RevOpts) carapace.Action {
+	batch := carapace.Batch()
+	if opts.LocalBookmarks {
+		batch = append(batch, actionLocalBookmarksRaw())
+	}
+	if opts.Commits > 0 {
+		batch = append(batch, ActionRecentCommits(opts.Commits))
+	}
+	if opts.HeadCommits > 0 {
+		batch = append(batch, ActionHeadCommits(opts.HeadCommits))
+	}
+	if opts.Tags {
+		batch = append(batch, actionTagsRaw())
+	}
+	if opts.ChangeIds {
+		batch = append(batch, ActionChangeIds())
+	}
+	return batch.ToA().NoSpace()
+}
+
+// isStringPatternFunction returns true for functions whose argument is a
+// string pattern (author, description, etc.) rather than a revset expression.
+// For these functions, a quoted string argument is the pattern value itself,
+// not a symbol reference, so InStringArg handling is done in the function's
+// case branch instead of the generic InStringArg path.
+func isStringPatternFunction(name string) bool {
+	switch name {
+	case "author", "author_name", "author_email",
+		"committer", "committer_name", "committer_email",
+		"description", "subject",
+		"diff_lines", "diff_lines_added", "diff_lines_removed":
+		return true
+	}
+	return false
+}
+
 func actionForFunctionArg(ctx *revset.CompletionContext, opts RevOpts) carapace.Action {
 	fn := ctx.Function
 
@@ -334,6 +405,17 @@ func actionForFunctionArg(ctx *revset.CompletionContext, opts RevOpts) carapace.
 
 	if fn.IsKeywordArg && fn.KeywordArgName != "" && !strings.Contains(fn.KeywordArgName, "=") {
 		return ActionRevsetKeywordArgs(fn.Name).Suffix("=")
+	}
+
+	// When inside a quoted string argument for a function that takes a
+	// revset expression (not a string pattern function like author/description),
+	// the quoted string is a symbol reference (bookmark, tag, commit ID).
+	// The outer Prefix(prefix) in ActionRevsets strips the function name and
+	// opening quote from c.Value, so we only need to add the closing quote
+	// as suffix here. The opening quote is already part of the prefix.
+	if fn.InStringArg && !isStringPatternFunction(fn.Name) {
+		quote := string(ctx.StringQuote)
+		return actionQuotedRevsetArg(opts).Suffix(quote).NoSpace()
 	}
 
 	switch fn.Name {

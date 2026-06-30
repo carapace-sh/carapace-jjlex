@@ -265,3 +265,117 @@ func TestActionRevsetsBookmarkWithSlashPostfix(t *testing.T) {
 		).ToA().NoSpace())
 	})
 }
+
+func TestActionRevsetQuotedSymbol(t *testing.T) {
+	// A quoted string in a revset is a symbol reference (bookmark, tag,
+	// commit ID). Bookmarks with special characters like brackets are
+	// displayed with quotes by jj (e.g. "parents(") and must be referenced
+	// as a quoted string literal in revsets.
+	sandbox.Action(t, func() carapace.Action {
+		return ActionRevsets(RevOpts{}.Default())
+	})(func(s *sandbox.Sandbox) {
+		f := fixture.InitT(t, s)
+		f.CommitAdd("a.txt", "a", "first commit")
+		f.CreateBookmark(`"parents("`)
+
+		s.Run(`"paren`).Expect(carapace.ActionValuesDescribed(
+			`parents(`, "",
+		).Prefix(`"`).Suffix(`"`).Style(style.Blue).Tag("local bookmarks").NoSpace())
+
+		s.Run(`'paren`).Expect(carapace.ActionValuesDescribed(
+			`parents(`, "",
+		).Prefix(`'`).Suffix(`'`).Style(style.Blue).Tag("local bookmarks").NoSpace())
+	})
+}
+
+func TestActionRevsetQuotedSymbolInFunction(t *testing.T) {
+	// Inside a function that takes a revset expression (e.g. parents()),
+	// a quoted string argument is a symbol reference, not a string pattern.
+	sandbox.Action(t, func() carapace.Action {
+		return ActionRevsets(RevOpts{}.Default())
+	})(func(s *sandbox.Sandbox) {
+		f := fixture.InitT(t, s)
+		f.CommitAdd("a.txt", "a", "first commit")
+		f.CreateBookmark(`"parents("`)
+
+		s.Run(`parents("paren`).Expect(carapace.ActionValuesDescribed(
+			`parents(`, "",
+		).Prefix(`parents("`).Suffix(`"`).Style(style.Blue).Tag("local bookmarks").NoSpace())
+	})
+}
+
+func TestActionRevsetQuotedSymbolInPattern(t *testing.T) {
+	// Inside a pattern value (e.g. exact:"foo), a quoted string is a
+	// symbol reference.
+	sandbox.Action(t, func() carapace.Action {
+		return ActionRevsets(RevOpts{}.Default())
+	})(func(s *sandbox.Sandbox) {
+		f := fixture.InitT(t, s)
+		f.CommitAdd("a.txt", "a", "first commit")
+		f.CreateBookmark(`"parents("`)
+
+		s.Run(`exact:"paren`).Expect(carapace.ActionValuesDescribed(
+			`parents(`, "",
+		).Prefix(`"`).Suffix(`"`).Style(style.Blue).Tag("local bookmarks").NoSpace())
+	})
+}
+
+func TestActionRevsetQuotedRemote(t *testing.T) {
+	// A quoted remote name (e.g. main@"ori) is a symbol reference for
+	// the remote name.
+	sandbox.Action(t, func() carapace.Action {
+		return ActionRevsets(RevOpts{}.Default())
+	})(func(s *sandbox.Sandbox) {
+		f := fixture.InitT(t, s)
+		f.CommitAdd("a.txt", "a", "first commit")
+		f.AddRemote("origin")
+
+		s.Run(`main@"ori`).Expect(carapace.ActionValues(
+			"origin",
+		).Prefix(`"`).Suffix(`"`).Tag("remotes").NoSpace())
+	})
+}
+
+func TestActionRevsetQuotedRegularBookmark(t *testing.T) {
+	// A regular bookmark (no special characters) should also be offered
+	// inside a quoted string, with the opening/closing quote added.
+	sandbox.Action(t, func() carapace.Action {
+		return ActionRevsets(RevOpts{}.Default())
+	})(func(s *sandbox.Sandbox) {
+		f := fixture.InitT(t, s)
+		f.CommitAdd("a.txt", "a", "first commit")
+		f.CreateBookmark("main")
+		f.CreateBookmark("patch")
+
+		// "p should match "patch" (raw name starts with "p")
+		s.Run(`"p`).Expect(carapace.ActionValuesDescribed(
+			"patch", "",
+		).Prefix(`"`).Suffix(`"`).Style(style.Blue).Tag("local bookmarks").NoSpace())
+	})
+}
+
+func TestActionRevsetQuotedEmptyInFunction(t *testing.T) {
+	// Empty quoted string inside a function (e.g. parents(") should offer
+	// revision symbols with the function prefix and closing quote.
+	// Use limited RevOpts to make the test deterministic (only bookmarks).
+	sandbox.Action(t, func() carapace.Action {
+		opts := RevOpts{}.Default()
+		opts.Commits = 0
+		opts.HeadCommits = 0
+		opts.Tags = false
+		opts.ChangeIds = false
+		return ActionRevsets(opts)
+	})(func(s *sandbox.Sandbox) {
+		f := fixture.InitT(t, s)
+		f.CommitAdd("a.txt", "a", "first commit")
+		f.CreateBookmark("main")
+
+		// parents(" — empty partial string in function
+		// prefix is parents(", action returns all bookmarks
+		// suffix " is added, prefix parents(" is added
+		s.Run(`parents("`).Expect(carapace.ActionValuesDescribed(
+			"main", "",
+		).Prefix(`parents("`).Suffix(`"`).Style(style.Blue).Tag("local bookmarks").NoSpace())
+	})
+}
+
