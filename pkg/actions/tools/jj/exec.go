@@ -18,7 +18,7 @@ const (
 func actionExecJJ(arg ...string) func(func(output []byte) carapace.Action) carapace.Action {
 	return func(f func(output []byte) carapace.Action) carapace.Action {
 		return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
-			args := []string{"--color", "never"}
+			args := []string{"--color", "never", "--ignore-working-copy"}
 			if repository, ok := c.LookupEnv(EnvRepository); ok {
 				args = append(args, "--repository", repository)
 			}
@@ -36,7 +36,7 @@ func actionExecJJ(arg ...string) func(func(output []byte) carapace.Action) carap
 func actionExecJJE(arg ...string) func(func(output []byte, err error) carapace.Action) carapace.Action {
 	return func(f func(output []byte, err error) carapace.Action) carapace.Action {
 		return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
-			args := []string{"--color", "never"}
+			args := []string{"--color", "never", "--ignore-working-copy"}
 			if repository, ok := c.LookupEnv(EnvRepository); ok {
 				args = append(args, "--repository", repository)
 			}
