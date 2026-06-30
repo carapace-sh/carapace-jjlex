@@ -2,6 +2,7 @@ package template
 
 import (
 	"fmt"
+	"slices"
 	"unicode/utf8"
 )
 
@@ -387,10 +388,8 @@ func (p *parser) parseLambda(start int) (*Expression, error) {
 			if param == "true" || param == "false" {
 				return nil, p.syntaxErrorf("keyword %q cannot be used as parameter name", param)
 			}
-			for _, existing := range params {
-				if existing == param {
-					return nil, p.syntaxErrorf("redefined function parameter %q", param)
-				}
+			if slices.Contains(params, param) {
+				return nil, p.syntaxErrorf("redefined function parameter %q", param)
 			}
 			params = append(params, param)
 			p.skipWhitespace()

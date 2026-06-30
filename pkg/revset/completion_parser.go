@@ -147,6 +147,18 @@ func (p *compParser) addOperator(op, desc string) {
 
 // afterExpression adds the tokens valid after a complete expression.
 func (p *compParser) afterExpression() {
+	// When inside an unclosed string literal, operators are not valid —
+	// only the closing quote and symbol completions are. Skip adding
+	// operators so the action layer doesn't offer them.
+	if p.ctx.StringQuote != 0 {
+		// If inside a function, still expect ) and ,
+		if len(p.funcStack) > 0 {
+			p.addExpected(ExpectedClosingParen)
+			p.addExpected(ExpectedComma)
+		}
+		return
+	}
+
 	p.addExpected(ExpectedOperator)
 	p.addOperator("|", "union")
 	p.addOperator("&", "intersection")
@@ -367,7 +379,7 @@ func (p *compParser) parseRangeExpr() {
 	// Check for postfix or infix range operators
 	p.skipWS()
 	if p.atCursorOrEnd() {
-		if p.lastExpr != nil {
+		if p.lastExpr != nil && p.ctx.StringQuote == 0 {
 			p.afterExpression()
 			p.addOperator("::", "DAG range")
 			p.addOperator("..", "range")

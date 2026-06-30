@@ -210,6 +210,88 @@ func TestCompletionPartialRawString(t *testing.T) {
 	assertHasExpected(t, ctx, ExpectedStringClose)
 }
 
+func TestCompletionEmptyStringLiteral(t *testing.T) {
+	// `"` with cursor at end — just opening quote, no content yet
+	ctx := ParseForCompletion(`"`)
+	if ctx.PartialString != "" {
+		t.Errorf("expected empty PartialString, got %q", ctx.PartialString)
+	}
+	if ctx.StringQuote != '"' {
+		t.Errorf("expected StringQuote \", got %c", ctx.StringQuote)
+	}
+	assertHasExpected(t, ctx, ExpectedStringClose)
+	// Operators should NOT be expected inside an unclosed string
+	assertNotHasExpected(t, ctx, ExpectedOperator)
+	assertNoOperator(t, ctx, "|")
+	assertNoOperator(t, ctx, "&")
+}
+
+func TestCompletionStringLiteralSuppressesOperators(t *testing.T) {
+	// `"&` with cursor at end — inside unclosed string, operators not valid
+	ctx := ParseForCompletion(`"&`)
+	if ctx.PartialString != "&" {
+		t.Errorf("expected PartialString '&', got %q", ctx.PartialString)
+	}
+	assertHasExpected(t, ctx, ExpectedStringClose)
+	assertNotHasExpected(t, ctx, ExpectedOperator)
+	assertNoOperator(t, ctx, "&")
+	assertNoOperator(t, ctx, "|")
+}
+
+func TestCompletionStringLiteralInFunction(t *testing.T) {
+	// `parents("foo` with cursor at end — inside quoted string in function
+	ctx := ParseForCompletion(`parents("foo`)
+	if ctx.PartialString != "foo" {
+		t.Errorf("expected PartialString 'foo', got %q", ctx.PartialString)
+	}
+	if ctx.StringQuote != '"' {
+		t.Errorf("expected StringQuote \", got %c", ctx.StringQuote)
+	}
+	assertHasExpected(t, ctx, ExpectedStringClose)
+	if ctx.Function == nil {
+		t.Fatal("expected Function context")
+	}
+	if ctx.Function.Name != "parents" {
+		t.Errorf("expected function 'parents', got %q", ctx.Function.Name)
+	}
+	if !ctx.Function.InStringArg {
+		t.Error("expected InStringArg")
+	}
+	// Operators should NOT be expected inside an unclosed string
+	assertNotHasExpected(t, ctx, ExpectedOperator)
+}
+
+func TestCompletionCompleteStringInFunction(t *testing.T) {
+	// `parents("foo")` with cursor after closing quote — string complete,
+	// operators and ),  are valid
+	ctx := ParseForCompletion(`parents("foo"`)
+	if ctx.Function == nil {
+		t.Fatal("expected Function context")
+	}
+	if ctx.Function.InStringArg {
+		t.Error("did not expect InStringArg for complete string")
+	}
+	assertHasExpected(t, ctx, ExpectedOperator)
+	assertHasExpected(t, ctx, ExpectedClosingParen)
+	assertHasExpected(t, ctx, ExpectedComma)
+}
+
+func TestCompletionOperatorInFunctionArg(t *testing.T) {
+	// `parents("foo" |` with cursor at end — after infix operator within
+	// a function argument, expression and operator are both expected.
+	ctx := ParseForCompletion(`parents("foo" |`)
+	if ctx.Function == nil {
+		t.Fatal("expected Function context")
+	}
+	if len(ctx.Function.Args) == 0 {
+		t.Fatal("expected at least one parsed arg")
+	}
+	assertHasExpected(t, ctx, ExpectedExpression)
+	assertHasExpected(t, ctx, ExpectedOperator)
+	assertHasExpected(t, ctx, ExpectedClosingParen)
+	assertHasExpected(t, ctx, ExpectedComma)
+}
+
 func TestCompletionInPattern(t *testing.T) {
 	// "exact:" with cursor at end
 	ctx := ParseForCompletion("exact:")
