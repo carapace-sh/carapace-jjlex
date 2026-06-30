@@ -91,10 +91,6 @@ func ActionRevsets(opts RevOpts) carapace.Action {
 				// String literal remote (e.g. main@"ori) — a quoted remote
 				// name is a symbol reference, so offer remotes/workspaces
 				// with the opening quote as prefix and closing quote as suffix.
-				atIdx := strings.LastIndex(c.Value, "@")
-				if atIdx >= 0 {
-					prefix = c.Value[:atIdx+1]
-				}
 				quote := string(ctx.StringQuote)
 				remoteAction := carapace.Batch(
 					ActionRemotes(),
