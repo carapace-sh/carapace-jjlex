@@ -16,7 +16,7 @@ Most revsets search only **visible** commits. Hidden commits are included only i
 | `<name>@` | Working copy commit in workspace `<name>` |
 | `<name>@<remote>` | Remote-tracking bookmark |
 | `<hex prefix>` | Commit ID or change ID prefix (must be unique) |
-| `"<symbol>"` or `'<symbol>'` | Quoted symbol — prevents interpretation as expression |
+| `"<symbol>"` or `'<symbol>'` | Quoted symbol — prevents interpretation as expression. Git branches with special characters like brackets (e.g. `parents(`) are displayed quoted by jj (`"parents("`) and must be referenced with quotes in revsets |
 | `<change_id>/<offset>` | Change ID with offset, for hidden or divergent changes |
 
 ### Symbol Resolution Priority

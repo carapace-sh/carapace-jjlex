@@ -27,7 +27,7 @@ No Makefile, no linter config, no CI config present.
 
 ## Architecture
 
-Cobra-based CLI (`cmd/`) wrapping three pairs of independent recursive-descent parsers (`pkg/revset/`, `pkg/fileset/`, `pkg/template/`) with completion actions that wire the parsers to carapace (`pkg/actions/jj/`).
+Cobra-based CLI (`cmd/`) wrapping three pairs of independent recursive-descent parsers (`pkg/revset/`, `pkg/fileset/`, `pkg/template/`) with completion actions that wire the parsers to carapace (`pkg/actions/tools/jj/`).
 
 ### CLI (`cmd/`)
 
@@ -111,13 +111,13 @@ Template grammar uses a Pratt parser for infix operators (precedence from weakes
 | `cmd/revset.go` | Revset subcommands |
 | `cmd/fileset.go` | Fileset subcommands (including bare string variants) |
 | `cmd/template.go` | Template subcommands |
-| `pkg/actions/jj/function.go` | Static action definitions: patterns, operators, functions, keyword args, special symbols |
-| `pkg/actions/jj/revset.go` | Completion wiring: maps CompletionContext to carapace actions |
-| `pkg/actions/jj/revision.go` | Dynamic completion actions (bookmarks, tags, remotes, commits, operations) that shell out to `jj` |
-| `pkg/actions/jj/helpers.go` | Parsing helpers for `jj` CLI output (bookmarks, lines) |
-| `pkg/actions/jj/exec.go` | `actionExecJJ`/`actionExecJJE` helpers to run `jj` commands |
-| `pkg/actions/jj/uid.go` | UID generation helper for action deduplication |
-| `pkg/actions/jj/action_test.go` | Sandbox tests for actions and unit tests for parsing helpers |
+| `pkg/actions/tools/jj/function.go` | Static action definitions: patterns, operators, functions, keyword args, special symbols |
+| `pkg/actions/tools/jj/revset.go` | Completion wiring: maps CompletionContext to carapace actions. Includes `actionQuotedRevsetArg`, `isStringPatternFunction`, `actionForFunctionArg` |
+| `pkg/actions/tools/jj/revision.go` | Dynamic completion actions (bookmarks, tags, remotes, commits, operations) that shell out to `jj`. Includes `actionLocalBookmarksRaw`, `actionTagsRaw`/`actionTags`, `stripDisplayQuotes` |
+| `pkg/actions/tools/jj/helpers.go` | Parsing helpers for `jj` CLI output (bookmarks, lines) |
+| `pkg/actions/tools/jj/exec.go` | `actionExecJJ`/`actionExecJJE` helpers to run `jj` commands |
+| `pkg/actions/tools/jj/uid.go` | UID generation helper for action deduplication |
+| `pkg/actions/tools/jj/action_test.go` | Sandbox tests for actions and unit tests for parsing helpers |
 | `pkg/fixture/fixture.go` | Fixture for creating jj test repos: commits, bookmarks, tags, state inspection |
 | `pkg/fixture/fixture_t.go` | Testing.T wrapper with fatal helpers for fixture operations |
 
@@ -132,7 +132,7 @@ YAML documentation files for completion value UIDs. Organized as `man/jj/<host>/
 
 ### Completion actions return pure value lists
 
-Action functions in `pkg/actions/jj/function.go` return raw value lists with Uid and Tag set, but without formatting modifiers (`.Suffix`, `.NoSpace`, `.Prefix`). These are applied at call sites in `pkg/actions/jj/revset.go` where context determines what suffix/no-space behavior is needed. This keeps actions reusable. Uid is set before any formatting modifiers so that suffix/prefix characters don't leak into the UID.
+Action functions in `pkg/actions/tools/jj/function.go` return raw value lists with Uid and Tag set, but without formatting modifiers (`.Suffix`, `.NoSpace`, `.Prefix`). These are applied at call sites in `pkg/actions/tools/jj/revset.go` where context determines what suffix/no-space behavior is needed. This keeps actions reusable. Uid is set before any formatting modifiers so that suffix/prefix characters don't leak into the UID.
 
 ### Expression uses a type-erased payload pattern
 
@@ -212,13 +212,31 @@ Template function calls support keyword arguments (`f(x, key=val)`). The parser'
 
 `setFunctionContext()` always updates to the most recently entered function, so nested function calls correctly report the innermost function context.
 
+### Quoted string completions and display quoting
+
+jj display-quotes bookmark/tag names with special characters (e.g. a git branch `parents(` is displayed as `"parents("` by `jj bookmark list`). This creates two challenges for completion:
+
+1. **Raw vs display-quoted names**: `ActionLocalBookmarks` returns display-quoted values from `jj bookmark list`. When completing inside a quoted string (e.g. `"paren`), these values won't match because they already include the opening quote. `actionLocalBookmarksRaw` and `actionTagsRaw` return raw (unquoted) names using `name.substr()` (bookmarks) or `stripDisplayQuotes` (tags) so that `Prefix(quote).Suffix(quote)` can add consistent quoting at the completion site.
+
+2. **String pattern vs symbol reference**: A quoted string in a revset is a symbol reference (bookmark/tag/commit), not a string pattern. `isStringPatternFunction` distinguishes functions where a quoted argument is a pattern value (`author`, `description`, `diff_lines`) from functions where it's a symbol reference (`parents`, `children`). `actionQuotedRevsetArg` offers only symbols valid inside quotes (no remote bookmarks with `@remote`, no functions, no patterns).
+
+The `StringQuote` field (not `PartialString`) is used to detect "inside a quoted string" — it's set even when no content has been typed yet (just the opening quote).
+
+### Operators suppressed inside unclosed string literals
+
+The completion parser's `afterExpression()` and `parseRangeExpr()` check `p.ctx.StringQuote != 0` and skip adding `ExpectedOperator`/`ValidOperators` when inside an unclosed string. This prevents operators from being offered while the user is still typing a quoted symbol (e.g. `"paren` should offer bookmarks, not `|`, `&`, etc.). Operators are correctly offered after the string is closed (e.g. `"main"`).
+
+### Operators after complete expression in function args
+
+When a complete expression (e.g. `"parents("`) is followed by the cursor inside a function, `ExpectedOperator` is set but `ExpectedExpression` is not. The action layer offers operators, `)`, and `,`. When an infix operator (e.g. `|`) has been consumed within an argument and at least one arg was parsed (`len(ctx.Function.Args) > 0`), both `ExpectedExpression` and `ExpectedOperator` are set — general revset expressions are offered for the RHS instead of the function-arg-specific action (which may be empty, e.g. `parents` arg 1 is an integer depth).
+
 ## Testing
 
 - Tests use standard `testing` package only (no testify or other deps)
 - `revset_test.go` / `fileset_test.go` — parser tests using helpers
 - `completion_test.go` (all three packages) — completion tests using `assertHasExpected`, `assertHasOperator`
 - `main_test.go` — integration tests with realistic examples from jj source code
-- `pkg/actions/jj/action_test.go` — sandbox tests for carapace actions and unit tests for parsing helpers
+- `pkg/actions/tools/jj/action_test.go` — sandbox tests for carapace actions and unit tests for parsing helpers
 - `pkg/fixture/` — jj repo fixture for creating test repos with commits, bookmarks, tags, etc.
 - Parser/completion packages have no external dependencies (pure stdlib); `pkg/actions/jj` depends on carapace and cobra
 
@@ -254,7 +272,7 @@ When jj revset syntax changes, update:
 1. Skill (`skills/jj/references/revsets.md`)
 2. Parser (`pkg/revset/parser.go`)
 3. Completion parser (`pkg/revset/completion_parser.go`)
-4. Completion actions (`pkg/actions/jj/function.go`, `pkg/actions/jj/revset.go`)
+4. Completion actions (`pkg/actions/tools/jj/function.go`, `pkg/actions/tools/jj/revset.go`)
 5. Man pages (`man/jj/revset-function/`, `man/jj/revset-operator/`, `man/jj/revset-pattern/`, etc.)
 
 Check: `lib/src/revset.pest`, `lib/src/revset.rs` (BUILTIN_FUNCTION_MAP), `docs/revsets.md`
@@ -266,7 +284,7 @@ When jj fileset syntax changes, update:
 2. Parser (`pkg/fileset/parser.go`, `parser_helpers.go`, `scanner.go`, `helpers.go`)
 3. Completion parser (`pkg/fileset/completion_parser.go`, `completion_helpers.go`)
 4. AST (`pkg/fileset/ast.go`)
-5. Completion actions (`pkg/actions/jj/function.go`, `pkg/actions/jj/revset.go`)
+5. Completion actions (`pkg/actions/tools/jj/function.go`, `pkg/actions/tools/jj/revset.go`)
 6. Man pages (`man/jj/fileset-function/`, `man/jj/fileset-operator/`, `man/jj/fileset-pattern/`)
 
 Check: `lib/src/fileset.pest`, `lib/src/fileset.rs` (BUILTIN_FUNCTION_MAP), `docs/filesets.md`
