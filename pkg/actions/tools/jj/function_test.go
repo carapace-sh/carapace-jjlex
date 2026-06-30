@@ -339,8 +339,14 @@ func TestActionRevsetQuotedRemote(t *testing.T) {
 func TestActionRevsetQuotedRegularBookmark(t *testing.T) {
 	// A regular bookmark (no special characters) should also be offered
 	// inside a quoted string, with the opening/closing quote added.
+	// Use limited RevOpts to make the test deterministic (only bookmarks).
 	sandbox.Action(t, func() carapace.Action {
-		return ActionRevsets(RevOpts{}.Default())
+		opts := RevOpts{}.Default()
+		opts.Commits = 0
+		opts.HeadCommits = 0
+		opts.Tags = false
+		opts.ChangeIds = false
+		return ActionRevsets(opts)
 	})(func(s *sandbox.Sandbox) {
 		f := fixture.InitT(t, s)
 		f.CommitAdd("a.txt", "a", "first commit")
