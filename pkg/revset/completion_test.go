@@ -292,6 +292,60 @@ func TestCompletionOperatorInFunctionArg(t *testing.T) {
 	assertHasExpected(t, ctx, ExpectedComma)
 }
 
+func TestCompletionQuotedRemoteSymbol(t *testing.T) {
+	// `"parents("@` with cursor at end — after @ following a quoted string,
+	// should set InRemoteSymbol with the quoted name as RemoteBookmarkName.
+	ctx := ParseForCompletion(`"parents("@`)
+	if !ctx.InRemoteSymbol {
+		t.Error("expected InRemoteSymbol")
+	}
+	if ctx.RemoteBookmarkName != "parents(" {
+		t.Errorf("expected RemoteBookmarkName 'parents(', got %q", ctx.RemoteBookmarkName)
+	}
+	if ctx.PartialRemote != "" {
+		t.Errorf("expected empty PartialRemote, got %q", ctx.PartialRemote)
+	}
+}
+
+func TestCompletionQuotedRemoteSymbolPartial(t *testing.T) {
+	// `"parents("@ori` with cursor at end — partial remote name after @.
+	ctx := ParseForCompletion(`"parents("@ori`)
+	if !ctx.InRemoteSymbol {
+		t.Error("expected InRemoteSymbol")
+	}
+	if ctx.RemoteBookmarkName != "parents(" {
+		t.Errorf("expected RemoteBookmarkName 'parents(', got %q", ctx.RemoteBookmarkName)
+	}
+	if ctx.PartialRemote != "ori" {
+		t.Errorf("expected PartialRemote 'ori', got %q", ctx.PartialRemote)
+	}
+}
+
+func TestCompletionQuotedRemoteSymbolComplete(t *testing.T) {
+	// `"parents("@git` with cursor at end — complete remote name after @.
+	ctx := ParseForCompletion(`"parents("@git`)
+	if !ctx.InRemoteSymbol {
+		t.Error("expected InRemoteSymbol")
+	}
+	if ctx.RemoteBookmarkName != "parents(" {
+		t.Errorf("expected RemoteBookmarkName 'parents(', got %q", ctx.RemoteBookmarkName)
+	}
+	if ctx.PartialRemote != "git" {
+		t.Errorf("expected PartialRemote 'git', got %q", ctx.PartialRemote)
+	}
+}
+
+func TestCompletionRawQuotedRemoteSymbol(t *testing.T) {
+	// `'parents('@` with cursor at end — single-quoted string with @ suffix.
+	ctx := ParseForCompletion(`'parents('@`)
+	if !ctx.InRemoteSymbol {
+		t.Error("expected InRemoteSymbol")
+	}
+	if ctx.RemoteBookmarkName != "parents(" {
+		t.Errorf("expected RemoteBookmarkName 'parents(', got %q", ctx.RemoteBookmarkName)
+	}
+}
+
 func TestCompletionInPattern(t *testing.T) {
 	// "exact:" with cursor at end
 	ctx := ParseForCompletion("exact:")
