@@ -60,8 +60,7 @@ var parseSuccessCases = []string{
 
 	// Function calls - nullary
 	"visible_heads()",
-	"git_refs()",
-	"git_head()",
+	"forks()",
 	"merges()",
 	"conflicts()",
 	"divergent()",
