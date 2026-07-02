@@ -22,6 +22,7 @@ func ActionRevsetFunctions() carapace.Action {
 			"conflicts", "Commits that have files in a conflicted state",
 			"divergent", "Commits that are divergent",
 			"empty", "Commits modifying no files (includes merges() without user modifications and root())",
+			"forks", "Commits with more than 1 child",
 			"merges", "Merge commits",
 			"mine", "Commits where the author's email matches the email of the current user",
 			"none", "No commits",

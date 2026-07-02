@@ -115,6 +115,9 @@ exactly: |
   when you want to ensure that some revset expression has exactly one target.
 merges: |
   `merges()`: Merge commits.
+forks: |
+  `forks()`: Commits with more than 1 child. These are the commits where the
+  commit graph branches into multiple children.
 description: |
   `description(pattern)`: Commits that have a description matching the given
   [string pattern](#string-patterns).

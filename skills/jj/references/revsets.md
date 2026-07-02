@@ -173,6 +173,7 @@ Function argument notation: `[arg]` = optional. Named arguments can be specified
 | Function | Signature | Description |
 |----------|-----------|-------------|
 | `merges` | `merges()` | Merge commits (2+ parents) |
+| `forks` | `forks()` | Commits with more than 1 child (fork points) |
 | `description` | `description(pattern)` | Commits with description matching pattern. `description(exact:"")` matches empty description; `description(exact:"foo\n")` matches `"foo\n"` |
 | `subject` | `subject(pattern)` | Commits with subject (first line of description) matching pattern |
 | `author` | `author(pattern)` | `author_name(pattern) \| author_email(pattern)` |
@@ -211,8 +212,6 @@ Function argument notation: `[arg]` = optional. Named arguments can be specified
 
 | Function | Replacement | Notes |
 |----------|-------------|-------|
-| `git_refs` | `remote_bookmarks()` / `tags()` | Removed in jj 0.43+ |
-| `git_head` | `first_parent(@)` | Removed in jj 0.43+ |
 | `diff_contains` | `diff_lines()` | Deprecated alias, to be removed in jj 0.44+ |
 
 ## String Patterns
