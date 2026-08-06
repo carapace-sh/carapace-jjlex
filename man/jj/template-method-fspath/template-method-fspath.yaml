@@ -1,0 +1,4 @@
+absolute: |
+  `absolute()`: Returns an absolute filesystem path by joining the current working directory with the path.
+relative: |
+  `relative()`: Returns the path relative to the current working directory.

@@ -42,6 +42,7 @@ func ActionTemplateFunctions() carapace.Action {
 			"config", "Look up config value",
 			"git_web_url", "Convert git URL to HTTPS browse URL",
 			"replace", "Replace matches using pattern",
+			"try", "First successful result, suppresses runtime errors",
 		).Uid("jj", "template-function", "args", "true")
 
 		return carapace.Batch(noArgs, withArgs.Suffix("(")).ToA()
@@ -424,9 +425,14 @@ func templateTypeMethods(typeName string) []templateMethod {
 		}
 	case "RepoPath":
 		return []templateMethod{
-			{"absolute", "Absolute path as String", true},
+			{"absolute", "Absolute filesystem path as FsPath", true},
 			{"display", "Display path as String", true},
 			{"parent", "Parent directory as Option<RepoPath>", true},
+		}
+	case "FsPath":
+		return []templateMethod{
+			{"absolute", "Absolute filesystem path", true},
+			{"relative", "Path relative to current working directory", true},
 		}
 	case "DiffStats":
 		return []templateMethod{
@@ -453,7 +459,7 @@ func templateTypeMethods(typeName string) []templateMethod {
 		return []templateMethod{
 			{"name", "Workspace name as RefSymbol", true},
 			{"target", "Target Commit", true},
-			{"root", "Root as Template", true},
+			{"root", "Root path as Option<FsPath>", true},
 		}
 	case "SizeHint":
 		return []templateMethod{

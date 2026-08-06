@@ -198,9 +198,13 @@ var typeMethods = map[string]map[string]string{
 		"executable":          "Boolean",
 	},
 	"RepoPath": {
-		"absolute": "String",
+		"absolute": "FsPath",
 		"display":  "String",
 		"parent":   "Option<RepoPath>",
+	},
+	"FsPath": {
+		"absolute": "FsPath",
+		"relative": "FsPath",
 	},
 	"DiffStats": {
 		"files":         "List<DiffStatEntry>",
@@ -223,7 +227,7 @@ var typeMethods = map[string]map[string]string{
 	"WorkspaceRef": {
 		"name":   "RefSymbol",
 		"target": "Commit",
-		"root":   "Template",
+		"root":   "Option<FsPath>",
 	},
 	"SizeHint": {
 		"lower": "Integer",
@@ -287,6 +291,7 @@ var globalFuncTypes = map[string]string{
 	"stringify":           "String",
 	"json":                "String",
 	"if":                  "",
+	"try":                 "",
 	"coalesce":            "Template",
 	"concat":              "Template",
 	"join":                "Template",

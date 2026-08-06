@@ -143,6 +143,7 @@ Function argument notation: `[arg]` = optional. Named arguments can be specified
 | `roots` | `roots(x)` | Commits in `x` that are not descendants of other commits in `x`. Eqv: `x ~ x+::`. **Note:** differs from Mercurial's `roots(x)` |
 | `latest` | `latest(x, [count])` | Latest `count` commits by committer timestamp. Default count = 1 |
 | `fork_point` | `fork_point(x)` | Common ancestor(s) with no descendant that is also a common ancestor. If `x` is a single commit, returns that commit |
+| `merge_point` | `merge_point(x)` | Common descendant(s) with no ancestor that is also a common descendant. Dual of `fork_point()`. If `x` is a single commit, returns that commit |
 | `bisect` | `bisect(x)` | Commits where about half the input set are descendants. Handles non-linear history imperfectly |
 | `exactly` | `exactly(x, count)` | Returns `x` if exactly `count` commits, otherwise errors. Useful with `count=1` |
 | `present` | `present(x)` | Same as `x`, but evaluates to `none()` if any commit in `x` doesn't exist |
@@ -284,6 +285,7 @@ Alias functions can be overloaded by parameter count. Built-in functions are sha
 | Alias | Definition | Notes |
 |-------|------------|-------|
 | `trunk()` | `present(trunk()) \| tags() \| untracked_remote_bookmarks()` (effectively) | Resolves to the default bookmark head. Falls back to `root()` if unresolved. Override with `[revset-aliases] 'trunk()' = 'your-bookmark@your-remote'` |
+| `builtin_log()` | `present(@) \| ancestors(immutable_heads().., 2) \| trunk()` | Built-in default for `revsets.log`. Returns the working copy, 2 generations of mutable ancestors, and trunk |
 | `builtin_immutable_heads()` | `present(trunk()) \| tags() \| untracked_remote_bookmarks()` | Default for `immutable_heads()`. Don't redefine this; redefine `immutable_heads()` instead |
 | `immutable_heads()` | `builtin_immutable_heads()` | Override as needed |
 | `immutable()` | `::(immutable_heads() \| root())` | Don't redefine |

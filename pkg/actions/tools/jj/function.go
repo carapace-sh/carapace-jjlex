@@ -62,6 +62,7 @@ func ActionRevsetFunctions() carapace.Action {
 			"fork_point", "The fork point of all commits in x",
 			"heads", "Commits in x that are not ancestors of other commits in x",
 			"latest", "Latest count commits by committer timestamp",
+			"merge_point", "The merge point of all commits in x",
 			"parents", "Same as x-, optionally limited by depth",
 			"present", "Same as x, but evaluates to none() if any commit doesn't exist",
 			"reachable", "All commits reachable from srcs within domain",

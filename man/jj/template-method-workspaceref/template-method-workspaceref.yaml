@@ -3,4 +3,4 @@ name: |
 target: |
   `target()`: Returns the target [Commit](jj://template-method-commit/description).
 root: |
-  `root()`: Returns the root as a Template.
+  `root()`: Returns the workspace root path as `Option<FsPath>`. May be absent for workspaces created before jj 0.38.0 or if the recorded path is stale.
