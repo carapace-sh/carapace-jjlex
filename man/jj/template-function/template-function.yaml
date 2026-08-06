@@ -30,6 +30,8 @@ json: |
   `json(value)`: Serialize the value to JSON format.
 if: |
   `if(condition, then, [else])`: Conditional evaluation — returns `then` if `condition` is truthy, otherwise `else`.
+try: |
+  `try(expr, [fallback...])`: Evaluate each expression in order and return the first successful result. Suppresses runtime errors (but lets parsing errors like type errors pass through).
 coalesce: |
   `coalesce(content...)`: Return the first non-empty content from the arguments.
 concat: |

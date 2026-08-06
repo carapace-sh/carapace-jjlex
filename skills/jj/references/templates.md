@@ -57,6 +57,7 @@ Use parentheses to override precedence.
 | Function | Returns | Description |
 |----------|---------|-------------|
 | `if(condition, then, [else])` | Any | Conditional evaluation |
+| `try(expr, [fallback...])` | Any | First successful result, suppresses runtime errors |
 | `coalesce(content...)` | Template | First non-empty content |
 | `concat(content...)` | Template | Concatenate all |
 | `join(separator, content...)` | Template | Insert separator between items |

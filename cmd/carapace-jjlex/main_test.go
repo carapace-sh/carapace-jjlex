@@ -86,6 +86,8 @@ var parseSuccessCases = []string{
 	"latest(all(), 0)",
 	"fork_point(none())",
 	"fork_point(all())",
+	"merge_point(none())",
+	"merge_point(all())",
 	"connected(none())",
 	"connected(root())",
 	"present(@)",

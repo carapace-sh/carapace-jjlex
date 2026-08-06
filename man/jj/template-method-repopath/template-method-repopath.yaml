@@ -1,5 +1,5 @@
 absolute: |
-  `absolute()`: Returns the absolute path as a [String](jj://template-method-string/len).
+  `absolute()`: Returns the absolute filesystem path as an [FsPath](jj://template-method-fspath/absolute).
 display: |
   `display()`: Returns the display path as a [String](jj://template-method-string/len).
 parent: |

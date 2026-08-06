@@ -5,6 +5,6 @@ color_words: |
 git: |
   `git([context])`: Returns the diff in git format as a Template. `context` controls the number of context lines.
 stat: |
-  `stat([width])`: Returns the diff stats as [DiffStats](jj://template-method-diffstats/files). `width` controls the histogram width.
+  `stat([width], [max_bar_width])`: Returns the diff stats as [DiffStats](jj://template-method-diffstats/files). `width` controls the histogram width. `max_bar_width` limits the width of the `++--` bar (overrides `diff.stat.max-bar-width` config).
 summary: |
   `summary()`: Returns a summary of the diff as a Template.

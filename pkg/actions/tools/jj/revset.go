@@ -447,7 +447,7 @@ func actionForFunctionArg(ctx *revset.CompletionContext, opts RevOpts) carapace.
 		return carapace.ActionValues()
 
 	// Set operations with revset arg(s)
-	case "heads", "roots", "fork_point", "bisect", "present", "connected":
+	case "heads", "roots", "fork_point", "merge_point", "bisect", "present", "connected":
 		return actionRevsetArg(opts).NoSpace()
 
 	case "latest":

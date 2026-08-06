@@ -18,6 +18,7 @@ func TestActionRevsetAliasesBuiltin(t *testing.T) {
 
 		s.Run("").Expect(carapace.ActionValuesDescribed(
 			"builtin_immutable_heads", "trunk() | tags() | untracked_remote_bookmarks()",
+			"builtin_log", "present(@) | ancestors(immutable_heads().., 2) | trunk()",
 			"hidden", "~visible()",
 			"immutable", "::(immutable_heads() | root())",
 			"immutable_heads", "builtin_immutable_heads()",
@@ -30,6 +31,7 @@ func TestActionRevsetAliasesBuiltin(t *testing.T) {
 		f.ConfigSet("revset-aliases.custom", "parents(@--)")
 		s.Run("").Expect(carapace.ActionValuesDescribed(
 			"builtin_immutable_heads", "trunk() | tags() | untracked_remote_bookmarks()",
+			"builtin_log", "present(@) | ancestors(immutable_heads().., 2) | trunk()",
 			"hidden", "~visible()",
 			"immutable", "::(immutable_heads() | root())",
 			"immutable_heads", "builtin_immutable_heads()",
