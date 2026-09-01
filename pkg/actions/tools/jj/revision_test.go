@@ -214,7 +214,7 @@ func TestActionRevFiles(t *testing.T) {
 		s.Run("").Expect(carapace.ActionValues(
 			"a.txt",
 			"b.txt",
-		).MultiParts("/").StyleF(style.ForPathExt).Tag("files"))
+		).MultiParts("/").StyleF(style.ForPathExt).Tag("rev files"))
 	})
 }
 
@@ -225,7 +225,7 @@ func TestActionRevFilesDefaultRevision(t *testing.T) {
 
 		s.Run("").Expect(carapace.ActionValues(
 			"a.txt",
-		).MultiParts("/").StyleF(style.ForPathExt).Tag("files"))
+		).MultiParts("/").StyleF(style.ForPathExt).Tag("rev files"))
 	})
 }
 

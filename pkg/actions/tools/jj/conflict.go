@@ -1,9 +1,11 @@
 package jj
 
 import (
+	"net/url"
 	"strings"
 
 	"github.com/carapace-sh/carapace"
+	"github.com/carapace-sh/carapace/pkg/uid"
 )
 
 // ActionConflicts completes conflicted files at a given revision.
@@ -34,7 +36,9 @@ func ActionConflicts(revision string) carapace.Action {
 			if len(vals) == 0 {
 				return carapace.ActionValues()
 			}
-			return carapace.ActionValuesDescribed(vals...).Tag("conflicts")
+			return carapace.ActionValuesDescribed(vals...)
+		}).Tag("conflicts").UidF(func(s string, uc uid.Context) (*url.URL, error) {
+			return Uid("conflict", "revision", revision)(s, uc)
 		})
-	}).UidF(Uid("conflict"))
+	})
 }

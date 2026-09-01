@@ -1,10 +1,12 @@
 package jj
 
 import (
+	"net/url"
 	"strings"
 
 	"github.com/carapace-sh/carapace"
 	"github.com/carapace-sh/carapace/pkg/style"
+	"github.com/carapace-sh/carapace/pkg/uid"
 )
 
 // ActionRevDiffs completes changed files between revisions.
@@ -48,9 +50,11 @@ func ActionRevDiffs(revisions ...string) carapace.Action {
 			if len(revisions) > 1 {
 				a = a.MultiParts("/")
 			}
-			return a.StyleF(style.ForPathExt).Tag("changed files")
+			return a.StyleF(style.ForPathExt)
+		}).Tag("rev diffs").UidF(func(s string, uc uid.Context) (*url.URL, error) {
+			return Uid("rev-diff", "from", from, "to", to)(s, uc)
 		})
-	}).UidF(Uid("diff"))
+	})
 }
 
 // ActionRevChanges completes files changed in given revisions with add/remove status.
@@ -72,7 +76,13 @@ func ActionRevChanges(revisions ...string) carapace.Action {
 					vals = append(vals, splitted[1], splitted[0])
 				}
 			}
-			return carapace.ActionValuesDescribed(vals...).MultiParts("/").StyleF(style.ForPathExt).Tag("changed files")
+			return carapace.ActionValuesDescribed(vals...).MultiParts("/").StyleF(style.ForPathExt)
 		})
-	}).UidF(Uid("changes"))
+	}).Tag("rev changes").UidF(func(s string, uc uid.Context) (*url.URL, error) {
+		opts := make([]string, 0, len(revisions)*2)
+		for _, rev := range revisions {
+			opts = append(opts, "revision", rev)
+		}
+		return Uid("changes", opts...)(s, uc)
+	})
 }
