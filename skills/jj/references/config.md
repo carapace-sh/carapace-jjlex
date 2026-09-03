@@ -9,12 +9,14 @@ jj uses TOML configuration files with layered precedence. This reference covers 
 
 | Command | Description |
 |---------|-------------|
-| `jj config edit --user/--repo/--workspace` | Open config file in editor |
+| `jj config edit --user/--repo/--workspace/--file <PATH>` | Open config file in editor |
 | `jj config get <NAME>` | Print a config value |
 | `jj config list [NAME]` | List config variables and values |
 | `jj config path --user/--repo/--workspace` | Print config file path |
-| `jj config set --user/--repo/--workspace <NAME> <VALUE>` | Set a config value |
-| `jj config unset --user/--repo/--workspace <NAME>` | Unset a config value |
+| `jj config set --user/--repo/--workspace/--file <PATH> <NAME> <VALUE>` | Set a config value |
+| `jj config unset --user/--repo/--workspace/--file <PATH> <NAME>` | Unset a config value |
+
+The `--file <PATH>` option targets a specific configuration file (e.g., files inside a `conf.d/` directory or loaded via `--config-file`). When using `--user`, the first loaded user config file is targeted instead of prompting interactively.
 
 `jj config list` flags: `--include-defaults`, `--include-overridden`, `-T/--template`.
 

@@ -61,7 +61,7 @@ content from this side
 jj protects certain revisions from accidental modification (describe, edit, rebase, etc.). The default immutable set is:
 
 ```
-present(trunk()) | tags() | untracked_remote_bookmarks()
+trunk() | tags() | untracked_remote_bookmarks() | untracked_remote_tags()
 ```
 
 Override with the `immutable_heads()` revset alias in config:
@@ -77,8 +77,8 @@ Use `--ignore-immutable` global flag to bypass immutability checks.
 
 | Alias | Definition | Notes |
 |-------|------------|-------|
-| `trunk()` | Effectively `present(trunk()) \| tags() \| untracked_remote_bookmarks()` | Resolves to the default bookmark head, falls back to `root()` |
-| `builtin_immutable_heads()` | `present(trunk()) \| tags() \| untracked_remote_bookmarks()` | Don't redefine this; redefine `immutable_heads()` instead |
+| `trunk()` | `latest(remote_bookmarks(exact:"main", exact:"origin") \| ... \| root())` | Resolves to the latest of `main`/`master`/`trunk` on `origin`/`upstream` remotes, falls back to `root()` |
+| `builtin_immutable_heads()` | `trunk() \| tags() \| untracked_remote_bookmarks() \| untracked_remote_tags()` | Don't redefine this; redefine `immutable_heads()` instead |
 | `immutable()` | `::(immutable_heads() \| root())` | Don't redefine |
 | `mutable()` | `~immutable()` | Don't redefine |
 

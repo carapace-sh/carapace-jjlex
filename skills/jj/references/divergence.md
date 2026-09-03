@@ -27,6 +27,21 @@ Two different users/processes amending the same change:
 
 ## Resolution Strategies
 
+### Strategy 0: Let `jj converge` Resolve Automatically
+
+`jj converge` attempts to automatically resolve divergent commits by creating a new commit that replaces them. It applies heuristics to find a good solution, and falls back to prompting if the heuristics are inconclusive. Use `--non-interactive` to abort instead of prompting.
+
+```bash
+# Automatically resolve divergent commits in the mutable set
+jj converge
+
+# Target specific revisions
+jj converge <revset>
+
+# Non-interactive mode (aborts if prompting would be needed)
+jj converge --non-interactive
+```
+
 ### Strategy 1: Abandon One of the Commits
 
 The simplest approach when one version is clearly wrong or obsolete:

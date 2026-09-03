@@ -47,6 +47,7 @@ Command-line reference for jj (Jujutsu VCS). Argument types: **REVSET** = revisi
 | `jj metaedit [REVSETS]...` | Modify revision metadata without changing content |
 | `jj sign` | Cryptographically sign a revision |
 | `jj unsign` | Drop a cryptographic signature |
+| `jj converge [REVSETS]...` | Automatically resolve divergent commits by combining them |
 
 ### Navigation
 
@@ -153,12 +154,12 @@ See [config.md](config.md) for all config sections and settings.
 
 | Command | Description |
 |---------|-------------|
-| `jj config edit --user/--repo/--workspace` | Edit config in editor |
+| `jj config edit --user/--repo/--workspace/--file <PATH>` | Edit config in editor |
 | `jj config get <NAME>` | Get config value |
 | `jj config list [NAME]` | List config variables |
 | `jj config path --user/--repo/--workspace` | Print config file path |
-| `jj config set --user/--repo/--workspace <NAME> <VALUE>` | Set config value |
-| `jj config unset --user/--repo/--workspace <NAME>` | Unset config value |
+| `jj config set --user/--repo/--workspace/--file <PATH> <NAME> <VALUE>` | Set config value |
+| `jj config unset --user/--repo/--workspace/--file <PATH> <NAME>` | Unset config value |
 
 ### Other Commands
 
