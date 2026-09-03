@@ -83,6 +83,6 @@ func ActionRevChanges(revisions ...string) carapace.Action {
 		for _, rev := range revisions {
 			opts = append(opts, "revision", rev)
 		}
-		return Uid("changes", opts...)(s, uc)
+		return Uid("rev-change", opts...)(s, uc)
 	})
 }
