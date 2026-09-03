@@ -196,13 +196,13 @@ func ActionSpecialSymbols() carapace.Action {
 
 // ActionRevsetAliases completes revset aliases from jj config.
 //
-//	trunk() (present(trunk()) | tags() | untracked_remote_bookmarks())
-//	builtin_immutable_heads() (present(trunk()) | tags() | untracked_remote_bookmarks())
-//	immutable_heads() (builtin_immutable_heads())
-//	immutable() (::(immutable_heads() | root()))
-//	mutable() (~immutable())
-//	visible() (::visible_heads())
-//	hidden() (~visible())
+// trunk() (latest(remote_bookmarks(exact:"main", exact:"origin") | ... | root()))
+// builtin_immutable_heads() (trunk() | tags() | untracked_remote_bookmarks() | untracked_remote_tags())
+// immutable_heads() (builtin_immutable_heads())
+// immutable() (::(immutable_heads() | root()))
+// mutable() (~immutable())
+// visible() (::visible_heads())
+// hidden() (~visible())
 func ActionRevsetAliases(includeDefaults bool) carapace.Action {
 	return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
 		args := []string{"config", "list", "revset-aliases"}

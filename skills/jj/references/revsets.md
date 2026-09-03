@@ -284,9 +284,9 @@ Alias functions can be overloaded by parameter count. Built-in functions are sha
 
 | Alias | Definition | Notes |
 |-------|------------|-------|
-| `trunk()` | `present(trunk()) \| tags() \| untracked_remote_bookmarks()` (effectively) | Resolves to the default bookmark head. Falls back to `root()` if unresolved. Override with `[revset-aliases] 'trunk()' = 'your-bookmark@your-remote'` |
+| `trunk()` | `latest(remote_bookmarks(exact:"main", exact:"origin") \| ... \| root())` | Resolves to the latest of `main`/`master`/`trunk` on `origin`/`upstream` remotes, falling back to `root()`. Override with `[revset-aliases] 'trunk()' = 'your-bookmark@your-remote'` |
 | `builtin_log()` | `present(@) \| ancestors(immutable_heads().., 2) \| trunk()` | Built-in default for `revsets.log`. Returns the working copy, 2 generations of mutable ancestors, and trunk |
-| `builtin_immutable_heads()` | `present(trunk()) \| tags() \| untracked_remote_bookmarks()` | Default for `immutable_heads()`. Don't redefine this; redefine `immutable_heads()` instead |
+| `builtin_immutable_heads()` | `trunk() \| tags() \| untracked_remote_bookmarks() \| untracked_remote_tags()` | Default for `immutable_heads()`. Don't redefine this; redefine `immutable_heads()` instead |
 | `immutable_heads()` | `builtin_immutable_heads()` | Override as needed |
 | `immutable()` | `::(immutable_heads() \| root())` | Don't redefine |
 | `mutable()` | `~immutable()` | Don't redefine |
