@@ -158,28 +158,39 @@ func ActionRevsets(opts RevOpts) carapace.Action {
 				return mergeWithPostfix(batch.ToA().NoSpace().Prefix(prefix), ctx)
 			}
 			// When inside a function and both expression and operator are
-			// expected after an operator within an already-started argument
-			// (e.g. parents("foo" |), offer general revset expressions plus
-			// operators, ), and , — not the function-arg-specific action
-			// which may be empty (e.g. parents arg 1 is an integer, not a
-			// revset). Only do this when at least one arg has been parsed,
-			// so that first-arg completion (e.g. author() still uses the
-			// function-specific action.
+			// expected (e.g. parents(@,1 or parents("foo" |), offer the
+			// appropriate completions. For revset arguments, this includes
+			// general revset expressions and operators. For non-revset
+			// arguments (e.g. parents arg 1 = integer depth), only the
+			// function-arg-specific action, ), and , are offered — no
+			// general revset completions.
+			//
+			// Expression completions use the stripped prefix (matched
+			// against the partial identifier), while ), ,, and operators
+			// use c.Value as prefix (appended after the current text).
 			if expectsToken(ctx, revset.ExpectedExpression) && expectsToken(ctx, revset.ExpectedOperator) &&
 				len(ctx.Function.Args) > 0 {
-				batch := carapace.Batch(
-					actionExpression(opts, ctx),
-					actionOperator(opts, ctx, suppressOps),
-				)
+				batch := carapace.Batch()
+				if isFunctionArgRevset(ctx.Function.Name, ctx.Function.ArgIndex) {
+					batch = append(batch, actionExpression(opts, ctx).Prefix(prefix))
+					batch = append(batch, actionOperator(opts, ctx, suppressOps).Prefix(c.Value))
+				} else {
+					batch = append(batch, fnAction.Prefix(prefix))
+				}
 				if expectsToken(ctx, revset.ExpectedClosingParen) {
-					batch = append(batch, carapace.ActionValues(")"))
+					batch = append(batch, carapace.ActionValues(")").NoSpace().Prefix(c.Value))
 				}
 				if expectsToken(ctx, revset.ExpectedComma) {
-					batch = append(batch, carapace.ActionValues(","))
+					batch = append(batch, carapace.ActionValues(",").NoSpace().Prefix(c.Value))
 				}
-				return mergeWithPostfix(batch.ToA().Prefix(prefix), ctx)
+				return mergeWithPostfix(batch.ToA(), ctx)
 			}
-			return fnAction.Prefix(prefix)
+			// Fallback: at the start of a new argument (after comma or
+			// after an infix operator). ExpectedOperator is not set (fix
+			// in completion parser), so only the function-arg-specific
+			// action is offered. Don't add ) or , here — the user needs
+			// to type an expression first, and f(@,) would be invalid.
+			return mergeWithPostfix(fnAction.Prefix(prefix), ctx)
 		}
 
 		if expectsToken(ctx, revset.ExpectedPatternValue) {
@@ -543,6 +554,40 @@ func actionForFunctionArg(ctx *revset.CompletionContext, opts RevOpts) carapace.
 
 	default:
 		return actionRevsetArg(opts).NoSpace()
+	}
+}
+
+// isFunctionArgRevset reports whether the given function's argument at the
+// given index accepts a general revset expression (bookmarks, tags, functions,
+// patterns, etc.). This is used by the action layer to decide whether to
+// offer general revset completions when both ExpectedExpression and
+// ExpectedOperator are set inside a function call (e.g. when the user is
+// typing an argument after an infix operator). Non-revset arguments (integers,
+// string patterns, filesets, remotes, operations) return false so that only
+// the function-arg-specific action is offered.
+func isFunctionArgRevset(name string, argIndex int) bool {
+	switch name {
+	case "parents", "children", "ancestors", "descendants",
+		"first_parent", "first_ancestors", "latest", "exactly":
+		return argIndex == 0
+	case "heads", "roots", "fork_point", "merge_point", "bisect",
+		"present", "connected", "reachable", "coalesce":
+		return true
+	case "at_operation":
+		return argIndex >= 1
+	case "change_id", "commit_id",
+		"author", "author_name", "author_email",
+		"committer", "committer_name", "committer_email",
+		"description", "subject",
+		"author_date", "committer_date",
+		"diff_lines", "diff_lines_added", "diff_lines_removed",
+		"files",
+		"bookmarks", "remote_bookmarks", "tracked_remote_bookmarks", "untracked_remote_bookmarks",
+		"tags", "remote_tags", "tracked_remote_tags", "untracked_remote_tags",
+		"forks":
+		return false
+	default:
+		return true
 	}
 }
 

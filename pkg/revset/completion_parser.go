@@ -860,15 +860,29 @@ func (p *compParser) parseFunctionCallCompletion(name string) {
 			return
 		}
 
-		fs.args = append(fs.args, p.lastExpr)
-		argIndex++
+		// Don't append the arg if the expression is incomplete (after an
+		// infix operator with no RHS). This keeps ArgIndex pointing at the
+		// correct argument so the action layer uses the right function-arg
+		// specific action (e.g. parents arg 0 = revset, not arg 1 = integer).
+		if !p.afterOperator {
+			fs.args = append(fs.args, p.lastExpr)
+			argIndex++
+		}
 
 		p.skipWS()
 		if p.atCursorOrEnd() {
 			p.setFunctionContext(fs, argIndex)
 			p.addExpected(ExpectedClosingParen)
 			p.addExpected(ExpectedComma)
-			p.lastExpr = &Expression{Kind: KindFunctionCall, Span: Span{Start: funcStart, End: p.pos}, payload: &FunctionCallExpr{Name: name, Args: fs.args, KeywordArgs: fs.keywordArgs}}
+			if p.afterOperator {
+				// After an infix operator (e.g. parents("foo" |), the
+				// user needs an expression (RHS). Clear p.lastExpr so
+				// the outer parser calls beforeExpression() instead of
+				// afterExpression(), avoiding incorrect ExpectedOperator.
+				p.lastExpr = nil
+			} else {
+				p.lastExpr = &Expression{Kind: KindFunctionCall, Span: Span{Start: funcStart, End: p.pos}, payload: &FunctionCallExpr{Name: name, Args: fs.args, KeywordArgs: fs.keywordArgs}}
+			}
 			return
 		}
 		if p.peek() == ',' {
@@ -878,7 +892,12 @@ func (p *compParser) parseFunctionCallCompletion(name string) {
 				p.setFunctionContext(fs, argIndex)
 				p.addExpected(ExpectedClosingParen)
 				p.beforeExpression()
-				p.lastExpr = &Expression{Kind: KindFunctionCall, Span: Span{Start: funcStart, End: p.pos}, payload: &FunctionCallExpr{Name: name, Args: fs.args, KeywordArgs: fs.keywordArgs}}
+				// Clear p.lastExpr — the function call is incomplete
+				// (missing closing paren). Keeping it would cause the
+				// outer parser to call afterExpression(), incorrectly
+				// adding ExpectedOperator for a position where the user
+				// needs to start a new argument expression.
+				p.lastExpr = nil
 				return
 			}
 		} else {
@@ -1016,7 +1035,7 @@ func (p *compParser) matchStringAtFullInput(pos int, s string) bool {
 // Helper checks that don't need a parser.
 func isZeroArgFunction(name string) bool {
 	switch name {
-	case "all", "conflicts", "divergent", "empty", "merges", "mine", "none",
+	case "all", "conflicts", "divergent", "empty", "forks", "merges", "mine", "none",
 		"root", "signed", "visible_heads", "working_copies":
 		return true
 	}
