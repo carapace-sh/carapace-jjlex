@@ -23,6 +23,11 @@ func ParseForCompletion(input string) *CompletionContext {
 	}
 	p.ctx.ExpectedTokens = dedupTokens(p.ctx.ExpectedTokens)
 	p.ctx.ValidOperators = dedupOperators(p.ctx.ValidOperators)
+	// Range expressions cannot be followed by range operators (::, ..) or
+	// postfix operators (-, +) without parentheses. Filter them out.
+	if p.lastExprIsRange {
+		p.ctx.ValidOperators = filterRangeOperators(p.ctx.ValidOperators)
+	}
 	// For zero-arg functions, only ) is valid — remove Expression, Operator, Comma, and Equals
 	if p.ctx.Function != nil && p.ctx.Function.IsZeroArg {
 		filtered := make([]ExpectedToken, 0, len(p.ctx.ExpectedTokens))
@@ -82,6 +87,12 @@ type compParser struct {
 	// CompletionContext so the action layer can strip already-typed
 	// postfix operators from the prefix.
 	postfixOpStart int
+
+	// lastExprIsRange is true when the most recently parsed expression is
+	// a range expression (nullary, prefix, infix, or postfix :: or ..).
+	// Range expressions cannot be followed by range operators (::, ..)
+	// or postfix operators (-, +) without parentheses.
+	lastExprIsRange bool
 }
 
 type funcParseState struct {
@@ -340,11 +351,20 @@ func (p *compParser) parseRangeExpr() {
 	if p.matchString("::") {
 		saved := p.pos
 		p.pos += 2
+		beforeSkipWS := p.pos
 		p.skipWS()
 		if p.atCursorOrEnd() || p.peek() == ')' || p.peek() == ',' || p.peek() == '|' || p.peek() == '&' || p.peek() == '~' {
 			// Nullary ::
 			p.consumed = true
 			p.lastExpr = &Expression{Kind: KindDagRangeAll, Span: Span{Start: saved, End: saved + 2}}
+			p.lastExprIsRange = true
+			// At cursor with no whitespace after ::, the user might be about to
+			// type an operand for prefix :: (e.g. "::foo"). Also offer expressions.
+			// Set afterOperator to prevent AttachedRevset from being set to "::".
+			if p.atCursorOrEnd() && p.pos == beforeSkipWS {
+				p.afterOperator = true
+				p.beforeExpression()
+			}
 			return
 		}
 		// Prefix :: (no whitespace allowed after)
@@ -353,16 +373,26 @@ func (p *compParser) parseRangeExpr() {
 			return
 		}
 		p.parsePostfixOps()
+		p.lastExprIsRange = true
 		return
 	}
 
 	if p.matchString("..") {
 		saved := p.pos
 		p.pos += 2
+		beforeSkipWS := p.pos
 		p.skipWS()
 		if p.atCursorOrEnd() || p.peek() == ')' || p.peek() == ',' || p.peek() == '|' || p.peek() == '&' || p.peek() == '~' {
 			p.consumed = true
 			p.lastExpr = &Expression{Kind: KindRangeAll, Span: Span{Start: saved, End: saved + 2}}
+			p.lastExprIsRange = true
+			// At cursor with no whitespace after .., the user might be about to
+			// type an operand for prefix .. (e.g. "..foo"). Also offer expressions.
+			// Set afterOperator to prevent AttachedRevset from being set to "..".
+			if p.atCursorOrEnd() && p.pos == beforeSkipWS {
+				p.afterOperator = true
+				p.beforeExpression()
+			}
 			return
 		}
 		if saved+2 < len(p.input) && isWhitespace(rune(p.input[saved+2])) {
@@ -370,6 +400,26 @@ func (p *compParser) parseRangeExpr() {
 			return
 		}
 		p.parsePostfixOps()
+		p.lastExprIsRange = true
+		return
+	}
+
+	// Check for partial : or . at cursor (user is typing :: or ..)
+	// Set PartialIdent so the action layer strips the partial operator
+	// from the prefix — otherwise the operator would be appended to
+	// the already-typed character (e.g. ":" + "::" = ":::").
+	if p.peek() == ':' && p.cursor-p.pos <= 1 {
+		p.consumed = true
+		p.ctx.PartialIdent = ":"
+		p.addExpected(ExpectedOperator)
+		p.addOperator("::", "DAG range")
+		return
+	}
+	if p.peek() == '.' && p.cursor-p.pos <= 1 {
+		p.consumed = true
+		p.ctx.PartialIdent = "."
+		p.addExpected(ExpectedOperator)
+		p.addOperator("..", "range")
 		return
 	}
 
@@ -393,7 +443,8 @@ func (p *compParser) parseRangeExpr() {
 		p.afterOperator = true
 		p.skipWS()
 		if p.atCursorOrEnd() || p.peek() == ')' || p.peek() == ',' || p.peek() == '|' || p.peek() == '&' || p.peek() == '~' {
-			// After :: at cursor - only expect expression (not operators)
+			// After :: at cursor - could be postfix :: (complete) or infix :: (needs RHS)
+			p.lastExprIsRange = true
 			if p.lastExpr != nil {
 				p.afterExpression()
 			}
@@ -403,6 +454,7 @@ func (p *compParser) parseRangeExpr() {
 		// Infix :: - parse RHS
 		p.pos = saved
 		p.parseInfixRangeOp()
+		p.lastExprIsRange = true
 		return
 	}
 
@@ -412,7 +464,8 @@ func (p *compParser) parseRangeExpr() {
 		p.afterOperator = true
 		p.skipWS()
 		if p.atCursorOrEnd() || p.peek() == ')' || p.peek() == ',' || p.peek() == '|' || p.peek() == '&' || p.peek() == '~' {
-			// After .. at cursor - only expect expression (not operators)
+			// After .. at cursor - could be postfix .. (complete) or infix .. (needs RHS)
+			p.lastExprIsRange = true
 			if p.lastExpr != nil {
 				p.afterExpression()
 			}
@@ -421,7 +474,25 @@ func (p *compParser) parseRangeExpr() {
 		}
 		p.pos = saved
 		p.parseInfixRangeOp()
+		p.lastExprIsRange = true
 		return
+	}
+
+	// Check for partial : or . at cursor after a complete expression
+	// (user is typing infix/postfix :: or .., e.g. "@:" -> "@::")
+	if p.lastExpr != nil && p.ctx.StringQuote == 0 {
+		if p.peek() == ':' && p.cursor-p.pos <= 1 {
+			p.ctx.PartialIdent = ":"
+			p.addExpected(ExpectedOperator)
+			p.addOperator("::", "DAG range")
+			return
+		}
+		if p.peek() == '.' && p.cursor-p.pos <= 1 {
+			p.ctx.PartialIdent = "."
+			p.addExpected(ExpectedOperator)
+			p.addOperator("..", "range")
+			return
+		}
 	}
 }
 
@@ -441,6 +512,7 @@ func (p *compParser) parseInfixRangeOp() {
 		}
 		p.afterOperator = false
 		p.parsePostfixOps()
+		p.lastExprIsRange = true
 		return
 	}
 	if p.matchString("..") {
@@ -457,6 +529,7 @@ func (p *compParser) parseInfixRangeOp() {
 		}
 		p.afterOperator = false
 		p.parsePostfixOps()
+		p.lastExprIsRange = true
 		return
 	}
 }
@@ -504,6 +577,7 @@ func (p *compParser) parsePostfixOps() {
 
 func (p *compParser) parsePrimary() {
 	p.skipWS()
+	p.lastExprIsRange = false
 	start := p.pos
 	p.exprStart = start
 	if p.atCursorOrEnd() {
@@ -1100,6 +1174,22 @@ func dedupOperators(ops []ValidOperator) []ValidOperator {
 			seen[op.Op] = true
 			result = append(result, op)
 		}
+	}
+	return result
+}
+
+// filterRangeOperators removes operators that are invalid after a range
+// expression. Range expressions (::, .., prefix, infix, postfix) cannot be
+// followed by range operators (::, ..) or postfix operators (-, +) without
+// parentheses. Only |, &, ~ are valid infix operators after a range.
+func filterRangeOperators(ops []ValidOperator) []ValidOperator {
+	result := make([]ValidOperator, 0, len(ops))
+	for _, op := range ops {
+		switch op.Op {
+		case "::", "..", "-", "+":
+			continue
+		}
+		result = append(result, op)
 	}
 	return result
 }
