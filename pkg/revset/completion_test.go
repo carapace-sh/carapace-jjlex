@@ -371,15 +371,64 @@ func TestCompletionAfterAt(t *testing.T) {
 }
 
 func TestCompletionAfterDagRangePrefix(t *testing.T) {
-	// "::" with cursor at end (nullary)
+	// "::" with cursor at end — could be nullary (::) or start of prefix (::foo)
 	ctx := ParseForCompletion("::")
 	assertHasExpected(t, ctx, ExpectedOperator)
+	assertHasExpected(t, ctx, ExpectedExpression)
+	// AttachedRevset should not be set to the operator itself
+	if ctx.AttachedRevset != "" {
+		t.Errorf("expected empty AttachedRevset, got %q", ctx.AttachedRevset)
+	}
+	// Range operators and postfix operators are not valid after a range expression
+	assertHasOperator(t, ctx, "|")
+	assertHasOperator(t, ctx, "&")
+	assertHasOperator(t, ctx, "~")
+	assertNoOperator(t, ctx, "::")
+	assertNoOperator(t, ctx, "..")
+	assertNoOperator(t, ctx, "-")
+	assertNoOperator(t, ctx, "+")
+}
+
+func TestCompletionAfterDagRangePrefixWS(t *testing.T) {
+	// ":: " with whitespace — must be nullary, prefix not allowed
+	ctx := ParseForCompletion(":: ")
+	assertHasExpected(t, ctx, ExpectedOperator)
+	// Should NOT offer expressions since prefix :: can't have whitespace
+	for _, tok := range ctx.ExpectedTokens {
+		if tok == ExpectedExpression {
+			t.Error("expected no ExpectedExpression after whitespace following ::")
+		}
+	}
 }
 
 func TestCompletionAfterRangeAll(t *testing.T) {
-	// ".." with cursor at end (nullary)
+	// ".." with cursor at end — could be nullary (..) or start of prefix (..foo)
 	ctx := ParseForCompletion("..")
 	assertHasExpected(t, ctx, ExpectedOperator)
+	assertHasExpected(t, ctx, ExpectedExpression)
+	// AttachedRevset should not be set to the operator itself
+	if ctx.AttachedRevset != "" {
+		t.Errorf("expected empty AttachedRevset, got %q", ctx.AttachedRevset)
+	}
+	// Range operators and postfix operators are not valid after a range expression
+	assertHasOperator(t, ctx, "|")
+	assertHasOperator(t, ctx, "&")
+	assertHasOperator(t, ctx, "~")
+	assertNoOperator(t, ctx, "::")
+	assertNoOperator(t, ctx, "..")
+	assertNoOperator(t, ctx, "-")
+	assertNoOperator(t, ctx, "+")
+}
+
+func TestCompletionAfterRangeAllWS(t *testing.T) {
+	// ".. " with whitespace — must be nullary, prefix not allowed
+	ctx := ParseForCompletion(".. ")
+	assertHasExpected(t, ctx, ExpectedOperator)
+	for _, tok := range ctx.ExpectedTokens {
+		if tok == ExpectedExpression {
+			t.Error("expected no ExpectedExpression after whitespace following ..")
+		}
+	}
 }
 
 func TestCompletionNegatePrefix(t *testing.T) {
@@ -875,6 +924,116 @@ func TestCompletionInfixRangeNeedsRight(t *testing.T) {
 	// "foo.." with cursor at end - could be postfix or infix needing RHS
 	ctx := ParseForCompletion("foo..")
 	assertHasExpected(t, ctx, ExpectedOperator)
+}
+
+func TestCompletionRangeOperatorSuppression(t *testing.T) {
+	tests := []struct {
+		name string
+		expr string
+	}{
+		{"nullary dag range", "::"},
+		{"nullary range", ".."},
+		{"prefix dag range", "::foo"},
+		{"prefix range", "..foo"},
+		{"infix dag range", "foo::bar"},
+		{"infix range", "foo..bar"},
+		{"postfix dag range", "foo::"},
+		{"postfix range", "foo.."},
+		{"nullary dag range after pipe", "foo|::"},
+		{"prefix dag range after pipe", "foo|::bar"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := ParseForCompletion(tt.expr)
+			// Only |, &, ~ are valid after range expressions
+			assertHasOperator(t, ctx, "|")
+			assertHasOperator(t, ctx, "&")
+			assertHasOperator(t, ctx, "~")
+			// ::, .., -, + are NOT valid after range expressions
+			assertNoOperator(t, ctx, "::")
+			assertNoOperator(t, ctx, "..")
+			assertNoOperator(t, ctx, "-")
+			assertNoOperator(t, ctx, "+")
+		})
+	}
+}
+
+func TestCompletionNonRangeKeepsAllOperators(t *testing.T) {
+	tests := []struct {
+		name string
+		expr string
+	}{
+		{"identifier", "foo"},
+		{"postfix parents", "foo-"},
+		{"postfix children", "foo+"},
+		{"parenthesized", "(foo)"},
+		{"function call", "all()"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := ParseForCompletion(tt.expr)
+			// All operators should be valid after non-range expressions
+			assertHasOperator(t, ctx, "|")
+			assertHasOperator(t, ctx, "&")
+			assertHasOperator(t, ctx, "~")
+			assertHasOperator(t, ctx, "::")
+			assertHasOperator(t, ctx, "..")
+			assertHasOperator(t, ctx, "-")
+			assertHasOperator(t, ctx, "+")
+		})
+	}
+}
+
+func TestCompletionPartialColonAndDot(t *testing.T) {
+	// Single ":" at cursor should offer :: (DAG range prefix)
+	// PartialIdent must be set to ":" so the action layer strips it
+	// from the prefix (otherwise ":" + "::" = ":::")
+	ctx := ParseForCompletion(":")
+	assertHasOperator(t, ctx, "::")
+	assertNoOperator(t, ctx, "..")
+	if ctx.PartialIdent != ":" {
+		t.Errorf("expected PartialIdent %q, got %q", ":", ctx.PartialIdent)
+	}
+
+	// Single "." at cursor should offer .. (range prefix)
+	ctx = ParseForCompletion(".")
+	assertHasOperator(t, ctx, "..")
+	assertNoOperator(t, ctx, "::")
+	if ctx.PartialIdent != "." {
+		t.Errorf("expected PartialIdent %q, got %q", ".", ctx.PartialIdent)
+	}
+
+	// After |, single : should still offer ::
+	ctx = ParseForCompletion("foo|:")
+	assertHasOperator(t, ctx, "::")
+	if ctx.PartialIdent != ":" {
+		t.Errorf("expected PartialIdent %q, got %q", ":", ctx.PartialIdent)
+	}
+
+	// After |, single . should still offer ..
+	ctx = ParseForCompletion("foo|.")
+	assertHasOperator(t, ctx, "..")
+	if ctx.PartialIdent != "." {
+		t.Errorf("expected PartialIdent %q, got %q", ".", ctx.PartialIdent)
+	}
+
+	// After a complete expression, single : should offer ::
+	// (e.g. "@:" -> "@::")
+	ctx = ParseForCompletion("@:")
+	assertHasOperator(t, ctx, "::")
+	assertNoOperator(t, ctx, "..")
+	if ctx.PartialIdent != ":" {
+		t.Errorf("expected PartialIdent %q, got %q", ":", ctx.PartialIdent)
+	}
+
+	// After a complete expression, single . should offer ..
+	// (e.g. "@." -> "@..")
+	ctx = ParseForCompletion("@.")
+	assertHasOperator(t, ctx, "..")
+	assertNoOperator(t, ctx, "::")
+	if ctx.PartialIdent != "." {
+		t.Errorf("expected PartialIdent %q, got %q", ".", ctx.PartialIdent)
+	}
 }
 
 func TestCompletionPatternKinds(t *testing.T) {
