@@ -115,6 +115,41 @@ func TestActionRevsetsPostfixInFunction(t *testing.T) {
 	})
 }
 
+func TestActionRevsetsParentsSecondArg(t *testing.T) {
+	// parents(@, — second argument of parents is an integer depth,
+	// not a revset. Nothing should be offered: ) would create the
+	// invalid parents(@,) (trailing comma), and revset completions
+	// are wrong for an integer argument. The user must type a number
+	// or expression first.
+	sandbox.Action(t, func() carapace.Action {
+		return ActionRevsets(RevOpts{}.Default())
+	})(func(s *sandbox.Sandbox) {
+		f := fixture.InitT(t, s)
+		f.CommitAdd("a.txt", "a", "first commit")
+		f.CreateBookmark("main")
+
+		s.Run("parents(@,").Expect(carapace.ActionValues())
+	})
+}
+
+func TestActionRevsetsParentsSecondArgTyping(t *testing.T) {
+	// parents(@,2 — user is typing the integer depth argument.
+	// ) should be offered (appended after "2" → parents(@,2)),
+	// but no revset completions (arg 1 is not a revset).
+	sandbox.Action(t, func() carapace.Action {
+		return ActionRevsets(RevOpts{}.Default())
+	})(func(s *sandbox.Sandbox) {
+		f := fixture.InitT(t, s)
+		f.CommitAdd("a.txt", "a", "first commit")
+		f.CreateBookmark("main")
+
+		s.Run("parents(@,2").Expect(carapace.Batch(
+			carapace.ActionValues(")").NoSpace().Prefix("parents(@,2"),
+			carapace.ActionValues(",").NoSpace().Prefix("parents(@,2"),
+		).ToA())
+	})
+}
+
 func TestActionRevsetsPostfixNoDoublePrefix(t *testing.T) {
 	sandbox.Action(t, func() carapace.Action {
 		return ActionRevsets(RevOpts{}.Default())

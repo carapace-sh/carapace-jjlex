@@ -278,16 +278,21 @@ func TestCompletionCompleteStringInFunction(t *testing.T) {
 
 func TestCompletionOperatorInFunctionArg(t *testing.T) {
 	// `parents("foo" |` with cursor at end — after infix operator within
-	// a function argument, expression and operator are both expected.
+	// a function argument. The arg is not appended (expression is
+	// incomplete after |), so ArgIndex stays at 0 and Args is empty.
+	// ExpectedExpression is set (user needs RHS of |), but
+	// ExpectedOperator is not (operators not valid until RHS is provided).
 	ctx := ParseForCompletion(`parents("foo" |`)
 	if ctx.Function == nil {
 		t.Fatal("expected Function context")
 	}
-	if len(ctx.Function.Args) == 0 {
-		t.Fatal("expected at least one parsed arg")
+	if ctx.Function.ArgIndex != 0 {
+		t.Errorf("expected arg index 0 (incomplete arg not appended), got %d", ctx.Function.ArgIndex)
+	}
+	if len(ctx.Function.Args) != 0 {
+		t.Fatalf("expected 0 args (incomplete after |), got %d", len(ctx.Function.Args))
 	}
 	assertHasExpected(t, ctx, ExpectedExpression)
-	assertHasExpected(t, ctx, ExpectedOperator)
 	assertHasExpected(t, ctx, ExpectedClosingParen)
 	assertHasExpected(t, ctx, ExpectedComma)
 }
@@ -467,6 +472,94 @@ func TestCompletionTrailingComma(t *testing.T) {
 	assertHasExpected(t, ctx, ExpectedClosingParen)
 }
 
+func TestCompletionAfterCommaNoOperator(t *testing.T) {
+	// "parents(@," — after comma, at start of arg 1 (integer depth).
+	// ExpectedOperator should NOT be set: the user needs an expression,
+	// not an operator. ExpectedExpression and ExpectedClosingParen
+	// should be set.
+	ctx := ParseForCompletion("parents(@,")
+	if ctx.Function == nil {
+		t.Fatal("expected Function context")
+	}
+	if ctx.Function.ArgIndex != 1 {
+		t.Errorf("expected arg index 1, got %d", ctx.Function.ArgIndex)
+	}
+	assertHasExpected(t, ctx, ExpectedExpression)
+	assertHasExpected(t, ctx, ExpectedClosingParen)
+	assertNotHasExpected(t, ctx, ExpectedOperator)
+}
+
+func TestCompletionAfterCommaNoOperatorMultipleFunctions(t *testing.T) {
+	// All traversal functions with integer arg 1 should behave the same
+	// as parents(@, — no ExpectedOperator after comma.
+	for _, expr := range []string{
+		"children(@,",
+		"ancestors(@,",
+		"descendants(@,",
+		"first_parent(@,",
+		"first_ancestors(@,",
+		"latest(@,",
+		"exactly(@,",
+	} {
+		ctx := ParseForCompletion(expr)
+		if ctx.Function == nil {
+			t.Errorf("%q: expected Function context", expr)
+			continue
+		}
+		assertNotHasExpected(t, ctx, ExpectedOperator)
+		assertHasExpected(t, ctx, ExpectedExpression)
+		assertHasExpected(t, ctx, ExpectedClosingParen)
+	}
+}
+
+func TestCompletionAfterCommaRevsetArgNoOperator(t *testing.T) {
+	// Functions where arg 1 IS a revset (heads, coalesce, etc.) should
+	// also not have ExpectedOperator after comma — same parser behavior.
+	for _, expr := range []string{
+		"heads(@,",
+		"roots(@,",
+		"coalesce(@,",
+		"reachable(@,",
+	} {
+		ctx := ParseForCompletion(expr)
+		if ctx.Function == nil {
+			t.Errorf("%q: expected Function context", expr)
+			continue
+		}
+		assertNotHasExpected(t, ctx, ExpectedOperator)
+		assertHasExpected(t, ctx, ExpectedExpression)
+		assertHasExpected(t, ctx, ExpectedClosingParen)
+	}
+}
+
+func TestCompletionAfterOperatorInFunctionArgNoOperator(t *testing.T) {
+	// After an unambiguous infix operator (|, &) within a function arg,
+	// ExpectedOperator should NOT be set — the user needs an expression (RHS).
+	// ArgIndex should stay at 0 (incomplete arg not appended).
+	// Note: ~ is excluded because it can also be a prefix operator, so
+	// afterExpression() is correctly called to add ExpectedOperator.
+	for _, expr := range []string{
+		`parents("foo" |`,
+		`parents("foo" &`,
+		`heads("foo" |`,
+		`heads("foo" &`,
+	} {
+		ctx := ParseForCompletion(expr)
+		if ctx.Function == nil {
+			t.Errorf("%q: expected Function context", expr)
+			continue
+		}
+		if ctx.Function.ArgIndex != 0 {
+			t.Errorf("%q: expected arg index 0, got %d", expr, ctx.Function.ArgIndex)
+		}
+		if len(ctx.Function.Args) != 0 {
+			t.Errorf("%q: expected 0 args, got %d", expr, len(ctx.Function.Args))
+		}
+		assertHasExpected(t, ctx, ExpectedExpression)
+		assertNotHasExpected(t, ctx, ExpectedOperator)
+	}
+}
+
 func TestCompletionEmptyFunctionCall(t *testing.T) {
 	// "visible_heads()" with cursor at end
 	ctx := ParseForCompletion("visible_heads()")
@@ -484,6 +577,21 @@ func TestCompletionZeroArgFunction(t *testing.T) {
 	}
 	if !ctx.Function.IsZeroArg {
 		t.Error("expected IsZeroArg")
+	}
+	assertHasExpected(t, ctx, ExpectedClosingParen)
+	assertNotHasExpected(t, ctx, ExpectedExpression)
+	assertNotHasExpected(t, ctx, ExpectedOperator)
+}
+
+func TestCompletionZeroArgFunctionForks(t *testing.T) {
+	// "forks(" — forks() is a zero-arg function. Verify it is treated
+	// as zero-arg (IsZeroArg=true, only ) expected).
+	ctx := ParseForCompletion("forks(")
+	if ctx.Function == nil {
+		t.Fatal("expected Function context")
+	}
+	if !ctx.Function.IsZeroArg {
+		t.Error("expected IsZeroArg for forks()")
 	}
 	assertHasExpected(t, ctx, ExpectedClosingParen)
 	assertNotHasExpected(t, ctx, ExpectedExpression)
