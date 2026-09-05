@@ -371,15 +371,48 @@ func TestCompletionAfterAt(t *testing.T) {
 }
 
 func TestCompletionAfterDagRangePrefix(t *testing.T) {
-	// "::" with cursor at end (nullary)
+	// "::" with cursor at end — could be nullary (::) or start of prefix (::foo)
 	ctx := ParseForCompletion("::")
 	assertHasExpected(t, ctx, ExpectedOperator)
+	assertHasExpected(t, ctx, ExpectedExpression)
+	// AttachedRevset should not be set to the operator itself
+	if ctx.AttachedRevset != "" {
+		t.Errorf("expected empty AttachedRevset, got %q", ctx.AttachedRevset)
+	}
+}
+
+func TestCompletionAfterDagRangePrefixWS(t *testing.T) {
+	// ":: " with whitespace — must be nullary, prefix not allowed
+	ctx := ParseForCompletion(":: ")
+	assertHasExpected(t, ctx, ExpectedOperator)
+	// Should NOT offer expressions since prefix :: can't have whitespace
+	for _, tok := range ctx.ExpectedTokens {
+		if tok == ExpectedExpression {
+			t.Error("expected no ExpectedExpression after whitespace following ::")
+		}
+	}
 }
 
 func TestCompletionAfterRangeAll(t *testing.T) {
-	// ".." with cursor at end (nullary)
+	// ".." with cursor at end — could be nullary (..) or start of prefix (..foo)
 	ctx := ParseForCompletion("..")
 	assertHasExpected(t, ctx, ExpectedOperator)
+	assertHasExpected(t, ctx, ExpectedExpression)
+	// AttachedRevset should not be set to the operator itself
+	if ctx.AttachedRevset != "" {
+		t.Errorf("expected empty AttachedRevset, got %q", ctx.AttachedRevset)
+	}
+}
+
+func TestCompletionAfterRangeAllWS(t *testing.T) {
+	// ".. " with whitespace — must be nullary, prefix not allowed
+	ctx := ParseForCompletion(".. ")
+	assertHasExpected(t, ctx, ExpectedOperator)
+	for _, tok := range ctx.ExpectedTokens {
+		if tok == ExpectedExpression {
+			t.Error("expected no ExpectedExpression after whitespace following ..")
+		}
+	}
 }
 
 func TestCompletionNegatePrefix(t *testing.T) {

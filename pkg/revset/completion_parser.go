@@ -340,11 +340,19 @@ func (p *compParser) parseRangeExpr() {
 	if p.matchString("::") {
 		saved := p.pos
 		p.pos += 2
+		beforeSkipWS := p.pos
 		p.skipWS()
 		if p.atCursorOrEnd() || p.peek() == ')' || p.peek() == ',' || p.peek() == '|' || p.peek() == '&' || p.peek() == '~' {
 			// Nullary ::
 			p.consumed = true
 			p.lastExpr = &Expression{Kind: KindDagRangeAll, Span: Span{Start: saved, End: saved + 2}}
+			// At cursor with no whitespace after ::, the user might be about to
+			// type an operand for prefix :: (e.g. "::foo"). Also offer expressions.
+			// Set afterOperator to prevent AttachedRevset from being set to "::".
+			if p.atCursorOrEnd() && p.pos == beforeSkipWS {
+				p.afterOperator = true
+				p.beforeExpression()
+			}
 			return
 		}
 		// Prefix :: (no whitespace allowed after)
@@ -359,10 +367,18 @@ func (p *compParser) parseRangeExpr() {
 	if p.matchString("..") {
 		saved := p.pos
 		p.pos += 2
+		beforeSkipWS := p.pos
 		p.skipWS()
 		if p.atCursorOrEnd() || p.peek() == ')' || p.peek() == ',' || p.peek() == '|' || p.peek() == '&' || p.peek() == '~' {
 			p.consumed = true
 			p.lastExpr = &Expression{Kind: KindRangeAll, Span: Span{Start: saved, End: saved + 2}}
+			// At cursor with no whitespace after .., the user might be about to
+			// type an operand for prefix .. (e.g. "..foo"). Also offer expressions.
+			// Set afterOperator to prevent AttachedRevset from being set to "..".
+			if p.atCursorOrEnd() && p.pos == beforeSkipWS {
+				p.afterOperator = true
+				p.beforeExpression()
+			}
 			return
 		}
 		if saved+2 < len(p.input) && isWhitespace(rune(p.input[saved+2])) {
