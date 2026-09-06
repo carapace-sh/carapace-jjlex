@@ -240,6 +240,7 @@ func (p *compParser) parseInfixLevel0() {
 		if ch == '|' {
 			p.advance()
 			p.afterOperator = true
+			p.lastExprIsRange = false
 			p.skipWS()
 			if p.atCursorOrEnd() {
 				// After | with no RHS - only expect expression
@@ -274,6 +275,7 @@ func (p *compParser) parseInfixLevel1() {
 		if ch == '&' {
 			p.advance()
 			p.afterOperator = true
+			p.lastExprIsRange = false
 			p.skipWS()
 			if p.atCursorOrEnd() {
 				// After & with no RHS - only expect expression
@@ -285,6 +287,7 @@ func (p *compParser) parseInfixLevel1() {
 		} else if ch == '~' {
 			p.advance()
 			p.afterOperator = true
+			p.lastExprIsRange = false
 			p.skipWS()
 			if p.atCursorOrEnd() {
 				// After ~ with no RHS - could be difference or negate
@@ -637,30 +640,61 @@ func (p *compParser) parseParenthesized() {
 
 func (p *compParser) parseStringLiteralCompletion() string {
 	p.advance() // consume opening "
-	var content []rune
+	contentStart := p.pos
+	var decoded []rune
 	for {
 		if p.atCursorOrEnd() {
-			p.ctx.PartialString = string(content)
+			p.ctx.PartialString = p.input[contentStart:p.pos]
 			p.ctx.StringQuote = '"'
 			p.addExpected(ExpectedStringClose)
-			return string(content)
+			return string(decoded)
 		}
 		ch := p.peek()
 		if ch == '"' {
 			p.advance()
-			return string(content) // complete string
+			return string(decoded) // complete string
 		}
 		if ch == '\\' {
 			p.advance()
 			if p.atCursorOrEnd() {
-				p.ctx.PartialString = string(content)
+				p.ctx.PartialString = p.input[contentStart:p.pos]
 				p.ctx.StringQuote = '"'
 				p.addExpected(ExpectedStringClose)
-				return string(content)
+				return string(decoded)
 			}
+			escaped := p.peek()
 			p.advance() // consume escaped char
+			switch escaped {
+			case '"':
+				decoded = append(decoded, '"')
+			case '\\':
+				decoded = append(decoded, '\\')
+			case 't':
+				decoded = append(decoded, '\t')
+			case 'r':
+				decoded = append(decoded, '\r')
+			case 'n':
+				decoded = append(decoded, '\n')
+			case '0':
+				decoded = append(decoded, '\000')
+			case 'e':
+				decoded = append(decoded, '\x1b')
+			case 'x':
+				// Hex escape: consume two hex digits
+				if !p.atCursorOrEnd() {
+					h1 := p.peek()
+					p.advance()
+					if !p.atCursorOrEnd() {
+						h2 := p.peek()
+						p.advance()
+						decoded = append(decoded, rune(hexVal(h1)*16+hexVal(h2)))
+					}
+				}
+			default:
+				decoded = append(decoded, escaped)
+			}
 		} else {
-			content = append(content, ch)
+			decoded = append(decoded, ch)
 			p.advance()
 		}
 	}
@@ -868,11 +902,12 @@ func (p *compParser) parseFunctionCallCompletion(name string) {
 			// We have identifier = pattern - scan the keyword name
 			kwIdentStart := p.pos
 			p.scanIdentifierCompletion() // consume the keyword name
+			kwIdentEnd := p.pos          // capture before whitespace
 			p.skipWS()
 			if p.atCursorOrEnd() {
 				p.setFunctionContext(fs, argIndex)
 				p.ctx.Function.IsKeywordArg = true
-				p.ctx.Function.KeywordArgName = p.input[kwIdentStart:min(p.pos, p.cursor)]
+				p.ctx.Function.KeywordArgName = p.input[kwIdentStart:min(kwIdentEnd, p.cursor)]
 				p.addExpected(ExpectedEquals)
 				p.lastExpr = &Expression{Kind: KindFunctionCall, Span: Span{Start: funcStart, End: p.pos}, payload: &FunctionCallExpr{Name: name, Args: fs.args, KeywordArgs: fs.keywordArgs}}
 				return

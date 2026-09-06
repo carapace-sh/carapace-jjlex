@@ -117,6 +117,7 @@ func (p *compParser) parseTemplateComp() {
 				p.beforeExpression()
 				return
 			}
+			p.consumed = false // reset for RHS: prefix - should be treated as negate
 			p.parseExpressionComp()
 		} else {
 			return
@@ -149,6 +150,7 @@ func (p *compParser) parsePrattComp(minPrec int) {
 			p.beforeExpression()
 			return
 		}
+		p.consumed = false // reset for RHS: prefix - should be treated as negate
 		p.parsePrattComp(prec + 1)
 	}
 }
@@ -572,7 +574,7 @@ func (p *compParser) parseFunctionCallComp(name string, isMethod bool, methodObj
 			return
 		}
 
-		fs.args = append(fs.args, p.lastExpr)
+		fs.args = append(fs.args, &Expression{Kind: KindIdentifier, Span: Span{Start: 0, End: p.pos}, payload: &IdentifierExpr{Name: ""}})
 		fs.argIndex = len(fs.args)
 		p.updateFunctionArgIndex()
 
