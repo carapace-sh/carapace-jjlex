@@ -196,6 +196,10 @@ func TestParseStringLiteral(t *testing.T) {
 	testParseError(t, `"\x"`)
 	testParseError(t, `"\xf"`)
 	testParseError(t, `"\xgg"`)
+
+	// Unterminated raw string
+	testParseError(t, `'foo`)
+	testParseError(t, `'`)
 }
 
 func TestParsePattern(t *testing.T) {
@@ -321,6 +325,11 @@ func TestParseSymbol(t *testing.T) {
 	}
 	if _, err := ParseSymbol("(foo)"); err == nil {
 		t.Error("expected error for parenthesized symbol")
+	}
+
+	// Unterminated raw string
+	if _, err := ParseSymbol("'foo"); err == nil {
+		t.Error("expected error for unterminated raw string symbol")
 	}
 }
 

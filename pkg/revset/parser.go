@@ -556,10 +556,13 @@ func (p *parser) parsePrimary() (*Expression, error) {
 			Span:    Span{Start: start, End: stringEnd},
 			payload: &StringExpr{Value: s},
 		}
-		return p.parseAtSuffix(expr, start), nil
+		return p.parseAtSuffix(expr, start)
 
 	case ch == '\'':
-		s := p.parseRawStringLiteralValue()
+		s, err := p.parseRawStringLiteralValue()
+		if err != nil {
+			return nil, err
+		}
 		stringEnd := p.pos
 		p.skipWhitespace()
 		expr := &Expression{
@@ -567,7 +570,7 @@ func (p *parser) parsePrimary() (*Expression, error) {
 			Span:    Span{Start: start, End: stringEnd},
 			payload: &StringExpr{Value: s},
 		}
-		return p.parseAtSuffix(expr, start), nil
+		return p.parseAtSuffix(expr, start)
 
 	case ch == '@':
 		p.advance()
@@ -588,9 +591,9 @@ func (p *parser) parsePrimary() (*Expression, error) {
 }
 
 // parseAtSuffix checks for @ suffix after a string/identifier.
-func (p *parser) parseAtSuffix(expr *Expression, start int) *Expression {
+func (p *parser) parseAtSuffix(expr *Expression, start int) (*Expression, error) {
 	if p.peek() != '@' {
-		return expr
+		return expr, nil
 	}
 	p.advance() // consume @
 	p.skipWhitespace()
@@ -601,16 +604,19 @@ func (p *parser) parseAtSuffix(expr *Expression, start int) *Expression {
 			Kind:    KindAtWorkspace,
 			Span:    Span{Start: start, End: p.pos},
 			payload: &AtWorkspaceExpr{Name: name},
-		}
+		}, nil
 	}
 
 	name := p.extractString(expr)
-	remote := p.parseAtRemotePart()
+	remote, err := p.parseAtRemotePart()
+	if err != nil {
+		return nil, err
+	}
 	return &Expression{
 		Kind:    KindRemoteSymbol,
 		Span:    Span{Start: start, End: p.pos},
 		payload: &RemoteSymbolExpr{Name: name, Remote: remote},
-	}
+	}, nil
 }
 
 func (p *parser) extractString(expr *Expression) string {
@@ -623,20 +629,19 @@ func (p *parser) extractString(expr *Expression) string {
 	return ""
 }
 
-func (p *parser) parseAtRemotePart() string {
+func (p *parser) parseAtRemotePart() (string, error) {
 	ch := p.peek()
 	switch {
 	case ch == '"':
-		s, _ := p.parseStringLiteralValue()
-		return s
+		return p.parseStringLiteralValue()
 	case ch == '\'':
 		return p.parseRawStringLiteralValue()
 	case isIdentifierStart(ch):
 		start := p.pos
 		p.scanIdentifier()
-		return p.input[start:p.pos]
+		return p.input[start:p.pos], nil
 	default:
-		return ""
+		return "", nil
 	}
 }
 
@@ -684,7 +689,7 @@ func (p *parser) parseSymbolOrFunction(start int) (*Expression, error) {
 		Span:    Span{Start: start, End: p.pos},
 		payload: &IdentifierExpr{Name: ident},
 	}
-	return p.parseAtSuffix(expr, start), nil
+	return p.parseAtSuffix(expr, start)
 }
 
 func (p *parser) isFunctionName(ident string) bool {
@@ -958,20 +963,21 @@ func (p *parser) parseStringLiteralValue() (string, error) {
 	}
 }
 
-func (p *parser) parseRawStringLiteralValue() string {
+func (p *parser) parseRawStringLiteralValue() (string, error) {
 	if p.peek() != '\'' {
-		return ""
+		return "", p.syntaxError("expected raw string literal")
 	}
 	p.advance()
 	start := p.pos
 	for !p.atEnd() && p.peek() != '\'' {
 		p.advance()
 	}
-	value := p.input[start:p.pos]
-	if !p.atEnd() {
-		p.advance()
+	if p.atEnd() {
+		return "", p.syntaxError("unterminated raw string literal")
 	}
-	return value
+	value := p.input[start:p.pos]
+	p.advance() // consume closing '
+	return value, nil
 }
 
 func (p *parser) parseSymbolName() (string, error) {
@@ -980,7 +986,7 @@ func (p *parser) parseSymbolName() (string, error) {
 	case ch == '"':
 		return p.parseStringLiteralValue()
 	case ch == '\'':
-		return p.parseRawStringLiteralValue(), nil
+		return p.parseRawStringLiteralValue()
 	case isIdentifierStart(ch):
 		start := p.pos
 		p.scanIdentifier()

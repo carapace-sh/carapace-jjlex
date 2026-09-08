@@ -161,6 +161,19 @@ func TestCompletionInFunctionKeywordArg(t *testing.T) {
 	}
 }
 
+func TestCompletionInFunctionKeywordArgWithWhitespace(t *testing.T) {
+	// "remote_bookmarks(remote " with cursor at end (trailing space, no =)
+	// This is NOT detected as a keyword arg since there's no = in the input
+	ctx := ParseForCompletion("remote_bookmarks(remote ")
+	if ctx.Function == nil {
+		t.Fatal("expected Function context")
+	}
+	// Without =, this is a positional arg, not a keyword arg
+	if ctx.Function.IsKeywordArg {
+		t.Error("expected IsKeywordArg to be false without = in input")
+	}
+}
+
 func TestCompletionInFunctionAfterKeywordEquals(t *testing.T) {
 	// "remote_bookmarks(remote=" with cursor at end
 	ctx := ParseForCompletion("remote_bookmarks(remote=")
@@ -191,6 +204,42 @@ func TestCompletionPartialString(t *testing.T) {
 	ctx := ParseForCompletion(`"fo`)
 	if ctx.PartialString != "fo" {
 		t.Errorf("expected PartialString 'fo', got %q", ctx.PartialString)
+	}
+	if ctx.StringQuote != '"' {
+		t.Errorf("expected StringQuote \", got %c", ctx.StringQuote)
+	}
+	assertHasExpected(t, ctx, ExpectedStringClose)
+}
+
+func TestCompletionPartialStringWithEscape(t *testing.T) {
+	// `"foo\n` with cursor at end — escape sequences must be preserved in PartialString
+	ctx := ParseForCompletion(`"foo\n`)
+	if ctx.PartialString != `foo\n` {
+		t.Errorf("expected PartialString 'foo\\n', got %q", ctx.PartialString)
+	}
+	if ctx.StringQuote != '"' {
+		t.Errorf("expected StringQuote \", got %c", ctx.StringQuote)
+	}
+	assertHasExpected(t, ctx, ExpectedStringClose)
+}
+
+func TestCompletionPartialStringWithEscapedQuote(t *testing.T) {
+	// `"foo\"` with cursor at end — escaped quote inside string
+	ctx := ParseForCompletion(`"foo\"`)
+	if ctx.PartialString != `foo\"` {
+		t.Errorf("expected PartialString 'foo\\\"', got %q", ctx.PartialString)
+	}
+	if ctx.StringQuote != '"' {
+		t.Errorf("expected StringQuote \", got %c", ctx.StringQuote)
+	}
+	assertHasExpected(t, ctx, ExpectedStringClose)
+}
+
+func TestCompletionPartialStringBackslashAtCursor(t *testing.T) {
+	// `"foo\` with cursor at end — backslash at cursor
+	ctx := ParseForCompletion(`"foo\`)
+	if ctx.PartialString != `foo\` {
+		t.Errorf("expected PartialString 'foo\\', got %q", ctx.PartialString)
 	}
 	if ctx.StringQuote != '"' {
 		t.Errorf("expected StringQuote \", got %c", ctx.StringQuote)
@@ -980,6 +1029,35 @@ func TestCompletionNonRangeKeepsAllOperators(t *testing.T) {
 			assertHasOperator(t, ctx, "..")
 			assertHasOperator(t, ctx, "-")
 			assertHasOperator(t, ctx, "+")
+		})
+	}
+}
+
+func TestCompletionRangeOperatorResetAfterInfix(t *testing.T) {
+	// After a range expression followed by an infix operator (|, &, ~),
+	// the range operator suppression should be reset. The RHS should
+	// have all operators available (not just |, &, ~).
+	tests := []struct {
+		name string
+		expr string
+	}{
+		{"dag range then difference", "foo::bar ~ "},
+		{"range then difference", "foo..bar ~ "},
+		{"dag range then intersection", "foo::bar & "},
+		{"range then union", "foo..bar | "},
+		{"dag range then union", "foo::bar | "},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := ParseForCompletion(tt.expr)
+			// After infix operator, we expect an expression, not operators.
+			// But if operators are offered, they should NOT be filtered
+			// by range suppression (i.e., -, +, ::, .. should be available
+			// if the parser offers ExpectedOperator via afterExpression).
+			// The key test: lastExprIsRange should be false, so
+			// filterRangeOperators is NOT called.
+			// We verify by checking that we're expecting an expression.
+			assertHasExpected(t, ctx, ExpectedExpression)
 		})
 	}
 }

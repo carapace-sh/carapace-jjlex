@@ -40,7 +40,6 @@ type compParser struct {
 	consumed      bool
 	funcStack     []*funcParseState
 	innermostFunc *FunctionContext
-	lastExpr      *Expression
 	currentType   string
 }
 

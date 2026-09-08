@@ -37,6 +37,30 @@ func TestCompletionAfterOperator(t *testing.T) {
 	assertHasExpected(t, ctx, ExpectedExpression)
 }
 
+func TestCompletionPrefixNegateAfterOperator(t *testing.T) {
+	// After an infix operator, prefix - should be treated as negate, not infix minus.
+	// The completion parser should offer ExpectedExpression (for the RHS of -).
+	ctx := ParseForCompletion("foo + -")
+	assertHasExpected(t, ctx, ExpectedExpression)
+}
+
+func TestCompletionPrefixNegateAfterConcat(t *testing.T) {
+	// After ++, prefix - should be treated as negate.
+	ctx := ParseForCompletion("foo ++ -")
+	assertHasExpected(t, ctx, ExpectedExpression)
+}
+
+func TestCompletionPrefixNegateInRHS(t *testing.T) {
+	// Prefix - after operator should parse as negate, so -bar should work.
+	// Here the cursor is after -ba, so we should have operators available
+	// (the expression -ba is complete).
+	ctx := ParseForCompletion("foo + -ba")
+	assertHasExpected(t, ctx, ExpectedOperator)
+	if ctx.PartialIdent != "ba" {
+		t.Errorf("expected PartialIdent 'ba', got %q", ctx.PartialIdent)
+	}
+}
+
 func TestCompletionAfterLogicalOr(t *testing.T) {
 	ctx := ParseForCompletion("foo || ")
 	assertHasExpected(t, ctx, ExpectedExpression)

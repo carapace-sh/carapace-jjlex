@@ -292,7 +292,10 @@ func (p *parser) parsePrimary() (*Expression, error) {
 		}, nil
 
 	case ch == '\'':
-		s := p.parseRawStringLiteralValue()
+		s, err := p.parseRawStringLiteralValue()
+		if err != nil {
+			return nil, err
+		}
 		return &Expression{
 			Kind:    KindString,
 			Span:    Span{Start: start, End: p.pos},

@@ -139,6 +139,18 @@ func TestCompletionPartialString(t *testing.T) {
 	assertHasExpected(t, ctx, ExpectedStringClose)
 }
 
+func TestCompletionPartialStringWithEscape(t *testing.T) {
+	// Escape sequences must be preserved in PartialString
+	ctx := ParseForCompletion(`"foo\n`)
+	if ctx.PartialString != `foo\n` {
+		t.Errorf("expected PartialString 'foo\\n', got %q", ctx.PartialString)
+	}
+	if ctx.StringQuote != '"' {
+		t.Errorf("expected StringQuote \", got %c", ctx.StringQuote)
+	}
+	assertHasExpected(t, ctx, ExpectedStringClose)
+}
+
 func TestCompletionInPattern(t *testing.T) {
 	ctx := ParseForCompletion("glob:")
 	if !ctx.InPattern {

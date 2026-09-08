@@ -129,6 +129,10 @@ func TestParseStringLiteral(t *testing.T) {
 
 	// Hex bytes
 	testParseString(t, `"\x61\x65\x69\x6f\x75"`, "aeiou")
+
+	// Unterminated raw string
+	testParseError(t, `'foo`)
+	testParseError(t, `'`)
 }
 
 func TestParsePattern(t *testing.T) {

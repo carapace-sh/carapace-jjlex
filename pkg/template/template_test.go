@@ -455,6 +455,10 @@ func TestParseStringEscapeValues(t *testing.T) {
 	testParseError(t, `"\x"`)
 	testParseError(t, `"\xf"`)
 	testParseError(t, `"\xgg"`)
+
+	// Unterminated raw string
+	testParseError(t, `'foo`)
+	testParseError(t, `'`)
 }
 
 func TestParseRawStringLiterals(t *testing.T) {

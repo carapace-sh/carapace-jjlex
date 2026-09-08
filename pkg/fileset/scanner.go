@@ -112,20 +112,21 @@ func (p *parser) parseStringLiteralValue() (string, error) {
 	}
 }
 
-func (p *parser) parseRawStringLiteralValue() string {
+func (p *parser) parseRawStringLiteralValue() (string, error) {
 	if p.peek() != '\'' {
-		return ""
+		return "", p.syntaxError("expected raw string literal")
 	}
 	p.advance()
 	start := p.pos
 	for !p.atEnd() && p.peek() != '\'' {
 		p.advance()
 	}
-	value := p.input[start:p.pos]
-	if !p.atEnd() {
-		p.advance()
+	if p.atEnd() {
+		return "", p.syntaxError("unterminated raw string literal")
 	}
-	return value
+	value := p.input[start:p.pos]
+	p.advance() // consume closing '
+	return value, nil
 }
 
 func (p *parser) unionNodes(lhs, rhs *Expression) *Expression {

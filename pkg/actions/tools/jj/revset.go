@@ -130,7 +130,10 @@ func ActionRevsets(opts RevOpts) carapace.Action {
 				quote := string(ctx.StringQuote)
 				return actionQuotedRevsetArg(opts).Prefix(quote).Suffix(quote).NoSpace()
 			}
-			return actionForPatternValue(ctx).Prefix(prefix)
+			// After the pattern colon (e.g. exact:foo), the pattern kind is
+			// already determined. Offer revset symbols as the pattern value
+			// rather than re-offering pattern kinds.
+			return actionExpression(opts, ctx).Prefix(prefix)
 		}
 
 		// Compute postfix actions and suppressed operators early so we can
@@ -588,22 +591,6 @@ func isFunctionArgRevset(name string, argIndex int) bool {
 		return false
 	default:
 		return true
-	}
-}
-
-func actionForPatternValue(ctx *revset.CompletionContext) carapace.Action {
-	switch ctx.PatternName {
-	case "exact", "exact-i", "substring", "substring-i", "glob", "glob-i", "regex", "regex-i":
-		return ActionStringPatterns().Suffix(":").NoSpace()
-	case "after", "before":
-		return ActionDatePatterns().Suffix(":").NoSpace()
-	case "cwd", "file", "cwd-file", "prefix-glob", "cwd-prefix-glob",
-		"root", "root-file", "root-glob", "root-prefix-glob",
-		"cwd-glob-i", "prefix-glob-i", "cwd-prefix-glob-i",
-		"root-glob-i", "root-prefix-glob-i":
-		return ActionFilesetPatterns().Suffix(":").NoSpace()
-	default:
-		return carapace.ActionValues()
 	}
 }
 

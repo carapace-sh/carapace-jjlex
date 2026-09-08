@@ -21,30 +21,60 @@ func (p *compParser) parseParenthesized() {
 
 func (p *compParser) parseStringLiteralCompletion() string {
 	p.advance() // consume opening "
-	var content []rune
+	contentStart := p.pos
+	var decoded []rune
 	for {
 		if p.atCursorOrEnd() {
-			p.ctx.PartialString = string(content)
+			p.ctx.PartialString = p.input[contentStart:p.pos]
 			p.ctx.StringQuote = '"'
 			p.addExpected(ExpectedStringClose)
-			return string(content)
+			return string(decoded)
 		}
 		ch := p.peek()
 		if ch == '"' {
 			p.advance()
-			return string(content)
+			return string(decoded)
 		}
 		if ch == '\\' {
 			p.advance()
 			if p.atCursorOrEnd() {
-				p.ctx.PartialString = string(content)
+				p.ctx.PartialString = p.input[contentStart:p.pos]
 				p.ctx.StringQuote = '"'
 				p.addExpected(ExpectedStringClose)
-				return string(content)
+				return string(decoded)
 			}
+			escaped := p.peek()
 			p.advance()
+			switch escaped {
+			case '"':
+				decoded = append(decoded, '"')
+			case '\\':
+				decoded = append(decoded, '\\')
+			case 't':
+				decoded = append(decoded, '\t')
+			case 'r':
+				decoded = append(decoded, '\r')
+			case 'n':
+				decoded = append(decoded, '\n')
+			case '0':
+				decoded = append(decoded, '\000')
+			case 'e':
+				decoded = append(decoded, '\x1b')
+			case 'x':
+				if !p.atCursorOrEnd() {
+					h1 := p.peek()
+					p.advance()
+					if !p.atCursorOrEnd() {
+						h2 := p.peek()
+						p.advance()
+						decoded = append(decoded, rune(hexVal(h1)*16+hexVal(h2)))
+					}
+				}
+			default:
+				decoded = append(decoded, escaped)
+			}
 		} else {
-			content = append(content, ch)
+			decoded = append(decoded, ch)
 			p.advance()
 		}
 	}
