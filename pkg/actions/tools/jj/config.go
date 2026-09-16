@@ -115,10 +115,10 @@ func ActionConfigValues(config string) carapace.Action {
 			"snapshot.auto-update-stale":                   _bool,
 			"snapshot.max-new-file-size":                   carapace.ActionValues().Usage("size in bytes or human-readable (e.g. 1MiB)"),
 			"split.legacy-bookmark-behavior":               _bool,
-			"ui.bookmark-list-sort-keys":                   actionConfigSortKeys(),
+			"ui.bookmark-list-sort-keys":                   actionConfigTOMLArray(actionConfigSortKeys()),
 			"ui.color":                                     carapace.ActionValues("auto", "always", "never", "debug").StyleF(style.ForKeyword),
 			"ui.conflict-marker-style":                     actionConfigConflictMarkerStyles(),
-			"ui.default-command":                           bridge.ActionCarapaceBin("jj").Split(),
+			"ui.default-command":                           actionConfigTOMLArray(bridge.ActionCarapaceBin("jj")),
 			"ui.diff-editor": carapace.Batch(
 				carapace.ActionValues(":builtin", ":ours", ":theirs", "diffedit3", "diffedit3-ssh", "meld", "meld-3", "vimdiff").Prefix(":").NoSpace(),
 				carapace.ActionValues("diffedit3", "diffedit3-ssh", "meld", "meld-3", "vimdiff"),
@@ -149,7 +149,7 @@ func ActionConfigValues(config string) carapace.Action {
 			"ui.streampager.interface":         carapace.ActionValues("quit-if-one-page", "full-screen-clear-output", "quit-quickly-or-clear-output"),
 			"ui.streampager.show-ruler":        _bool,
 			"ui.streampager.wrapping":          carapace.ActionValues("anywhere", "word", "none"),
-			"ui.tag-list-sort-keys":            actionConfigSortKeys(),
+			"ui.tag-list-sort-keys":            actionConfigTOMLArray(actionConfigSortKeys()),
 			"working-copy.eol-conversion":      carapace.ActionValues("none", "input", "input-output"),
 			"working-copy.exec-bit-change":     carapace.ActionValues("respect", "ignore", "auto").StyleF(style.ForKeyword),
 		}[config]); ok {
@@ -159,13 +159,18 @@ func ActionConfigValues(config string) carapace.Action {
 		splitted := strings.Split(config, ".")
 		last := splitted[len(splitted)-1]
 		switch splitted[0] {
-		case "aliases", "ui.default-command":
-			return bridge.ActionCarapaceBin("jj").Split()
+		case "aliases":
+			if last == "doc" {
+				return carapace.ActionValues().Usage("documentation string")
+			}
+			return actionConfigTOMLArray(bridge.ActionCarapaceBin("jj"))
+		case "ui.default-command":
+			return actionConfigTOMLArray(bridge.ActionCarapaceBin("jj"))
 		case "fix":
 			if splitted[1] == "tools" {
 				switch last {
 				case "command":
-					return bridge.ActionCarapaceBin().Split()
+					return actionConfigTOMLArray(bridge.ActionCarapaceBin())
 				case "diff-do-chdir", "enabled", "run-tool-if-zero-line-ranges":
 					return _bool
 				case "patterns":
@@ -175,7 +180,7 @@ func ActionConfigValues(config string) carapace.Action {
 				}
 			}
 		case "experimental-advance-branches":
-			return ActionStringPatterns()
+			return actionConfigTOMLArray(ActionStringPatterns())
 		case "fileset-aliases":
 			return ActionFilesets()
 		case "hints":
@@ -186,6 +191,21 @@ func ActionConfigValues(config string) carapace.Action {
 				return actionConfigConflictMarkerStyles()
 			case "diff-invocation-mode", "edit-invocation-mode":
 				return carapace.ActionValues("dir", "file-by-file").StyleF(style.ForKeyword)
+			case "diff-args":
+				return actionConfigTOMLArray(carapace.Batch(
+					carapace.ActionValues("$left", "$right", "$path", "$marker_length", "$width"),
+					bridge.ActionCarapaceBin(),
+				).ToA())
+			case "edit-args":
+				return actionConfigTOMLArray(carapace.Batch(
+					carapace.ActionValues("$left", "$right"),
+					bridge.ActionCarapaceBin(),
+				).ToA())
+			case "merge-args":
+				return actionConfigTOMLArray(carapace.Batch(
+					carapace.ActionValues("$base", "$left", "$right", "$output"),
+					bridge.ActionCarapaceBin(),
+				).ToA())
 			case "merge-tool-edits-conflict-markers":
 				return _bool
 			case "program":
@@ -204,6 +224,94 @@ func ActionConfigValues(config string) carapace.Action {
 			return ActionTemplates()
 		}
 		return carapace.ActionValues()
+	})
+}
+
+// actionConfigTOMLArray completes a one-line TOML array of strings.
+//
+//	["log", "-r", "main"]
+func actionConfigTOMLArray(elements carapace.Action) carapace.Action {
+	return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
+		value := c.Value
+		switch {
+		case value == "" || value == "[":
+			return carapace.ActionValues(`["`).NoSpace()
+		case !strings.HasPrefix(value, `["`):
+			return carapace.ActionValues()
+		}
+
+		// parse the partial value by closing it with various suffixes
+		var completed []string
+		open, found := false, false
+		for _, suffix := range []string{"", `]`, `"]`, `""]`} {
+			var parsed map[string]any
+			if err := toml.Unmarshal([]byte(`v = `+value+suffix), &parsed); err != nil {
+				continue
+			}
+			array, ok := parsed["v"].([]any)
+			if !ok || len(array) == 0 {
+				continue
+			}
+			elems := make([]string, 0, len(array))
+			for _, elem := range array {
+				s, ok := elem.(string)
+				if !ok {
+					elems = nil
+					break
+				}
+				elems = append(elems, s)
+			}
+			if elems == nil {
+				continue
+			}
+			completed = elems[:len(elems)-1]
+			open, found = false, true
+			switch suffix {
+			case "":
+			case `]`:
+				if strings.HasSuffix(strings.TrimRight(value, " \t"), `,`) { // trailing comma: next element expected
+					completed = elems
+					open = true
+				}
+			default:
+				open = true
+			}
+			break
+		}
+		if !found || !open {
+			return carapace.ActionValues()
+		}
+
+		quote := strings.NewReplacer(`\`, `\\`, `"`, `\"`)
+		prefix := `[`
+		for i, elem := range completed {
+			if i > 0 {
+				prefix += `, `
+			}
+			prefix += `"` + quote.Replace(elem) + `"`
+		}
+		if open {
+			if len(completed) > 0 {
+				prefix += `, `
+			}
+			prefix += `"`
+		}
+
+		c.Args = completed // previous elements as context for the completion
+
+		// Strip the prefix from c.Value so the elements action sees just the
+		// partial element being completed. We invoke elements directly (rather
+		// than using Action.Prefix/Suffix) so that c.Args is correctly updated
+		// for bridge actions that rely on it.
+		switch {
+		case strings.HasPrefix(c.Value, prefix):
+			c.Value = c.Value[len(prefix):]
+		case strings.HasPrefix(prefix, c.Value):
+			c.Value = ""
+		default:
+			return carapace.ActionValues()
+		}
+		return elements.Invoke(c).Prefix(prefix).Suffix(`"`).ToA().NoSpace()
 	})
 }
 

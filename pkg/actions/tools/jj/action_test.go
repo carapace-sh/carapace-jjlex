@@ -90,6 +90,34 @@ func TestActionFilesetPatterns(t *testing.T) {
 	})
 }
 
+func TestActionConfigTOMLArray(t *testing.T) {
+	sandbox.Action(t, func() carapace.Action {
+		return actionConfigTOMLArray(carapace.ActionValues("add", "diff", "log"))
+	})(func(s *sandbox.Sandbox) {
+		s.Run("").Expect(carapace.ActionValues(`["`).NoSpace())
+		s.Run(`["`).Expect(carapace.ActionValues("add", "diff", "log").Suffix(`"`).Prefix(`["`).NoSpace())
+		s.Run(`["l`).Expect(carapace.ActionValues("log").Suffix(`"`).Prefix(`["`).NoSpace())
+		s.Run(`["log", "d`).Expect(carapace.ActionValues("diff").Suffix(`"`).Prefix(`["log", "`).NoSpace())
+		s.Run(`["log",`).Expect(carapace.ActionValues("add", "diff", "log").Suffix(`"`).Prefix(`["log", "`).NoSpace())
+		s.Run(`["a,b", "l`).Expect(carapace.ActionValues("log").Suffix(`"`).Prefix(`["a,b", "`).NoSpace())
+		s.Run(`["log", "diff", `).Expect(carapace.ActionValues("add", "diff", "log").Suffix(`"`).Prefix(`["log", "diff", "`).NoSpace())
+	})
+}
+
+func TestActionConfigTOMLArrayContextArgs(t *testing.T) {
+	// Verify that c.Args is correctly updated to the completed array elements
+	// so bridge actions (which use c.Args) receive the right context.
+	sandbox.Action(t, func() carapace.Action {
+		return actionConfigTOMLArray(carapace.ActionCallback(func(c carapace.Context) carapace.Action {
+			return carapace.ActionValues(c.Args...)
+		}))
+	})(func(s *sandbox.Sandbox) {
+		s.Run(`["`).Expect(carapace.ActionValues().Suffix(`"`).Prefix(`["`).NoSpace())                     // no completed elements
+		s.Run(`["log", "d`).Expect(carapace.ActionValues("log").Suffix(`"`).Prefix(`["log", "`).NoSpace()) // one completed element
+		s.Run(`["log", "diff", `).Expect(carapace.ActionValues("log", "diff").Suffix(`"`).Prefix(`["log", "diff", "`).NoSpace())
+	})
+}
+
 func TestActionRevsetKeywordArgs(t *testing.T) {
 	sandbox.Action(t, func() carapace.Action {
 		return ActionRevsetKeywordArgs("remote_bookmarks")
