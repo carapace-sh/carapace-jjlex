@@ -1050,6 +1050,7 @@ func (p *compParser) setFunctionContext(fs *funcParseState, argIndex int) {
 // Returns the keyword name and the position to restore to.
 func (p *compParser) tryKeywordArgLookahead() (string, int) {
 	saved := p.pos
+	savedConsumed := p.consumed
 	start := p.pos
 	if p.pos >= len(p.input) || p.pos >= p.cursor {
 		return "", saved
@@ -1069,9 +1070,11 @@ func (p *compParser) tryKeywordArgLookahead() (string, int) {
 	// Check for =
 	if pos < len(p.input) && p.input[pos] == '=' {
 		p.pos = saved
+		p.consumed = savedConsumed
 		return name, saved
 	}
 	p.pos = saved
+	p.consumed = savedConsumed
 	return "", saved
 }
 

@@ -1328,3 +1328,49 @@ func TestCompletionPartialRemoteWithDoublePostfix(t *testing.T) {
 		t.Errorf("expected PostfixOpStart 11, got %d", ctx.PostfixOpStart)
 	}
 }
+
+func TestCompletionKeywordArgLookaheadConsumedFlag(t *testing.T) {
+	// After a keyword arg lookahead that fails (no = found), the consumed
+	// flag should NOT leak. The user should still get expression completions
+	// for the partial identifier.
+	ctx := ParseForCompletion("remote_bookmarks(foo")
+	if ctx.PartialIdent != "foo" {
+		t.Errorf("expected PartialIdent 'foo', got %q", ctx.PartialIdent)
+	}
+	// Expression should be expected (the user is typing an identifier)
+	assertHasExpected(t, ctx, ExpectedExpression)
+	// Operators should also be offered (the identifier could be complete)
+	assertHasExpected(t, ctx, ExpectedOperator)
+	// Keyword arg name should be set (the identifier could be a keyword arg name)
+	if ctx.Function == nil || ctx.Function.KeywordArgName != "foo" {
+		t.Errorf("expected KeywordArgName 'foo'")
+	}
+}
+
+func TestCompletionKeywordArgLookaheadSecondArg(t *testing.T) {
+	// After a completed first arg and comma, the lookahead should not leak
+	// the consumed flag for the second arg.
+	ctx := ParseForCompletion("remote_bookmarks(foo, bar")
+	if ctx.PartialIdent != "bar" {
+		t.Errorf("expected PartialIdent 'bar', got %q", ctx.PartialIdent)
+	}
+	assertHasExpected(t, ctx, ExpectedExpression)
+	if ctx.Function == nil || ctx.Function.ArgIndex != 1 {
+		t.Errorf("expected ArgIndex 1")
+	}
+}
+
+func TestCompletionNullaryDagRangeInFunction(t *testing.T) {
+	// Nullary :: inside a function call at cursor — should offer expression
+	// (for prefix ::) and closers/operators (for nullary ::).
+	ctx := ParseForCompletion("parents(::")
+	assertHasExpected(t, ctx, ExpectedExpression)
+	assertHasExpected(t, ctx, ExpectedClosingParen)
+}
+
+func TestCompletionNullaryRangeInFunction(t *testing.T) {
+	// Nullary .. inside a function call at cursor.
+	ctx := ParseForCompletion("parents(..")
+	assertHasExpected(t, ctx, ExpectedExpression)
+	assertHasExpected(t, ctx, ExpectedClosingParen)
+}
