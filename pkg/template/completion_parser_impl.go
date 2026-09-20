@@ -141,6 +141,15 @@ func (p *compParser) parsePrattComp(minPrec int) {
 		}
 		op, prec, _ := peekInfixOp(p.input, p.pos)
 		if op == "" || prec < minPrec {
+			// Check for partial two-char operator prefix at cursor (e.g. "foo |"
+			// where "|" is a prefix of "||"). Offer operators so the user can
+			// complete the two-char operator.
+			if p.consumed && p.pos < p.cursor {
+				remaining := p.input[p.pos:p.cursor]
+				if isPartialInfixOpPrefix(remaining) {
+					p.afterExpression()
+				}
+			}
 			return
 		}
 		p.pos += len(op)
@@ -153,6 +162,20 @@ func (p *compParser) parsePrattComp(minPrec int) {
 		p.consumed = false // reset for RHS: prefix - should be treated as negate
 		p.parsePrattComp(prec + 1)
 	}
+}
+
+// isPartialInfixOpPrefix checks if s is a single-character prefix of a
+// two-character infix operator (||, &&, ==, !=). This allows the completion
+// parser to offer operators when the user has typed a partial operator.
+func isPartialInfixOpPrefix(s string) bool {
+	if len(s) != 1 {
+		return false
+	}
+	switch s[0] {
+	case '|', '&', '=', '!':
+		return true
+	}
+	return false
 }
 
 func (p *compParser) parsePrefixComp() {
@@ -247,6 +270,10 @@ func (p *compParser) parseTermComp() {
 
 func (p *compParser) parsePrimaryComp() {
 	p.skipWS()
+	// Reset type tracking for each new primary expression so stale types
+	// from a previous expression (e.g. after ++ or an infix operator) don't
+	// leak into method call completion for the current expression.
+	p.currentType = ""
 	if p.atCursorOrEnd() {
 		if !p.consumed {
 			p.beforeExpression()

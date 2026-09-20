@@ -435,6 +435,69 @@ func TestCompletionTrailingComma(t *testing.T) {
 	assertHasExpected(t, ctx, ExpectedClosingParen)
 }
 
+func TestCompletionPartialPipeOperator(t *testing.T) {
+	// Single | at cursor is a partial || — should offer operators.
+	ctx := ParseForCompletion("foo |")
+	assertHasExpected(t, ctx, ExpectedOperator)
+	assertHasOperator(t, ctx, "||")
+	assertHasOperator(t, ctx, "&&")
+}
+
+func TestCompletionPartialAmpersandOperator(t *testing.T) {
+	// Single & at cursor is a partial && — should offer operators.
+	ctx := ParseForCompletion("foo &")
+	assertHasExpected(t, ctx, ExpectedOperator)
+	assertHasOperator(t, ctx, "&&")
+}
+
+func TestCompletionPartialEqualsOperator(t *testing.T) {
+	// Single = at cursor is a partial == — should offer operators.
+	ctx := ParseForCompletion("foo =")
+	assertHasExpected(t, ctx, ExpectedOperator)
+	assertHasOperator(t, ctx, "==")
+}
+
+func TestCompletionPartialBangOperator(t *testing.T) {
+	// Single ! at cursor is a partial != — should offer operators.
+	ctx := ParseForCompletion("foo !")
+	assertHasExpected(t, ctx, ExpectedOperator)
+	assertHasOperator(t, ctx, "!=")
+}
+
+func TestCompletionPartialPipeInFunction(t *testing.T) {
+	// Single | inside function args should offer operators and closers.
+	ctx := ParseForCompletion("if(a |")
+	assertHasExpected(t, ctx, ExpectedOperator)
+	assertHasExpected(t, ctx, ExpectedClosingParen)
+	assertHasExpected(t, ctx, ExpectedComma)
+	assertHasOperator(t, ctx, "||")
+}
+
+func TestCompletionMethodTypeStaleAfterConcat(t *testing.T) {
+	// After ++, the type from the previous expression should NOT leak.
+	// foo. should not report a method type from 42.
+	ctx := ParseForCompletion("42 ++ foo.")
+	if ctx.MethodType != "" {
+		t.Errorf("expected empty MethodType after ++ with unknown identifier, got %q", ctx.MethodType)
+	}
+}
+
+func TestCompletionMethodTypeStaleAfterInfix(t *testing.T) {
+	// After an infix operator, the type should not leak to the next expression.
+	ctx := ParseForCompletion(`"hello" || foo.`)
+	if ctx.MethodType != "" {
+		t.Errorf("expected empty MethodType after || with unknown identifier, got %q", ctx.MethodType)
+	}
+}
+
+func TestCompletionMethodTypeResetStillWorks(t *testing.T) {
+	// Verify that normal method type tracking still works after the reset fix.
+	ctx := ParseForCompletion("self.description().")
+	if ctx.MethodType != "String" {
+		t.Errorf("expected MethodType 'String', got %q", ctx.MethodType)
+	}
+}
+
 // --- Helpers ---
 
 func assertHasExpected(t *testing.T, ctx *CompletionContext, expected ExpectedToken) {
