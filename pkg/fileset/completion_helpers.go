@@ -199,15 +199,21 @@ func (p *compParser) parseFunctionCallCompletion(name string) {
 			return
 		}
 
-		fs.args = append(fs.args, p.lastExpr)
-		argIndex++
+		if !p.afterOperator {
+			fs.args = append(fs.args, p.lastExpr)
+			argIndex++
+		}
 
 		p.skipWS()
 		if p.atCursorOrEnd() {
 			p.setFunctionContext(fs, argIndex)
 			p.addExpected(ExpectedClosingParen)
 			p.addExpected(ExpectedComma)
-			p.lastExpr = &Expression{Kind: KindFunctionCall, Span: Span{Start: funcStart, End: p.pos}, payload: &FunctionCallExpr{Name: name, Args: fs.args}}
+			if p.afterOperator {
+				p.lastExpr = nil
+			} else {
+				p.lastExpr = &Expression{Kind: KindFunctionCall, Span: Span{Start: funcStart, End: p.pos}, payload: &FunctionCallExpr{Name: name, Args: fs.args}}
+			}
 			return
 		}
 		if p.peek() == ',' {
@@ -217,7 +223,7 @@ func (p *compParser) parseFunctionCallCompletion(name string) {
 				p.setFunctionContext(fs, argIndex)
 				p.addExpected(ExpectedClosingParen)
 				p.beforeExpression()
-				p.lastExpr = &Expression{Kind: KindFunctionCall, Span: Span{Start: funcStart, End: p.pos}, payload: &FunctionCallExpr{Name: name, Args: fs.args}}
+				p.lastExpr = nil
 				return
 			}
 		} else {

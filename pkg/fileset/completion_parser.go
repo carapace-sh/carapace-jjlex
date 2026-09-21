@@ -117,6 +117,14 @@ func (p *compParser) addOperator(op, desc string) {
 }
 
 func (p *compParser) afterExpression() {
+	if p.ctx.StringQuote != 0 {
+		if len(p.funcStack) > 0 {
+			p.addExpected(ExpectedClosingParen)
+			p.addExpected(ExpectedComma)
+		}
+		return
+	}
+
 	p.addExpected(ExpectedOperator)
 	p.addOperator("|", "union")
 	p.addOperator("&", "intersection")

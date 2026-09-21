@@ -38,6 +38,7 @@ type compParser struct {
 	cursor        int
 	ctx           *CompletionContext
 	consumed      bool
+	afterOperator bool
 	funcStack     []*funcParseState
 	innermostFunc *FunctionContext
 	currentType   string

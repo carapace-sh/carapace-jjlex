@@ -210,6 +210,70 @@ func TestCompletionTrailingComma(t *testing.T) {
 	assertHasExpected(t, ctx, ExpectedClosingParen)
 }
 
+func TestCompletionStringLiteralSuppressesOperators(t *testing.T) {
+	ctx := ParseForCompletion(`all("foo`)
+	if ctx.PartialString != "foo" {
+		t.Errorf("expected PartialString 'foo', got %q", ctx.PartialString)
+	}
+	if ctx.StringQuote != '"' {
+		t.Errorf("expected StringQuote '\"', got %q", ctx.StringQuote)
+	}
+	for _, op := range []string{"|", "&", "~"} {
+		for _, v := range ctx.ValidOperators {
+			if v.Op == op {
+				t.Errorf("expected operator %q NOT offered inside unclosed string, but it was", op)
+			}
+		}
+	}
+}
+
+func TestCompletionStringLiteralInFunctionSuppressesOperators(t *testing.T) {
+	ctx := ParseForCompletion(`all("foo`)
+	if ctx.Function == nil {
+		t.Fatal("expected Function context")
+	}
+	if ctx.Function.Name != "all" {
+		t.Errorf("expected function 'all', got %q", ctx.Function.Name)
+	}
+	assertHasExpected(t, ctx, ExpectedClosingParen)
+	assertHasExpected(t, ctx, ExpectedComma)
+	for _, op := range []string{"|", "&", "~"} {
+		for _, v := range ctx.ValidOperators {
+			if v.Op == op {
+				t.Errorf("expected operator %q NOT offered inside unclosed string in function, but it was", op)
+			}
+		}
+	}
+}
+
+func TestCompletionOperatorInFunctionArg(t *testing.T) {
+	ctx := ParseForCompletion(`all("foo" |`)
+	if ctx.Function == nil {
+		t.Fatal("expected Function context")
+	}
+	if len(ctx.Function.Args) != 0 {
+		t.Fatalf("expected 0 complete args (incomplete after |), got %d", len(ctx.Function.Args))
+	}
+	if ctx.Function.ArgIndex != 0 {
+		t.Errorf("expected ArgIndex 0 (incomplete expression), got %d", ctx.Function.ArgIndex)
+	}
+	assertHasExpected(t, ctx, ExpectedExpression)
+}
+
+func TestCompletionOperatorInFunctionArgAmpersand(t *testing.T) {
+	ctx := ParseForCompletion(`all("foo" &`)
+	if ctx.Function == nil {
+		t.Fatal("expected Function context")
+	}
+	if len(ctx.Function.Args) != 0 {
+		t.Fatalf("expected 0 complete args (incomplete after &), got %d", len(ctx.Function.Args))
+	}
+	if ctx.Function.ArgIndex != 0 {
+		t.Errorf("expected ArgIndex 0 (incomplete expression), got %d", ctx.Function.ArgIndex)
+	}
+	assertHasExpected(t, ctx, ExpectedExpression)
+}
+
 func assertHasExpected(t *testing.T, ctx *CompletionContext, expected ExpectedToken) {
 	t.Helper()
 	if slices.Contains(ctx.ExpectedTokens, expected) {
