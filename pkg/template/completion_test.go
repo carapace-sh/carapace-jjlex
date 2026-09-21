@@ -498,6 +498,100 @@ func TestCompletionMethodTypeResetStillWorks(t *testing.T) {
 	}
 }
 
+func TestCompletionStringLiteralSuppressesOperators(t *testing.T) {
+	ctx := ParseForCompletion(`if("foo`)
+	if ctx.PartialString != "foo" {
+		t.Errorf("expected PartialString 'foo', got %q", ctx.PartialString)
+	}
+	if ctx.StringQuote != '"' {
+		t.Errorf("expected StringQuote '\"', got %q", ctx.StringQuote)
+	}
+	for _, op := range []string{"||", "&&", "==", "++"} {
+		for _, v := range ctx.ValidOperators {
+			if v.Op == op {
+				t.Errorf("expected operator %q NOT offered inside unclosed string, but it was", op)
+			}
+		}
+	}
+}
+
+func TestCompletionStringLiteralInFunctionSuppressesOperators(t *testing.T) {
+	ctx := ParseForCompletion(`if("foo`)
+	if ctx.Function == nil {
+		t.Fatal("expected Function context")
+	}
+	if ctx.Function.Name != "if" {
+		t.Errorf("expected function 'if', got %q", ctx.Function.Name)
+	}
+	assertHasExpected(t, ctx, ExpectedClosingParen)
+	assertHasExpected(t, ctx, ExpectedComma)
+	for _, op := range []string{"||", "&&", "==", "++"} {
+		for _, v := range ctx.ValidOperators {
+			if v.Op == op {
+				t.Errorf("expected operator %q NOT offered inside unclosed string in function, but it was", op)
+			}
+		}
+	}
+}
+
+func TestCompletionOperatorInFunctionArg(t *testing.T) {
+	ctx := ParseForCompletion(`if(a && `)
+	if ctx.Function == nil {
+		t.Fatal("expected Function context")
+	}
+	if len(ctx.Function.Args) != 0 {
+		t.Fatalf("expected 0 complete args (incomplete after &&), got %d", len(ctx.Function.Args))
+	}
+	if ctx.Function.ArgIndex != 0 {
+		t.Errorf("expected ArgIndex 0 (incomplete expression), got %d", ctx.Function.ArgIndex)
+	}
+	assertHasExpected(t, ctx, ExpectedExpression)
+}
+
+func TestCompletionOperatorInFunctionArgConcat(t *testing.T) {
+	ctx := ParseForCompletion(`if(a ++ `)
+	if ctx.Function == nil {
+		t.Fatal("expected Function context")
+	}
+	if len(ctx.Function.Args) != 0 {
+		t.Fatalf("expected 0 complete args (incomplete after ++), got %d", len(ctx.Function.Args))
+	}
+	if ctx.Function.ArgIndex != 0 {
+		t.Errorf("expected ArgIndex 0 (incomplete expression), got %d", ctx.Function.ArgIndex)
+	}
+	assertHasExpected(t, ctx, ExpectedExpression)
+}
+
+func TestCompletionFunctionCallCompleteArgStillWorks(t *testing.T) {
+	ctx := ParseForCompletion("if(a, b")
+	if ctx.Function == nil {
+		t.Fatal("expected Function context")
+	}
+	if len(ctx.Function.Args) != 1 {
+		t.Fatalf("expected 1 complete arg, got %d", len(ctx.Function.Args))
+	}
+	if ctx.Function.ArgIndex != 1 {
+		t.Errorf("expected ArgIndex 1, got %d", ctx.Function.ArgIndex)
+	}
+}
+
+func TestCompletionNestedFunctionCallFuncStackCleanup(t *testing.T) {
+	// After a complete function call closes, funcStack should be popped
+	// correctly. The next function should not have stale funcStack entries.
+	ctx := ParseForCompletion("if(true, x) ++ if(")
+	if ctx.Function == nil {
+		t.Fatal("expected Function context")
+	}
+	if ctx.Function.Name != "if" {
+		t.Errorf("expected function 'if', got %q", ctx.Function.Name)
+	}
+	if ctx.Function.ArgIndex != 0 {
+		t.Errorf("expected ArgIndex 0 for second function, got %d", ctx.Function.ArgIndex)
+	}
+	assertHasExpected(t, ctx, ExpectedExpression)
+	assertHasExpected(t, ctx, ExpectedClosingParen)
+}
+
 // --- Helpers ---
 
 func assertHasExpected(t *testing.T, ctx *CompletionContext, expected ExpectedToken) {

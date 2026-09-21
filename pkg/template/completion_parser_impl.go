@@ -51,6 +51,14 @@ func (p *compParser) addOperator(op, desc string) {
 }
 
 func (p *compParser) afterExpression() {
+	if p.ctx.StringQuote != 0 {
+		if len(p.funcStack) > 0 {
+			p.addExpected(ExpectedClosingParen)
+			p.addExpected(ExpectedComma)
+		}
+		return
+	}
+
 	p.addExpected(ExpectedOperator)
 	p.addOperator("||", "logical or")
 	p.addOperator("&&", "logical and")
@@ -104,13 +112,14 @@ func (p *compParser) parseTemplateComp() {
 	for {
 		p.skipWS()
 		if p.atCursorOrEnd() {
-			if p.consumed {
+			if p.consumed && p.ctx.StringQuote == 0 {
 				p.addOperator("++", "concatenate")
 			}
 			return
 		}
 		if p.matchString("++") {
 			p.pos += 2
+			p.afterOperator = true
 			p.skipWS()
 			if p.atCursorOrEnd() {
 				p.afterExpression()
@@ -118,6 +127,7 @@ func (p *compParser) parseTemplateComp() {
 				return
 			}
 			p.consumed = false // reset for RHS: prefix - should be treated as negate
+			p.afterOperator = false
 			p.parseExpressionComp()
 		} else {
 			return
@@ -153,6 +163,7 @@ func (p *compParser) parsePrattComp(minPrec int) {
 			return
 		}
 		p.pos += len(op)
+		p.afterOperator = true
 		p.skipWS()
 		if p.atCursorOrEnd() {
 			p.afterExpression()
@@ -160,6 +171,7 @@ func (p *compParser) parsePrattComp(minPrec int) {
 			return
 		}
 		p.consumed = false // reset for RHS: prefix - should be treated as negate
+		p.afterOperator = false
 		p.parsePrattComp(prec + 1)
 	}
 }
@@ -536,6 +548,11 @@ func (p *compParser) parseFunctionCallComp(name string, isMethod bool, methodObj
 	p.setFunctionContext(name, isMethod, methodObj)
 	fs := &funcParseState{name: name, isMethod: isMethod, methodObj: methodObj}
 	p.funcStack = append(p.funcStack, fs)
+	defer func() {
+		if len(p.funcStack) > 0 {
+			p.funcStack = p.funcStack[:len(p.funcStack)-1]
+		}
+	}()
 
 	p.advance() // consume (
 	p.skipWS()
@@ -601,9 +618,11 @@ func (p *compParser) parseFunctionCallComp(name string, isMethod bool, methodObj
 			return
 		}
 
-		fs.args = append(fs.args, &Expression{Kind: KindIdentifier, Span: Span{Start: 0, End: p.pos}, payload: &IdentifierExpr{Name: ""}})
-		fs.argIndex = len(fs.args)
-		p.updateFunctionArgIndex()
+		if !p.afterOperator {
+			fs.args = append(fs.args, &Expression{Kind: KindIdentifier, Span: Span{Start: 0, End: p.pos}, payload: &IdentifierExpr{Name: ""}})
+			fs.argIndex = len(fs.args)
+			p.updateFunctionArgIndex()
+		}
 
 		p.skipWS()
 		if p.atCursorOrEnd() {
@@ -634,6 +653,4 @@ func (p *compParser) parseFunctionCallComp(name string, isMethod bool, methodObj
 	if p.peek() == ')' {
 		p.advance()
 	}
-
-	p.funcStack = p.funcStack[:len(p.funcStack)-1]
 }
