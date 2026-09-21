@@ -269,6 +269,11 @@ func (p *compParser) parseTermComp() {
 			if p.peek() == '(' && isFunctionName(ident) {
 				methodReturn := methodReturnType(savedType, ident)
 				p.currentType = methodReturn
+				// If this is a list method that takes a lambda (map/filter/any/all),
+				// the lambda parameter's type is the list's element type.
+				if isLambdaListMethod(ident) {
+					p.pendingLambdaType = listElementType(savedType)
+				}
 				p.parseFunctionCallComp(ident, true, nil)
 				// parseFunctionCallComp may reset currentType via
 				// parsePrimaryComp when parsing arguments. Restore the
@@ -378,7 +383,20 @@ func (p *compParser) parseLambdaComp() {
 	p.advance() // consume first |
 	p.skipWS()
 
+	// Determine the parameter type from context. This is set by
+	// parseTermComp when calling a list method like .map(|c| ...).
+	paramType := p.pendingLambdaType
+	p.pendingLambdaType = ""
+
 	var params []string
+	// Save old lambda param types to restore after this lambda body
+	savedParamTypes := p.lambdaParamTypes
+	if paramType != "" {
+		if p.lambdaParamTypes == nil {
+			p.lambdaParamTypes = make(map[string]string)
+		}
+	}
+
 	if p.atCursorOrEnd() || p.peek() != '|' {
 		// Parse parameters
 		for {
@@ -398,6 +416,9 @@ func (p *compParser) parseLambdaComp() {
 			if p.pos > identStart {
 				param := p.input[identStart:p.pos]
 				params = append(params, param)
+				if paramType != "" {
+					p.lambdaParamTypes[param] = paramType
+				}
 			}
 			p.skipWS()
 			if p.atCursorOrEnd() {
@@ -447,6 +468,7 @@ func (p *compParser) parseLambdaComp() {
 	p.parseTemplateComp()
 	p.ctx.InLambda = false
 	p.ctx.LambdaParams = nil
+	p.lambdaParamTypes = savedParamTypes
 }
 
 func (p *compParser) parseIdentFuncOrPatternComp() {
@@ -483,6 +505,13 @@ func (p *compParser) parseIdentFuncOrPatternComp() {
 	// self keyword
 	if ident == "self" {
 		p.currentType = "Commit"
+	}
+
+	// Lambda parameter: resolve to its tracked type
+	if p.ctx.InLambda && p.lambdaParamTypes != nil {
+		if t, ok := p.lambdaParamTypes[ident]; ok {
+			p.currentType = t
+		}
 	}
 
 	p.skipWS()

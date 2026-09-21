@@ -625,6 +625,70 @@ func TestCompletionGlobalFunctionReturnType(t *testing.T) {
 	}
 }
 
+func TestCompletionLambdaParamTypeCommit(t *testing.T) {
+	// parents returns List<Commit>, so |c| should resolve c to Commit
+	ctx := ParseForCompletion("parents.map(|c| c.")
+	if ctx.MethodType != "Commit" {
+		t.Errorf("expected MethodType 'Commit', got %q", ctx.MethodType)
+	}
+}
+
+func TestCompletionLambdaParamTypeCommitRef(t *testing.T) {
+	// bookmarks returns List<CommitRef>, so |b| should resolve b to CommitRef
+	ctx := ParseForCompletion("bookmarks.map(|b| b.")
+	if ctx.MethodType != "CommitRef" {
+		t.Errorf("expected MethodType 'CommitRef', got %q", ctx.MethodType)
+	}
+}
+
+func TestCompletionLambdaParamTypeString(t *testing.T) {
+	// description.lines() returns List<String>, so |s| should resolve s to String
+	ctx := ParseForCompletion("description.lines().filter(|s| s.")
+	if ctx.MethodType != "String" {
+		t.Errorf("expected MethodType 'String', got %q", ctx.MethodType)
+	}
+}
+
+func TestCompletionLambdaParamTypeTrailer(t *testing.T) {
+	// trailers returns List<Trailer>, so |t| should resolve t to Trailer
+	ctx := ParseForCompletion("trailers.map(|t| t.")
+	if ctx.MethodType != "Trailer" {
+		t.Errorf("expected MethodType 'Trailer', got %q", ctx.MethodType)
+	}
+}
+
+func TestCompletionLambdaParamTypeChained(t *testing.T) {
+	// After the lambda body, type tracking should resume normally
+	ctx := ParseForCompletion(`parents.map(|c| c.commit_id().short()).`)
+	if ctx.MethodType != "AnyList" {
+		t.Errorf("expected MethodType 'AnyList' (map return), got %q", ctx.MethodType)
+	}
+}
+
+func TestCompletionContainedIn(t *testing.T) {
+	// self.contained_in() takes a string literal revset argument
+	ctx := ParseForCompletion(`if(self.contained_in(`)
+	if ctx.Function == nil {
+		t.Fatal("expected Function context")
+	}
+	if ctx.Function.Name != "contained_in" {
+		t.Errorf("expected function 'contained_in', got %q", ctx.Function.Name)
+	}
+	assertHasExpected(t, ctx, ExpectedExpression)
+	assertHasExpected(t, ctx, ExpectedClosingParen)
+}
+
+func TestCompletionTrailersContainsKey(t *testing.T) {
+	// trailers is List<Trailer>, contains_key is a specialized method
+	ctx := ParseForCompletion("trailers.contains_key(")
+	if ctx.Function == nil {
+		t.Fatal("expected Function context")
+	}
+	if ctx.Function.Name != "contains_key" {
+		t.Errorf("expected function 'contains_key', got %q", ctx.Function.Name)
+	}
+}
+
 // --- Helpers ---
 
 func assertHasExpected(t *testing.T, ctx *CompletionContext, expected ExpectedToken) {

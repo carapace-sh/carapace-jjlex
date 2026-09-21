@@ -1374,3 +1374,64 @@ func TestCompletionNullaryRangeInFunction(t *testing.T) {
 	assertHasExpected(t, ctx, ExpectedExpression)
 	assertHasExpected(t, ctx, ExpectedClosingParen)
 }
+
+func TestCompletionPatternNegationInFunctionArg(t *testing.T) {
+	// bookmarks(~ at cursor: prefix ~ inside function arg should offer
+	// expression and closers, since ~ could start a negated pattern.
+	ctx := ParseForCompletion("bookmarks(~")
+	if ctx.Function == nil {
+		t.Fatal("expected Function context")
+	}
+	if ctx.Function.Name != "bookmarks" {
+		t.Errorf("expected function 'bookmarks', got %q", ctx.Function.Name)
+	}
+	assertHasExpected(t, ctx, ExpectedExpression)
+	assertHasExpected(t, ctx, ExpectedClosingParen)
+}
+
+func TestCompletionNegationOfFunctionCall(t *testing.T) {
+	// ~description( at cursor: negation prefix followed by function name
+	ctx := ParseForCompletion("~description(")
+	if ctx.Function == nil {
+		t.Fatal("expected Function context")
+	}
+	if ctx.Function.Name != "description" {
+		t.Errorf("expected function 'description', got %q", ctx.Function.Name)
+	}
+	assertHasExpected(t, ctx, ExpectedExpression)
+	assertHasExpected(t, ctx, ExpectedClosingParen)
+}
+
+func TestCompletionNegationOfFunctionCallWithPattern(t *testing.T) {
+	// ~description(glob: at cursor: negation of function with pattern arg
+	ctx := ParseForCompletion("~description(glob:")
+	if ctx.InPattern {
+		if ctx.PatternName != "glob" {
+			t.Errorf("expected PatternName 'glob', got %q", ctx.PatternName)
+		}
+	} else {
+		// If not in pattern, at least expression should be expected
+		assertHasExpected(t, ctx, ExpectedExpression)
+	}
+}
+
+func TestCompletionDeepIntersectionWithNegation(t *testing.T) {
+	// heads(::@ & mutable() & ~description(exact:"") & (~empty() | merges())
+	// Test completion at the ~ before description
+	ctx := ParseForCompletion(`heads(::@ & mutable() & ~`)
+	assertHasExpected(t, ctx, ExpectedExpression)
+	assertHasOperator(t, ctx, "~")
+}
+
+func TestCompletionFilesWithNegation(t *testing.T) {
+	// files(~ at cursor: fileset negation inside revset files() function
+	ctx := ParseForCompletion("files(~")
+	if ctx.Function == nil {
+		t.Fatal("expected Function context")
+	}
+	if ctx.Function.Name != "files" {
+		t.Errorf("expected function 'files', got %q", ctx.Function.Name)
+	}
+	assertHasExpected(t, ctx, ExpectedExpression)
+	assertHasExpected(t, ctx, ExpectedClosingParen)
+}
