@@ -636,3 +636,29 @@ func TestParseFormatRoundTrip(t *testing.T) {
 		}
 	}
 }
+
+func TestParseEmpty(t *testing.T) {
+	// jj's grammar allows empty templates: program = SOI ~ template? ~ EOI
+	expr, err := Parse("")
+	if err != nil {
+		t.Fatalf("expected empty input to parse, got error: %v", err)
+	}
+	if expr.Kind != KindConcat {
+		t.Fatalf("expected KindConcat for empty input, got %v", expr.Kind)
+	}
+	if len(expr.ConcatNodes()) != 0 {
+		t.Fatalf("expected 0 concat nodes for empty input, got %d", len(expr.ConcatNodes()))
+	}
+
+	// Whitespace-only input should also produce an empty concat
+	expr, err = Parse("   ")
+	if err != nil {
+		t.Fatalf("expected whitespace-only input to parse, got error: %v", err)
+	}
+	if expr.Kind != KindConcat {
+		t.Fatalf("expected KindConcat for whitespace-only input, got %v", expr.Kind)
+	}
+	if len(expr.ConcatNodes()) != 0 {
+		t.Fatalf("expected 0 concat nodes for whitespace-only input, got %d", len(expr.ConcatNodes()))
+	}
+}

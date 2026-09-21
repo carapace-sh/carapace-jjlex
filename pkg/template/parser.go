@@ -27,9 +27,14 @@ type parser struct {
 }
 
 // Parse parses a jj template expression string into an AST.
+// An empty or whitespace-only input is valid and produces an empty
+// concat expression, matching jj's grammar: program = SOI ~ template? ~ EOI
 func Parse(input string) (*Expression, error) {
 	p := &parser{input: input}
 	p.skipWhitespace()
+	if p.pos >= len(p.input) {
+		return &Expression{Kind: KindConcat, Span: Span{Start: 0, End: 0}, payload: &ConcatExpr{}}, nil
+	}
 	start := p.pos
 	expr, err := p.parseTemplate()
 	if err != nil {
