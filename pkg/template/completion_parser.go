@@ -33,15 +33,17 @@ func ParseForCompletion(input string) *CompletionContext {
 }
 
 type compParser struct {
-	input         string
-	pos           int
-	cursor        int
-	ctx           *CompletionContext
-	consumed      bool
-	afterOperator bool
-	funcStack     []*funcParseState
-	innermostFunc *FunctionContext
-	currentType   string
+	input             string
+	pos               int
+	cursor            int
+	ctx               *CompletionContext
+	consumed          bool
+	afterOperator     bool
+	funcStack         []*funcParseState
+	innermostFunc     *FunctionContext
+	currentType       string
+	lambdaParamTypes  map[string]string
+	pendingLambdaType string
 }
 
 type funcParseState struct {

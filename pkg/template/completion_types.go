@@ -5,6 +5,7 @@ import "strings"
 // methodReturnType returns the template type returned by calling method on the given type.
 // Returns empty string if the type or method is unknown.
 // Handles Option<T> by delegating to the inner type's methods.
+// Handles List<T> by delegating to the generic List type's methods.
 func methodReturnType(typeName, methodName string) string {
 	if m, ok := typeMethods[typeName]; ok {
 		if rt, ok := m[methodName]; ok {
@@ -16,6 +17,14 @@ func methodReturnType(typeName, methodName string) string {
 		inner = strings.TrimSuffix(inner, ">")
 		return methodReturnType(inner, methodName)
 	}
+	// List<T> delegates to generic List for common methods (map, filter, etc.)
+	if inner, ok := strings.CutPrefix(typeName, "List<"); ok {
+		inner = strings.TrimSuffix(inner, ">")
+		_ = inner // element type, not needed for method lookup
+		if rt, ok := typeMethods["List"][methodName]; ok {
+			return rt
+		}
+	}
 	return ""
 }
 
@@ -23,6 +32,34 @@ func methodReturnType(typeName, methodName string) string {
 // Returns empty string if the function is unknown.
 func globalFunctionReturnType(funcName string) string {
 	return globalFuncTypes[funcName]
+}
+
+// isLambdaListMethod returns true if the given method on a list type
+// takes a lambda parameter whose type is the list's element type.
+func isLambdaListMethod(methodName string) bool {
+	switch methodName {
+	case "map", "filter", "any", "all":
+		return true
+	}
+	return false
+}
+
+// listElementType extracts the element type from a list type name.
+// For example, "List<Commit>" returns "Commit".
+// Returns empty string for unparameterized list types like "AnyList".
+func listElementType(typeName string) string {
+	if inner, ok := strings.CutPrefix(typeName, "List<"); ok {
+		return strings.TrimSuffix(inner, ">")
+	}
+	// ByteStringList and StringList are unparameterized lists
+	// whose element types are ByteString and String respectively.
+	switch typeName {
+	case "ByteStringList":
+		return "ByteString"
+	case "StringList":
+		return "String"
+	}
+	return ""
 }
 
 // typeMethods maps type names to their method return types.
