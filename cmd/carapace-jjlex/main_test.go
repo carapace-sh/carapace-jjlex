@@ -243,6 +243,31 @@ var parseSuccessCases = []string{
 	" \t\r\n\x0call()",
 	"  description(  arg1 ) ~    file(  arg1 ,   arg2 )  ~ visible_heads(  )  ",
 	"remote_bookmarks( remote  =   foo  )",
+
+	// Complex real-world expressions from jj configs and documentation
+	// Pattern negation inside function arguments
+	`bookmarks(~glob:"ci/*")`,
+	// Negation of function call with arguments
+	`~description(glob:"wip:*")`,
+	`~description(exact:"")`,
+	// Deeply nested intersections with negation and parenthesized unions
+	`heads(::@ & mutable() & ~description(exact:"") & (~empty() | merges()))`,
+	// Union of postfix range and postfix parents on parenthesized expressions
+	`(trunk()..@):: | (trunk()..@)-`,
+	// Range postfix as keyword-arg function argument
+	`remote_bookmarks(remote=origin)..`,
+	// Deeply nested function calls (3+ levels)
+	`coalesce(present(@), reachable(@, mutable()))`,
+	`connected(root() | none())`,
+	// Complex builtin-style alias definitions
+	`present(@) | ancestors(immutable_heads().., 2) | trunk()`,
+	`::(immutable_heads() | root())`,
+	`~immutable()`,
+	`~visible()`,
+	// Negation of parenthesized union (fileset in files())
+	`files(~(foo | bar))`,
+	// Change ID with offset
+	`change_id(mykmqkzpqxvxrxtnqzqvnqrwrrvooloy)`,
 }
 
 var parseErrorCases = []string{
@@ -375,6 +400,14 @@ var filesetSuccessCases = []string{
 	"all() | none()",
 	"~all()",
 	"all() & none()",
+
+	// Complex real-world fileset expressions from jj documentation
+	// Bare string negation
+	"~Cargo.lock",
+	// Difference with glob pattern
+	`src ~ glob:"**/*.rs"`,
+	// Negation of group inside files() revset function (tested as fileset)
+	`~(foo | bar)`,
 }
 
 var filesetErrorCases = []string{
@@ -512,7 +545,31 @@ var templateSuccessCases = []string{
 	"commit_id.short()",
 	"description ++ '\\n'",
 	"if(divergent, label('divergent', 'D'), '')",
-	"parents.map(|c| c.commit_id().short()).join(\",\")",
+	`parents.map(|c| c.commit_id().short()).join(",")`,
+
+	// Complex real-world template expressions from jj builtins and configs
+	// Lambda with multi-arg function inside
+	`bookmarks.map(|b| separate("/", b.remote(), b.name())).join(", ")`,
+	// Method chain with lambda filter
+	`description.lines().filter(|s| s.contains("#"))`,
+	// Config method chaining (config returns Option<ConfigValue>)
+	`config("ui.graph.style").as_string().starts_with("ascii")`,
+	// Nested coalesce/if patterns
+	`coalesce(if(self.contained_in("visible_heads()"), "[contained_in]"), "")`,
+	// List<Trailer> specialized method
+	`trailers.contains_key("Signed-off-by")`,
+	// Lambda with structured diff output
+	`diff.files().map(|e| e.path()).join("\n")`,
+	// Nested if/else with surround and separate
+	`if(conflict, surround("[", "]", label("conflict", "conflicted")), "")`,
+	// Raw escape sequences in concat (hyperlink pattern)
+	`raw_escape_sequence("\e]8;;" ++ url ++ "\e\\")`,
+	// Hash for redaction
+	`hash(commit_id).substr(0, 4)`,
+	// Empty template (valid per jj grammar: program = SOI ~ template? ~ EOI)
+	"",
+	// Whitespace-only template
+	"  ",
 }
 
 var templateErrorCases = []string{

@@ -592,6 +592,39 @@ func TestCompletionNestedFunctionCallFuncStackCleanup(t *testing.T) {
 	assertHasExpected(t, ctx, ExpectedClosingParen)
 }
 
+func TestCompletionConfigMethodChaining(t *testing.T) {
+	// config() returns Option<ConfigValue>, so .as_string() should
+	// resolve to String via Option<T> delegation. Without restoring
+	// currentType after parseFunctionCallComp, the type was lost.
+	ctx := ParseForCompletion(`config("key").as_string().`)
+	if ctx.MethodType != "String" {
+		t.Errorf("expected MethodType 'String', got %q", ctx.MethodType)
+	}
+}
+
+func TestCompletionConfigMethodChainingDeep(t *testing.T) {
+	// Chained: config().as_string().upper() → String → String
+	ctx := ParseForCompletion(`config("key").as_string().upper().`)
+	if ctx.MethodType != "String" {
+		t.Errorf("expected MethodType 'String', got %q", ctx.MethodType)
+	}
+}
+
+func TestCompletionConfigAsInteger(t *testing.T) {
+	ctx := ParseForCompletion(`config("key").as_integer().`)
+	if ctx.MethodType != "Integer" {
+		t.Errorf("expected MethodType 'Integer', got %q", ctx.MethodType)
+	}
+}
+
+func TestCompletionGlobalFunctionReturnType(t *testing.T) {
+	// Verify that a global function's return type is tracked for method calls
+	ctx := ParseForCompletion(`config("key").`)
+	if ctx.MethodType != "Option<ConfigValue>" {
+		t.Errorf("expected MethodType 'Option<ConfigValue>', got %q", ctx.MethodType)
+	}
+}
+
 // --- Helpers ---
 
 func assertHasExpected(t *testing.T, ctx *CompletionContext, expected ExpectedToken) {

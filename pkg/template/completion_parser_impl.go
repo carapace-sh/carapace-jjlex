@@ -267,8 +267,14 @@ func (p *compParser) parseTermComp() {
 				return
 			}
 			if p.peek() == '(' && isFunctionName(ident) {
-				p.currentType = methodReturnType(savedType, ident)
+				methodReturn := methodReturnType(savedType, ident)
+				p.currentType = methodReturn
 				p.parseFunctionCallComp(ident, true, nil)
+				// parseFunctionCallComp may reset currentType via
+				// parsePrimaryComp when parsing arguments. Restore the
+				// method's return type so subsequent method chaining
+				// (e.g. config("x").as_string().upper()) tracks correctly.
+				p.currentType = methodReturn
 			} else {
 				p.pos = saved
 				p.currentType = savedType
@@ -489,9 +495,15 @@ func (p *compParser) parseIdentFuncOrPatternComp() {
 	// Function call (function names cannot contain dashes)
 	baseIdent := p.input[identStart:baseIdentEnd]
 	if p.peek() == '(' && isFunctionName(baseIdent) {
-		p.currentType = globalFunctionReturnType(baseIdent)
+		funcReturn := globalFunctionReturnType(baseIdent)
+		p.currentType = funcReturn
 		p.pos = baseIdentEnd
 		p.parseFunctionCallComp(baseIdent, false, nil)
+		// parseFunctionCallComp may reset currentType via
+		// parsePrimaryComp when parsing arguments. Restore the
+		// function's return type so method chaining (e.g.
+		// config("x").as_string().upper()) tracks correctly.
+		p.currentType = funcReturn
 		return
 	}
 
