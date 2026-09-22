@@ -90,6 +90,9 @@ func actionTags(raw bool) carapace.Action {
 		vals := make([]string, 0)
 		for _, line := range lines[:len(lines)-1] {
 			splitted := strings.SplitN(line, "\t", 2)
+			if len(splitted) < 2 {
+				continue
+			}
 			for tag := range strings.SplitSeq(splitted[0], " ") {
 				if raw {
 					tag = stripDisplayQuotes(tag)
