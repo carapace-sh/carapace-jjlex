@@ -69,6 +69,13 @@ func TestActionTagsEmpty(t *testing.T) {
 	})
 }
 
+func TestActionTagsNoRecords(t *testing.T) {
+	sandbox.Action(t, ActionTags)(func(s *sandbox.Sandbox) {
+		s.Reply("jj", "--color", "never", "--ignore-working-copy", "log", "--no-graph", "--revisions", "tags()", "--template", `tags ++ "\t" ++ description.first_line() ++ "\n"`).With("NO RECORDS FOUND")
+		s.Run("").Expect(carapace.ActionValues())
+	})
+}
+
 func TestActionHeadCommits(t *testing.T) {
 	sandbox.Action(t, func() carapace.Action { return ActionHeadCommits(5) })(func(s *sandbox.Sandbox) {
 		f := fixture.InitT(t, s)
