@@ -86,25 +86,33 @@ func actionTagsRaw() carapace.Action {
 // remove the display quoting that jj adds for special characters.
 func actionTags(raw bool) carapace.Action {
 	return actionExecJJ("log", "--no-graph", "--revisions", "tags()", "--template", `tags ++ "\t" ++ description.first_line() ++ "\n"`)(func(output []byte) carapace.Action {
-		lines := strings.Split(string(output), "\n")
-		vals := make([]string, 0)
-		for _, line := range lines[:len(lines)-1] {
-			splitted := strings.SplitN(line, "\t", 2)
-			if len(splitted) < 2 {
-				continue
-			}
-			for tag := range strings.SplitSeq(splitted[0], " ") {
-				if raw {
-					tag = stripDisplayQuotes(tag)
-				}
-				vals = append(vals, tag, splitted[1])
-			}
-		}
+		vals := parseTagValues(output, raw)
 		if len(vals) == 0 {
 			return carapace.ActionValues()
 		}
 		return carapace.ActionValuesDescribed(vals...).Tag("tags").Style(style.Yellow)
 	})
+}
+
+// parseTagValues parses the output of the tags() template into
+// tag/description pairs. Every record is expected to be
+// `tag[ tag...]\tdescription`; lines without a tab separator (unexpected or
+// placeholder output) are skipped.
+func parseTagValues(output []byte, raw bool) []string {
+	vals := make([]string, 0)
+	for _, line := range strings.Split(string(output), "\n") {
+		splitted := strings.SplitN(line, "\t", 2)
+		if len(splitted) < 2 {
+			continue
+		}
+		for tag := range strings.SplitSeq(splitted[0], " ") {
+			if raw {
+				tag = stripDisplayQuotes(tag)
+			}
+			vals = append(vals, tag, splitted[1])
+		}
+	}
+	return vals
 }
 
 // actionLocalBookmarksRaw completes local bookmarks with raw (unquoted) names.
