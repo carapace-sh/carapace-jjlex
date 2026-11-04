@@ -777,9 +777,11 @@ func (p *compParser) parseSymbolOrFunctionCompletion() {
 		}
 	}
 
-	// Check for @ suffix
-	p.skipWS()
+	// Check for @ suffix (must immediately follow the identifier, so
+	// restore the scan position after the function-call whitespace skip)
+	p.pos = identEnd
 	if !p.atCursorOrEnd() && p.peek() == '@' {
+		p.lastExpr = &Expression{Kind: KindIdentifier, Span: Span{Start: identStart, End: identEnd}, payload: &IdentifierExpr{Name: ident}}
 		p.parseAtSuffixCompletion(identStart, ident)
 		return
 	}
@@ -792,8 +794,30 @@ func (p *compParser) parseSymbolOrFunctionCompletion() {
 // InRemoteSymbol, RemoteBookmarkName, PartialRemote, etc. in the completion
 // context so the action layer can offer remote/workspace completions.
 func (p *compParser) parseAtSuffixCompletion(symStart int, name string) {
-	p.advance() // consume @
-	p.skipWS()
+	atPos := p.pos
+	p.advance() // consume @ (immediate: no whitespace allowed inside x@remote)
+	if !p.atCursorOrEnd() && isWhitespace(p.peek()) {
+		// Whitespace after @ is allowed only before expression delimiters
+		// (e.g. `bookmarks(main@ )`); before a symbol/postfix op jj rejects
+		// it (e.g. `main@ origin`, `main@ -`).
+		saved := p.pos
+		p.skipWS()
+		if !p.atCursorOrEnd() && p.peek() != ')' && p.peek() != ',' && p.peek() != '|' && p.peek() != '&' && p.peek() != '~' {
+			// invalid: rewind so no remote-symbol completion context is set
+			p.pos = atPos
+			return
+		}
+		if p.atCursorOrEnd() {
+			// The cursor rests after the whitespace — the user may still be
+			// typing a delimiter or postfix op; keep the workspace context.
+			p.ctx.InRemoteSymbol = true
+			p.ctx.RemoteBookmarkName = name
+			p.beforeExpression()
+			p.lastExpr = &Expression{Kind: KindAtWorkspace, Span: Span{Start: symStart, End: p.pos}, payload: &AtWorkspaceExpr{Name: name}}
+			return
+		}
+		p.pos = saved
+	}
 	if p.atCursorOrEnd() {
 		// After @ at cursor: could be completing a remote name
 		// or the expression is complete as AtWorkspace

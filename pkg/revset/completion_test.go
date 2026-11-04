@@ -1435,3 +1435,46 @@ func TestCompletionFilesWithNegation(t *testing.T) {
 	assertHasExpected(t, ctx, ExpectedExpression)
 	assertHasExpected(t, ctx, ExpectedClosingParen)
 }
+
+func TestCompletionRemoteSymbolCursorVariants(t *testing.T) {
+	// main@ with cursor at end — AtWorkspace context
+	ctx := ParseForCompletion(`main@`)
+	if !ctx.InRemoteSymbol {
+		t.Error("expected InRemoteSymbol for main@")
+	}
+
+	// main@ori — partial remote
+	ctx = ParseForCompletion(`main@ori`)
+	if !ctx.InRemoteSymbol {
+		t.Error("expected InRemoteSymbol for main@ori")
+	}
+	if ctx.PartialRemote != "ori" {
+		t.Errorf("expected PartialRemote 'ori', got %q", ctx.PartialRemote)
+	}
+}
+
+func TestCompletionAtWhitespaceBeforeDelimiterKeepsContext(t *testing.T) {
+	// Whitespace after @ is allowed before expression delimiters per jj
+	// (bookmarks(main@ ) parses); the context should remain remote/workspace.
+	ctx := ParseForCompletion(`bookmarks(main@ `)
+	if !ctx.InRemoteSymbol {
+		t.Error("expected InRemoteSymbol for bookmarks(main@ )")
+	}
+	if ctx.RemoteBookmarkName != "main" {
+		t.Errorf("expected RemoteBookmarkName 'main', got %q", ctx.RemoteBookmarkName)
+	}
+}
+
+func TestCompletionAtWhitespaceIsNotRemoteSymbol(t *testing.T) {
+	// Whitespace around @ means the expression is invalid per jj; the
+	// completion parser must not enter the remote-symbol completion context.
+	for _, input := range []string{`main @`, `main @origin`, `main@ origin`, `main @"origin"`} {
+		ctx := ParseForCompletion(input)
+		if ctx.InRemoteSymbol {
+			t.Errorf("%q: expected no InRemoteSymbol", input)
+		}
+		if ctx.RemoteBookmarkName != "" {
+			t.Errorf("%q: expected no RemoteBookmarkName, got %q", input, ctx.RemoteBookmarkName)
+		}
+	}
+}

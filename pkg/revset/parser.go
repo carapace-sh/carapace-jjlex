@@ -550,7 +550,7 @@ func (p *parser) parsePrimary() (*Expression, error) {
 			return nil, err
 		}
 		stringEnd := p.pos
-		p.skipWhitespace()
+		// No whitespace skip: @ must immediately follow the symbol
 		expr := &Expression{
 			Kind:    KindString,
 			Span:    Span{Start: start, End: stringEnd},
@@ -564,7 +564,7 @@ func (p *parser) parsePrimary() (*Expression, error) {
 			return nil, err
 		}
 		stringEnd := p.pos
-		p.skipWhitespace()
+		// No whitespace skip: @ must immediately follow the symbol
 		expr := &Expression{
 			Kind:    KindString,
 			Span:    Span{Start: start, End: stringEnd},
@@ -590,14 +590,26 @@ func (p *parser) parsePrimary() (*Expression, error) {
 	}
 }
 
-// parseAtSuffix checks for @ suffix after a string/identifier.
+// parseAtSuffix checks for @ suffix immediately after a string/identifier.
+// No whitespace is allowed on either side of the @ (matching jj's grammar
+// `symbol ~ at_op ~ symbol` / `symbol ~ at_op`), after which a postfix
+// operator may follow (e.g. `main@-`).
 func (p *parser) parseAtSuffix(expr *Expression, start int) (*Expression, error) {
 	if p.peek() != '@' {
 		return expr, nil
 	}
-	p.advance() // consume @
-	p.skipWhitespace()
-
+	p.advance() // consume @ (immediately: no whitespace before it may come)
+	if !p.atEnd() && isWhitespace(p.peek()) {
+		// Whitespace after @ is allowed before expression delimiters (e.g.
+		// `bookmarks(main@ )`), but not before a remote/workspace symbol or
+		// a postfix operator (`main@ origin`, `main@ -` are rejected by jj).
+		saved := p.pos
+		p.skipWhitespace()
+		if !p.atEnd() && p.peek() != ')' && p.peek() != ',' && p.peek() != '|' && p.peek() != '&' && p.peek() != '~' {
+			return nil, p.syntaxError("expected workspace/remote symbol or delimiter after '@'")
+		}
+		p.pos = saved
+	}
 	if p.atEnd() || p.peek() == ')' || p.peek() == ',' || p.peek() == '|' || p.peek() == '&' || p.peek() == '~' || p.peek() == '-' || p.peek() == '+' {
 		name := p.extractString(expr)
 		return &Expression{
@@ -683,7 +695,9 @@ func (p *parser) parseSymbolOrFunction(start int) (*Expression, error) {
 		}
 	}
 
-	// Plain identifier (possibly with @ suffix)
+	// Plain identifier (possibly with @ suffix — which must immediately
+	// follow the identifier, so restore the scan position first)
+	p.pos = identEnd
 	expr := &Expression{
 		Kind:    KindIdentifier,
 		Span:    Span{Start: start, End: p.pos},

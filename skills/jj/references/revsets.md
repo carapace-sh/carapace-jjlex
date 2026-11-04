@@ -309,8 +309,8 @@ neighbors_expression = primary ~ (parents_op | children_op)*
 primary          = "(" ~ whitespace* ~ expression ~ whitespace* ~ ")"
                  | function
                  | pattern
-                 | symbol ~ at_op ~ symbol    # name@remote
-                 | symbol ~ at_op             # name@  (workspace)
+                 | symbol ~ at_op ~ symbol    # name@remote — @ must be adjacent, no whitespace on either side
+                 | symbol ~ at_op             # name@  (workspace, adjacent); may be followed by postfix ops
                  | symbol
                  | at_op                      # @ (current workspace)
 pattern          = strict_identifier ~ ":" ~ pattern_value_expression
