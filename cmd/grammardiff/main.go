@@ -160,6 +160,9 @@ func main() {
 	}
 }
 
+// languages lists the corpus keys in iteration order.
+var languages = []string{"revset", "fileset", "template"}
+
 func run(jjBin, corpusPath string) (*summary, error) {
 	lines := defaultCorpus
 	if corpusPath != "" {
@@ -172,14 +175,14 @@ func run(jjBin, corpusPath string) (*summary, error) {
 		}
 	}
 
-	repoDir, cleanup, err := newSandbox(jjBin)
+	sb, err := newSandbox(jjBin)
 	if err != nil {
 		return nil, err
 	}
-	defer cleanup()
+	defer sb.cleanup()
 
 	s := &summary{}
-	for _, lang := range []string{"revset", "fileset", "template"} {
+	for _, lang := range languages {
 		exprs, ok := lines[lang]
 		if !ok {
 			continue
@@ -189,7 +192,7 @@ func run(jjBin, corpusPath string) (*summary, error) {
 			return nil, fmt.Errorf("unknown language %q", lang)
 		}
 		for _, expr := range exprs {
-			r := check(jjBin, repoDir, lang, expr, parser)
+			r := check(jjBin, sb, lang, expr, parser)
 			if r.Verdict == "mismatch" {
 				s.MismatchCount++
 			}
@@ -212,10 +215,10 @@ func parserFor(lang string) func(string) error {
 	return nil
 }
 
-func check(jjBin, repoDir, lang, expr string, parser func(string) error) result {
+func check(jjBin string, sb *sandbox, lang, expr string, parser func(string) error) result {
 	r := result{Language: lang, Expr: expr}
 	r.Dev = verdictFor(parser(expr))
-	stderr, runErr := runJJ(jjBin, repoDir, lang, expr)
+	stderr, runErr := runJJ(jjBin, sb, lang, expr)
 	r.JJ, r.JJError = classifyJJ(lang, stderr, runErr)
 	r.Verdict = verdict(r.Dev, r.JJ)
 	return r
@@ -237,6 +240,11 @@ func verdict(dev, jj string) string {
 			return "match"
 		}
 		return "mismatch"
+	case "harness":
+		// Environment problems are not grammar verdicts; report them as a
+		// separate class so a missing/broken jj binary is distinguishable
+		// from parser divergence and excluded from mismatch counting.
+		return "harness"
 	default: // "syntax"
 		if dev == "reject" {
 			return "match"
@@ -245,7 +253,7 @@ func verdict(dev, jj string) string {
 	}
 }
 
-func runJJ(jjBin, dir, lang, expr string) (string, error) {
+func runJJ(jjBin string, sb *sandbox, lang, expr string) (string, error) {
 	var args []string
 	switch lang {
 	case "template":
@@ -258,8 +266,8 @@ func runJJ(jjBin, dir, lang, expr string) (string, error) {
 		return "", fmt.Errorf("unknown language %q", lang)
 	}
 	cmd := exec.Command(jjBin, args...)
-	cmd.Dir = dir
-	cmd.Env = sandboxEnv()
+	cmd.Dir = sb.repo
+	cmd.Env = sb.env()
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -338,42 +346,55 @@ func isSemanticFailure(stderr string) bool {
 
 // sandboxEnv returns a neutral environment for jj: pristine user config, no
 // pager, no editor, no colors.
-func sandboxEnv() []string {
-	env := os.Environ()
-	env = append(env,
+type sandbox struct {
+	base string
+	repo string
+	home string
+}
+
+func (s *sandbox) cleanup() {
+	os.RemoveAll(s.base)
+}
+
+// env returns a neutral environment for every jj invocation; in particular a
+// pristine HOME so user config (aliases etc.) cannot influence the outcome.
+func (s *sandbox) env() []string {
+	return append(os.Environ(),
+		"HOME="+s.home,
 		"JJ_CONFIG=/dev/null",
 		"JJ_EDITOR=false",
 		"JJ_PAGER=cat",
 		"NO_COLOR=1",
 		"TERM=dumb",
 	)
-	return env
 }
 
-// newSandbox creates a throwaway jj repository in a temp dir with a pristine
-// HOME so user config cannot influence the outcome.
-func newSandbox(jjBin string) (dir string, cleanup func(), err error) {
+// newSandbox creates a throwaway jj repository in a temp dir.
+func newSandbox(jjBin string) (*sandbox, error) {
 	base, err := os.MkdirTemp("", "jjlex-grammardiff-")
 	if err != nil {
-		return "", nil, fmt.Errorf("creating temp dir: %w", err)
+		return nil, fmt.Errorf("creating temp dir: %w", err)
 	}
-	fail := func(e error) (string, func(), error) {
+	fail := func(e error) (*sandbox, error) {
 		os.RemoveAll(base)
-		return "", nil, e
+		return nil, e
 	}
-	repo := filepath.Join(base, "repo")
-	home := filepath.Join(base, "home")
-	if err := os.MkdirAll(home, 0o700); err != nil {
+	sb := &sandbox{
+		base: base,
+		repo: filepath.Join(base, "repo"),
+		home: filepath.Join(base, "home"),
+	}
+	if err := os.MkdirAll(sb.home, 0o700); err != nil {
 		return fail(fmt.Errorf("creating home dir: %w", err))
 	}
 
-	cmd := exec.Command(jjBin, "git", "init", repo)
+	cmd := exec.Command(jjBin, "git", "init", sb.repo)
 	cmd.Dir = base
-	cmd.Env = append(sandboxEnv(), "HOME="+home)
+	cmd.Env = sb.env()
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if initErr := cmd.Run(); initErr != nil {
 		return fail(fmt.Errorf("jj git init: %w: %s", initErr, stderr.String()))
 	}
-	return repo, func() { os.RemoveAll(base) }, nil
+	return sb, nil
 }
