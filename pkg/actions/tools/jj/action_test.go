@@ -1,6 +1,7 @@
 package jj
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/carapace-sh/carapace"
@@ -219,6 +220,41 @@ func TestRevsetKeywordArgsLogic(t *testing.T) {
 	args = revsetKeywordArgs("diff_lines_removed")
 	if len(args) != 1 || args[0].name != "files" {
 		t.Errorf("expected files keyword for diff_lines_removed, got %v", args)
+	}
+}
+
+func TestParseTagValues(t *testing.T) {
+	cases := []struct {
+		name   string
+		output string
+		raw    bool
+		want   []string
+	}{
+		{"single tag", "v1.0\tfirst commit\n", false, []string{"v1.0", "first commit"}},
+		{"multiple tags on one commit", "v1.0 v2.0\tsome commit\n", false, []string{"v1.0", "some commit", "v2.0", "some commit"}},
+		{"multiple commits", "v1.0\tfirst\nv2.0\tsecond\n", false, []string{"v1.0", "first", "v2.0", "second"}},
+		{"raw strips display quotes", "\"parents(\"\tdesc\n", true, []string{"parents(", "desc"}},
+		{"empty output", "", false, nil},
+		{"no trailing newline", "v1.0\tfirst", false, []string{"v1.0", "first"}},
+		{"trailing newline", "v1.0\tfirst\n", false, []string{"v1.0", "first"}},
+		{"blank line is skipped", "v1.0\tfirst\n\nv2.0\tsecond\n", false, []string{"v1.0", "first", "v2.0", "second"}},
+		{"non-tab line is skipped", "unexpected output line\n", false, nil},
+		{"non-tab line without newline", "unexpected output line", false, nil},
+		{"mixed tab and non-tab lines", "unexpected\nv1.0\tfirst\n", false, []string{"v1.0", "first"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := parseTagValues([]byte(tc.output), tc.raw)
+			if len(tc.want) == 0 {
+				if len(got) != 0 {
+					t.Errorf("expected no values for %q, got %v", tc.output, got)
+				}
+				return
+			}
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("parseTagValues(%q, %v) = %v, want %v", tc.output, tc.raw, got, tc.want)
+			}
+		})
 	}
 }
 
