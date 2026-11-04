@@ -177,12 +177,11 @@ When modifying operator precedence or parsing rules in `parser.go`, the same cha
 - Range operators (`::`, `..`) cannot be nested without parentheses
 - Prefix `::` and `..` do not allow whitespace between operator and operand
 
-### Known revset parser divergences from jj (found by `cmd/grammardiff`)
+### Revset divergences from jj found by `cmd/grammardiff`
 
-These are accepted by this library's revset parser but rejected by jj at build time; fixing them is a pending revset-parser strictness task (must be mirrored in the completion parser):
+- Pattern shorthand with non-pattern-kind names: `author:exact:"a"` and `author:"x"` — jj's grammar allows `pattern = strict_identifier ":" ...` as an expression primary, but jj rejects it at build time ("`:` is not an infix operator") when the name is not a registered pattern kind. Our parser models the grammar level, so these parse — this is by design (grammardiff classifies the jj rejection as semantic, not syntactic).
 
-- Pattern shorthand with non-pattern-kind names: `author:exact:"a"` and `author:"x"` — jj's grammar allows `pattern = strict_identifier ":" ...` as an expression primary, but jj rejects it at build time ("`:` is not an infix operator") when the name is not a registered pattern kind. Our parser models the grammar level, so these parse.
-- Whitespace before `@` in `symbol @` positions: `visible("parents(" @-)` is rejected by jj (the grammar is `symbol ~ at_op ~ symbol` / `symbol ~ at_op` with no whitespace), while our parser accepts it.
+Resolved: whitespace around `@` used to be accepted (`visible("parents(" @-)`, `main@ origin`); the revset parser and completion parser now require `@` to be immediately adjacent on both sides (jj's `symbol ~ at_op ~ symbol` rule), and `@` can no longer attach to function calls (`mine()@origin` is rejected).
 
 ### Fileset operator simplicity
 

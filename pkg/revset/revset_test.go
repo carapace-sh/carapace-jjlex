@@ -878,3 +878,41 @@ func TestParseDifferencePrecedence(t *testing.T) {
 		t.Fatalf("expected Difference at top, got %v", expr.Kind)
 	}
 }
+
+func TestParseAtAdjacency(t *testing.T) {
+	// @ must immediately follow the symbol (identifier or quoted string),
+	// and be immediately followed by the remote/workspace symbol or a
+	// postfix operator — matching jj's `symbol ~ at_op ~ symbol` grammar.
+
+	// Workspace and remote symbols with @ directly adjacent parse
+	testParseKind(t, "main@", KindAtWorkspace)
+	testParseKind(t, "main@origin", KindRemoteSymbol)
+	testParseKind(t, `"main"@origin`, KindRemoteSymbol)
+	testParseKind(t, `'main'@origin`, KindRemoteSymbol)
+	testParseKind(t, `"main"@"origin"`, KindRemoteSymbol)
+	// @- parses as the workspace symbol with a postfix parent operator
+	expr, err := Parse("main@-")
+	if err != nil {
+		t.Fatalf("parse main@-: %v", err)
+	}
+	if expr.Kind != KindUnary || expr.UnaryOp() != Parents {
+		t.Errorf("parse main@-: expected unary Parents over AtWorkspace, got %v", expr.Kind)
+	}
+
+	// Whitespace on either side of @ is invalid
+	testParseError(t, "main @")
+	testParseError(t, `"main" @`)
+	testParseError(t, "main@ origin")
+	testParseError(t, `main @"origin"`)
+	testParseError(t, `"main" @-`)
+	testParseError(t, "main @ origin")
+
+	// Whitespace after @ before a delimiter is valid (jj parses
+	// bookmarks(main@ ) up to a semantic error)
+	testParseKind(t, `bookmarks(main@ )`, KindFunctionCall)
+	testParseKind(t, `bookmarks(main@,)`, KindFunctionCall)
+
+	// @ cannot attach to a function call
+	testParseError(t, "mine()@origin")
+	testParseError(t, "mine() @-")
+}
