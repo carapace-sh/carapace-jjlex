@@ -100,6 +100,26 @@ func testParseEqual(t *testing.T, input, expected string) {
 	}
 }
 
+func TestParseMapLiterals(t *testing.T) {
+	testParseKind(t, `{"a" => "b"}`, KindMap)
+	testParseKind(t, `{}`, KindMap)
+	testParseKind(t, `{ a => "b ++ c" }`, KindMap)
+	testParseKind(t, `{"a" => 1,}`, KindMap)
+	testParseKind(t, `json({"commit_id" => commit_id})`, KindFunctionCall)
+	testParseKind(t, `{"a" ++ "b" => 'c'}`, KindMap)
+	testParseKind(t, `{ x:y => none }`, KindMap)
+
+	testParseEqual(t, `{"a" => "b"}`, `{"a" => "b"}`)
+	testParseEqual(t, `{}`, `{}`)
+	testParseEqual(t, `{"a" => 1,}`, `{"a" => 1}`)
+	testParseEqual(t, `{ a => "b" ++ "c" }`, `{a => "b" ++ "c"}`)
+	testParseEqual(t, `json({x => y})`, `json({x => y})`)
+
+	testParseError(t, `{"a" => "b"`)
+	testParseError(t, `{"a" => }`)
+	testParseError(t, `{"a"`)
+}
+
 func TestParseLiterals(t *testing.T) {
 	testParseKind(t, `"hello"`, KindString)
 	testParseKind(t, `'raw string'`, KindString)

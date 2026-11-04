@@ -666,7 +666,8 @@ func TestCompletionLambdaParamTypeChained(t *testing.T) {
 }
 
 func TestCompletionContainedIn(t *testing.T) {
-	// self.contained_in() takes a string literal revset argument
+	// self.contained_in() takes a Stringify revset argument (jj 0.47.0):
+	// any template expression works, not just a string literal
 	ctx := ParseForCompletion(`if(self.contained_in(`)
 	if ctx.Function == nil {
 		t.Fatal("expected Function context")
@@ -689,6 +690,31 @@ func TestCompletionTrailersContainsKey(t *testing.T) {
 	}
 }
 
+func TestCompletionRevsetFunctionChaining(t *testing.T) {
+	// revset() returns List<Commit>: the .map(|c|...) lambda parameter
+	// resolves to Commit, and method completion chains through it.
+	ctx := ParseForCompletion(`revset("mine()").map(|c| c.`)
+	if ctx.MethodType != "Commit" {
+		t.Errorf("expected MethodType Commit, got %q", ctx.MethodType)
+	}
+	assertHasExpected(t, ctx, ExpectedExpression)
+}
+
+func TestMethodReturnTypeOptionDelegation(t *testing.T) {
+	if rt := methodReturnType("Option<TreeValue>", "object_id"); rt != "String" {
+		t.Errorf("expected String via Option delegation, got %q", rt)
+	}
+	if rt := methodReturnType("Option<Commit>", "description"); rt != "String" {
+		t.Errorf("expected String via Option delegation, got %q", rt)
+	}
+	if rt := methodReturnType("List<Option<Commit>>", "first"); rt != "Option<Option<Commit>>" {
+		t.Errorf("expected Option<Option<Commit>>, got %q", rt)
+	}
+	if rt := globalFunctionReturnType("revset"); rt != "List<Commit>" {
+		t.Errorf("expected List<Commit> for revset, got %q", rt)
+	}
+}
+
 // --- Helpers ---
 
 func assertHasExpected(t *testing.T, ctx *CompletionContext, expected ExpectedToken) {
@@ -697,6 +723,87 @@ func assertHasExpected(t *testing.T, ctx *CompletionContext, expected ExpectedTo
 		return
 	}
 	t.Errorf("expected %s in ExpectedTokens, got %v", expected, ctx.ExpectedTokens)
+}
+
+func TestCompletionMapStart(t *testing.T) {
+	ctx := ParseForCompletion("json({")
+	assertHasExpected(t, ctx, ExpectedExpression)
+	assertHasExpected(t, ctx, ExpectedMapArrow)
+	assertHasExpected(t, ctx, ExpectedClosingBrace)
+}
+
+func TestCompletionMapAfterKey(t *testing.T) {
+	ctx := ParseForCompletion(`json({"a" `)
+	assertHasExpected(t, ctx, ExpectedMapArrow)
+	assertHasExpected(t, ctx, ExpectedComma)
+	assertHasExpected(t, ctx, ExpectedClosingBrace)
+}
+
+func TestCompletionMapAfterArrow(t *testing.T) {
+	ctx := ParseForCompletion(`json({"a" => `)
+	assertHasExpected(t, ctx, ExpectedExpression)
+	assertHasExpected(t, ctx, ExpectedClosingBrace)
+}
+
+func TestCompletionMapAfterValue(t *testing.T) {
+	ctx := ParseForCompletion(`json({"a" => "x"`)
+	assertHasExpected(t, ctx, ExpectedComma)
+	assertHasExpected(t, ctx, ExpectedClosingBrace)
+}
+
+func TestCompletionMapAfterComma(t *testing.T) {
+	ctx := ParseForCompletion(`json({"a" => "x", `)
+	assertHasExpected(t, ctx, ExpectedExpression)
+	assertHasExpected(t, ctx, ExpectedClosingBrace)
+}
+
+func TestMethodReturnTypeListOption(t *testing.T) {
+	if rt := methodReturnType("List<Commit>", "first"); rt != "Option<Commit>" {
+		t.Errorf("expected Option<Commit>, got %q", rt)
+	}
+	if rt := methodReturnType("List<Commit>", "get"); rt != "Option<Commit>" {
+		t.Errorf("expected Option<Commit> for get, got %q", rt)
+	}
+	if rt := methodReturnType("List<Commit>", "reverse"); rt != "List<Commit>" {
+		t.Errorf("expected List<Commit> for reverse, got %q", rt)
+	}
+	if rt := methodReturnType("List<Trailer>", "contains_key"); rt != "Boolean" {
+		t.Errorf("expected Boolean for contains_key, got %q", rt)
+	}
+	if rt := methodReturnType("AnyList", "join"); rt != "Template" {
+		t.Errorf("expected Template for AnyList join, got %q", rt)
+	}
+}
+
+func TestCompletionMapStringSuppressesMapTokens(t *testing.T) {
+	// While inside an unclosed string (e.g. typing a JSON key), map tokens
+	// must not be offered — matching the string-quote suppression rule used
+	// elsewhere (operators are suppressed inside unclosed strings).
+	ctx := ParseForCompletion(`json({"`)
+	assertHasExpected(t, ctx, ExpectedStringClose)
+	// map-specific tokens must not appear; `)` and `,` come from the
+	// enclosing function-arg context (pre-existing behavior)
+	for _, tok := range []ExpectedToken{ExpectedMapArrow, ExpectedClosingBrace} {
+		if slices.Contains(ctx.ExpectedTokens, tok) {
+			t.Errorf("unexpected %q while inside an unclosed string", tok.String())
+		}
+	}
+
+	ctx = ParseForCompletion(`json({"a" => "x`)
+	assertHasExpected(t, ctx, ExpectedStringClose)
+	for _, tok := range []ExpectedToken{ExpectedMapArrow, ExpectedClosingBrace} {
+		if slices.Contains(ctx.ExpectedTokens, tok) {
+			t.Errorf("unexpected %q while inside an unclosed string", tok.String())
+		}
+	}
+}
+
+func TestCompletionMapValueMethod(t *testing.T) {
+	ctx := ParseForCompletion(`json({"a" => self.`)
+	if ctx.MethodType != "Commit" {
+		t.Errorf("expected MethodType Commit, got %q", ctx.MethodType)
+	}
+	assertHasExpected(t, ctx, ExpectedClosingBrace)
 }
 
 func assertHasOperator(t *testing.T, ctx *CompletionContext, op string) {

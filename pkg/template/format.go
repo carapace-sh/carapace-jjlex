@@ -153,6 +153,15 @@ func formatExprInner(e *Expression) string {
 			return fmt.Sprintf("|| %s", body)
 		}
 		return fmt.Sprintf("|%s| %s", params, body)
+	case KindMap:
+		m := e.payload.(*MapExpr)
+		parts := make([]string, 0, len(m.Entries))
+		for _, entry := range m.Entries {
+			key := formatExpression(entry.Key, precTemplate)
+			value := formatExpression(entry.Value, precTemplate)
+			parts = append(parts, key+" => "+value)
+		}
+		return fmt.Sprintf("{%s}", strings.Join(parts, ", "))
 	}
 	return ""
 }

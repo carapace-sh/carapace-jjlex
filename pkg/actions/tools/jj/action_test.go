@@ -434,3 +434,151 @@ func TestIsStringPatternFunction(t *testing.T) {
 		})
 	}
 }
+
+func TestActionTemplateFunctions(t *testing.T) {
+	sandbox.Action(t, func() carapace.Action {
+		return ActionTemplateFunctions()
+	})(func(s *sandbox.Sandbox) {
+		s.Run("").Expect(carapace.Batch(
+			carapace.ActionValuesDescribed(
+				"true", "Boolean true literal",
+				"false", "Boolean false literal",
+			).Uid("jj", "template-function", "args", "false"),
+			carapace.ActionValuesDescribed(
+				"fill", "Fill lines at width",
+				"indent", "Indent non-empty lines with prefix",
+				"pad_start", "Left-justify with fill chars",
+				"pad_end", "Right-justify with fill chars",
+				"pad_centered", "Center with fill chars",
+				"truncate_start", "Truncate from start",
+				"truncate_end", "Truncate from end",
+				"hash", "Hash and return hex digest",
+				"label", "Apply color label",
+				"hyperlink", "Render OSC 8 hyperlink",
+				"raw_escape_sequence", "Preserve escape sequences",
+				"stringify", "Format content to string",
+				"json", "Serialize to JSON",
+				"if", "Conditional evaluation",
+				"coalesce", "First non-empty content",
+				"concat", "Concatenate all",
+				"join", "Insert separator between items",
+				"separate", "Insert separator between non-empty items",
+				"surround", "Wrap non-empty content",
+				"config", "Look up config value",
+				"revset", "Evaluate a revset expression",
+				"git_web_url", "Convert git URL to HTTPS browse URL",
+				"replace", "Replace matches using pattern",
+				"try", "First successful result, suppresses runtime errors",
+			).Suffix("(").Uid("jj", "template-function", "args", "true"),
+		).ToA().Tag("template functions"))
+	})
+}
+
+func TestActionTemplateTypeMethodsTreeEntry(t *testing.T) {
+	sandbox.Action(t, func() carapace.Action {
+		return ActionTemplateTypeMethods("TreeEntry")
+	})(func(s *sandbox.Sandbox) {
+		s.Run("").Expect(carapace.ActionValuesDescribed(
+			"path", "RepoPath of the file",
+			"normal_value", "Resolved value as Option<TreeValue>",
+			"removed_values", "List of removed TreeValues (Option entries)",
+			"added_values", "List of added TreeValues (Option entries)",
+			"conflict", "Whether the file is conflicted",
+			"conflict_side_count", "Number of conflict sides",
+			"file_type", "File type as String",
+			"executable", "Whether the file is executable",
+		).Suffix("()").Uid("jj", "template-method-treeentry", "args", "false").
+			Tag("template methods"))
+	})
+}
+
+func TestActionTemplateTypeMethodsTreeValue(t *testing.T) {
+	sandbox.Action(t, func() carapace.Action {
+		return ActionTemplateTypeMethods("TreeValue")
+	})(func(s *sandbox.Sandbox) {
+		s.Run("").Expect(carapace.ActionValuesDescribed(
+			"object_id", "Full hex object ID as String",
+			"file_type", "File type as String",
+			"executable", "Whether the value is executable",
+		).Suffix("()").Uid("jj", "template-method-treevalue", "args", "false").
+			Tag("template methods"))
+	})
+}
+
+func TestActionTemplateTypeMethodsWorkspaceRef(t *testing.T) {
+	sandbox.Action(t, func() carapace.Action {
+		return ActionTemplateTypeMethods("WorkspaceRef")
+	})(func(s *sandbox.Sandbox) {
+		s.Run("").Expect(carapace.ActionValuesDescribed(
+			"name", "Workspace name as RefSymbol",
+			"current_workspace", "Whether this is the current workspace",
+			"target", "Target Commit",
+			"root", "Root path as Option<FsPath>",
+		).Suffix("()").Uid("jj", "template-method-workspaceref", "args", "false").
+			Tag("template methods"))
+	})
+}
+
+func TestActionTemplatesMapStart(t *testing.T) {
+	prefix := `json({`
+	sandbox.Action(t, func() carapace.Action {
+		return ActionTemplates()
+	})(func(s *sandbox.Sandbox) {
+		s.Run(`json({`).Expect(carapace.Batch(
+			carapace.ActionValues("=>", ",", "}").Prefix(prefix),
+			carapace.Batch(
+				ActionTemplateFunctions(),
+				ActionCommitKeywords(),
+				carapace.ActionValuesDescribed("self", "Current context object (Commit in jj log)").Uid("jj", "template-keyword", "name", "self"),
+				ActionStringPatterns().Suffix(":"),
+			).ToA().NoSpace().Prefix(prefix),
+			ActionTemplateOperators().NoSpace().Prefix(prefix),
+		).ToA().NoSpace())
+	})
+}
+
+func TestActionTemplateKeywordArgs(t *testing.T) {
+	sandbox.Action(t, func() carapace.Action {
+		return ActionTemplateKeywordArgs("fill")
+	})(func(s *sandbox.Sandbox) {
+		s.Run("").Expect(carapace.ActionValuesDescribed(
+			"break_words", "Whether to break words longer than width",
+		).Tag("keyword arguments"))
+	})
+}
+
+func TestActionTemplatesKeywordArg(t *testing.T) {
+	sandbox.Action(t, func() carapace.Action {
+		return ActionTemplates()
+	})(func(s *sandbox.Sandbox) {
+		s.Run(`fill(bre`).Expect(ActionTemplateKeywordArgs("fill").Suffix("=").Prefix(`fill(`))
+	})
+}
+
+func TestActionTemplatesRevsetStringArg(t *testing.T) {
+	sandbox.Action(t, func() carapace.Action {
+		return ActionTemplates()
+	})(func(s *sandbox.Sandbox) {
+		f := fixture.InitT(t, s)
+		f.CommitAdd("a.txt", "a", "first commit")
+		f.CreateBookmark("main")
+
+		// Inside revset("m, the string is a revset symbol reference:
+		// offer bookmarks/tags/commits with the closing quote as suffix.
+		s.Run(`revset("m`).Expect(actionQuotedRevsetArg(RevOpts{}.Default()).Suffix(`"`).Prefix(`revset("`).NoSpace())
+	})
+}
+
+func TestActionTemplatesContainedInStringArg(t *testing.T) {
+	sandbox.Action(t, func() carapace.Action {
+		return ActionTemplates()
+	})(func(s *sandbox.Sandbox) {
+		f := fixture.InitT(t, s)
+		f.CommitAdd("a.txt", "a", "first commit")
+		f.CreateBookmark("main")
+
+		s.Run(`self.contained_in("m`).Expect(
+			actionQuotedRevsetArg(RevOpts{}.Default()).Suffix(`"`).Prefix(`self.contained_in("`),
+		)
+	})
+}

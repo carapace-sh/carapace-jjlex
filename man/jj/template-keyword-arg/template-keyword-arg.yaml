@@ -1,0 +1,20 @@
+break_words: |
+  `break_words=<boolean>`: Whether to break words longer than `width` in the `fill()` function.
+
+  Example:
+  - `fill(80, description, break_words=true)`
+fill_char: |
+  `fill_char=<template>`: Character used to pad the content in the `pad_start()`, `pad_end()`, and `pad_centered()` functions.
+
+  Example:
+  - `pad_start(10, change_id, fill_char=".")`
+ellipsis: |
+  `ellipsis=<template>`: Ellipsis shown for truncated content in the `truncate_start()` and `truncate_end()` functions.
+
+  Example:
+  - `truncate_start(10, description, ellipsis="...")`
+remote: |
+  `remote=<string>`: Remote name for the `git_web_url()` function. Defaults to the `origin` remote.
+
+  Example:
+  - `git_web_url(remote="upstream")`

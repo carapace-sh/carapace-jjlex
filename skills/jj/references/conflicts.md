@@ -122,3 +122,5 @@ conflict-marker-style = "diff" | "snapshot" | "git"
 merge-tool-edits-conflict-markers = true | false
 ```
 
+Built-in `:editor` merge tool (jj 0.47.0+): `jj resolve` can use `:editor`, which opens the conflicted file (with conflict markers) in your text editor. Unlike external merge tools it supports conflicts with more than two sides. `jj run` now materializes conflicts using `ui.conflict-marker-style` instead of always the `snapshot` style.
+

@@ -1,5 +1,7 @@
 name: |
   `name()`: Returns the workspace name as a RefSymbol.
+current_workspace: |
+  `current_workspace()`: Returns `true` if this is the current workspace. Note this can differ from `self.target().current_working_copy()` because multiple workspaces can point to the same commit.
 target: |
   `target()`: Returns the target [Commit](jj://template-method-commit/description).
 root: |

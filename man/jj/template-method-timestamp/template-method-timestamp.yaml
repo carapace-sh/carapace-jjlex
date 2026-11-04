@@ -1,7 +1,7 @@
 ago: |
   `ago()`: Returns a relative time string (e.g. "2 hours ago") as a [String](jj://template-method-string/len).
 format: |
-  `format(pattern)`: Formats the timestamp using a strftime-like pattern.
+  `format(pattern)`: Formats the timestamp using a [strftime](https://docs.rs/jiff/latest/jiff/fmt/strtime/index.html)-like pattern (jiff syntax, changes in jj 0.47: `%v` and `%+` removed, `%Z` prints a time zone abbreviation, `%f` prints only as many digits as needed).
 utc: |
   `utc()`: Converts the timestamp to UTC timezone.
 local: |

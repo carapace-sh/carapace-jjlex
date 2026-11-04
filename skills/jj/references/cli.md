@@ -103,7 +103,9 @@ See [bookmarks.md](bookmarks.md) for conceptual details.
 | `jj file show <PATH>` | Print file contents |
 | `jj file annotate <PATH>` | Show source change per line |
 | `jj file chmod <MODE> <PATH>` | Set or remove executable bit |
-| `jj file search [FILESETS]...` | Search for content in files |
+| `jj file search [FILESETS]...` | Search for content in files (`--binary-as-text`/`--skip-binary` control binary handling) |
+| `jj file edit <PATH>` | Edit a file in any revision without switching the working copy |
+| `jj file delete <PATH>` | Delete a file in a revision |
 | `jj file track <PATH>` | Start tracking a path |
 | `jj file untrack <PATH>` | Stop tracking a path |
 
@@ -114,7 +116,7 @@ See [git-compat.md](git-compat.md) for full Git comparison and migration guide.
 | Command | Description |
 |---------|-------------|
 | `jj git fetch [--remote <NAME>]` | Fetch from a Git remote |
-| `jj git push [--all] [--bookmark <NAME>]` | Push to a Git remote |
+| `jj git push [--all] [--bookmark <NAME>] [--remote <NAME>]` | Push to one or more Git remotes (`--remote` is repeatable, or configure `git.push`) |
 | `jj git export` | Update underlying Git repo with jj changes |
 | `jj git import` | Update jj with changes from underlying Git repo |
 | `jj git remote add/remove/list/rename/set-url` | Manage Git remotes |
@@ -134,16 +136,17 @@ See [operations.md](operations.md) for conceptual details.
 | `jj op revert <OP>` | Revert a specific operation |
 | `jj op abandon` | Abandon operation history |
 | `jj op integrate` | Make an operation part of the log |
-| `jj undo` | Undo the last operation |
-| `jj redo` | Redo the most recently undone operation |
+| `jj undo [--allow-cross-workspace]` | Undo the last operation |
+| `jj redo [--allow-cross-workspace]` | Redo the most recently undone operation |
 
 ### Workspaces (`jj workspace`)
 
 | Command | Description |
 |---------|-------------|
-| `jj workspace add <NAME>` | Add a workspace |
+| `jj workspace add <NAME> [--colocate]/[--no-colocate]` | Add a workspace (colocates by default when the current workspace is colocated and `git.colocate` is true) |
 | `jj workspace list` | List workspaces |
-| `jj workspace forget <NAME>` | Stop tracking a workspace |
+| `jj workspace remove <NAME>` | Remove a workspace and its directory from disk (snapshots the working copy before removal); can remove stale workspaces |
+| `jj workspace forget <NAME>` | Stop tracking a workspace (also removes the corresponding Git worktree when one exists) |
 | `jj workspace rename <NAME>` | Rename the current workspace |
 | `jj workspace root` | Show workspace root directory |
 | `jj workspace update-stale` | Update a stale workspace |

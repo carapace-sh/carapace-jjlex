@@ -324,6 +324,8 @@ func (p *compParser) parsePrimaryComp() {
 		p.currentType = "Integer"
 	case isIdentifierStart(ch):
 		p.parseIdentFuncOrPatternComp()
+	case ch == '{':
+		p.parseMapComp()
 	default:
 		p.beforeExpression()
 	}
@@ -345,6 +347,112 @@ func (p *compParser) parseParenthesizedComp() {
 	}
 	if p.peek() == ')' {
 		p.advance()
+	}
+}
+
+// parseMapComp handles completion inside a map literal: { template => template }
+func (p *compParser) parseMapComp() {
+	p.advance() // consume {
+	p.skipWS()
+	if p.atCursorOrEnd() {
+		p.beforeExpression()
+		p.addExpected(ExpectedMapArrow)
+		p.addExpected(ExpectedClosingBrace)
+		return
+	}
+	p.skipWS()
+	if p.peek() == '}' {
+		// empty map
+		p.advance()
+		p.consumed = true
+		return
+	}
+	for {
+		p.skipWS()
+		if p.atCursorOrEnd() {
+			p.beforeExpression()
+			p.addExpected(ExpectedMapArrow)
+			p.addExpected(ExpectedClosingBrace)
+			return
+		}
+		if p.peek() == '}' {
+			p.advance()
+			return
+		}
+
+		// map entry key
+		p.parseTemplateComp()
+		p.skipWS()
+		if p.atCursorOrEnd() {
+			if p.consumed {
+				p.afterExpression()
+			}
+			if p.ctx.StringQuote == 0 {
+				p.addExpected(ExpectedMapArrow)
+				p.addExpected(ExpectedComma)
+				p.addExpected(ExpectedClosingBrace)
+			}
+			return
+		}
+		if !p.matchString("=>") {
+			if p.consumed {
+				p.afterExpression()
+			}
+			if p.ctx.StringQuote == 0 {
+				p.addExpected(ExpectedMapArrow)
+				p.addExpected(ExpectedComma)
+				p.addExpected(ExpectedClosingBrace)
+			}
+			return
+		}
+		p.pos += 2
+		p.afterOperator = true
+		p.skipWS()
+		if p.atCursorOrEnd() {
+			p.beforeExpression()
+			p.addExpected(ExpectedClosingBrace)
+			return
+		}
+
+		// map entry value
+		p.consumed = false
+		p.afterOperator = false
+		p.parseTemplateComp()
+		p.skipWS()
+		if p.atCursorOrEnd() {
+			if p.consumed {
+				p.afterExpression()
+			}
+			if p.ctx.StringQuote == 0 {
+				p.addExpected(ExpectedComma)
+				p.addExpected(ExpectedClosingBrace)
+			}
+			return
+		}
+		if p.peek() == ',' {
+			p.advance()
+			p.skipWS()
+			if p.atCursorOrEnd() {
+				p.beforeExpression()
+				if p.ctx.StringQuote == 0 {
+					p.addExpected(ExpectedClosingBrace)
+				}
+				return
+			}
+			continue
+		}
+		if p.peek() == '}' {
+			p.advance()
+			return
+		}
+		if p.consumed {
+			p.afterExpression()
+		}
+		if p.ctx.StringQuote == 0 {
+			p.addExpected(ExpectedComma)
+			p.addExpected(ExpectedClosingBrace)
+		}
+		return
 	}
 }
 

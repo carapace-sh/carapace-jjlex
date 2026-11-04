@@ -11,11 +11,11 @@ any: |
 all: |
   `all(|item| expr)`: Returns `true` if all items match the lambda expression.
 first: |
-  `first()`: Returns the first item in the list.
+  `first()`: Returns the first item in the list as `Option<T>`. Returns `none` if the list is empty.
 last: |
-  `last()`: Returns the last item in the list.
+  `last()`: Returns the last item in the list as `Option<T>`. Returns `none` if the list is empty.
 get: |
-  `get(index)`: Returns the item at the given index.
+  `get(index)`: Returns the item at the given 0-based index as `Option<T>`. Returns `none` if the index is out of bounds.
 reverse: |
   `reverse()`: Returns the list in reverse order.
 skip: |
