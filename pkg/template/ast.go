@@ -81,6 +81,7 @@ const (
 	KindFunctionCall
 	KindMethodCall
 	KindLambda
+	KindMap
 )
 
 func (k ExpressionKind) String() string {
@@ -107,6 +108,8 @@ func (k ExpressionKind) String() string {
 		return "MethodCall"
 	case KindLambda:
 		return "Lambda"
+	case KindMap:
+		return "Map"
 	}
 	return "Unknown"
 }
@@ -264,6 +267,13 @@ func (e *Expression) LambdaBody() *Expression {
 	return e.payload.(*LambdaExpr).Body
 }
 
+func (e *Expression) MapEntries() []MapEntry {
+	if e.Kind != KindMap {
+		return nil
+	}
+	return e.payload.(*MapExpr).Entries
+}
+
 type IdentifierExpr struct {
 	Name string
 }
@@ -314,6 +324,15 @@ type MethodCallExpr struct {
 type LambdaExpr struct {
 	Params []string
 	Body   *Expression
+}
+
+type MapEntry struct {
+	Key   *Expression
+	Value *Expression
+}
+
+type MapExpr struct {
+	Entries []MapEntry
 }
 
 type KeywordArg struct {

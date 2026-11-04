@@ -83,6 +83,19 @@ edit-invocation-mode = "file-by-file"
 Applies to commands that edit diffs: `jj diffedit`, `jj split`.
 
 
+## Notable Settings (v0.46.0 / v0.47.0)
+
+| Setting | Description |
+|---------|-------------|
+| `git.push` | Default target pattern for `jj git push`: a string pattern or array of patterns. The repeatable `--remote` flag also accepts patterns |
+| `revsets.git-push` | Default revisions targeted by `jj git push` |
+| `git.colocate` | Default colocation behavior for `jj workspace add --colocate` |
+| `aliases.<name>.enabled` | Set `false` to disable a built-in or later-layer alias |
+| `fix.tools.<name>.line-range-args` | Replaces `line-range-arg`: array of string template args passed to the fix tool (more flexible multi-arg ranges) |
+
+`ui.editor` now supports `$path` and `$line` substitution variables, e.g. `ui.editor = ["emacs", "+$line", "$path"]`.
+
+
 ## Removed Config Options
 
 The following options were removed in v0.42.0 (deprecated since v0.36.0):

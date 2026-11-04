@@ -21,9 +21,14 @@ go run . fileset-bare "<expr>"             # parse fileset with bare string fall
 go run . fileset-bare-complete "<expr>"    # fileset-bare completion context as JSON
 go run . template "<expr>"                 # parse template expression, output AST as JSON
 go run . template-complete "<expr>"        # template completion context as JSON
+go run ./cmd/grammardiff                   # compare grammar acceptance with the real jj binary (see below)
 ```
 
 No Makefile, no linter config, no CI config present.
+
+### Grammar Diff (`cmd/grammardiff`)
+
+`go run ./cmd/grammardiff [-jj <path>] [-corpus <path.json>]` runs a bundled corpus of revset, fileset, and template expressions through both this library's parsers and the real `jj` binary (in a throwaway repo with a pristine config), and reports any divergence in grammatical acceptance. jj rejections that are semantic (unknown keywords, unexpected keyword arguments, type errors) are classified separately and do not count as grammar rejections. Output is JSON on stdout; exit 0 = parity, 1 = mismatches (see each entry's `jjError` for jj's message), 2 = harness error (no jj binary, no repo). Use `-corpus` to check a custom expression list. Corpus additions should ride along with the "Syncing with jj Upstream" sections below.
 
 ## Architecture
 
@@ -171,6 +176,13 @@ When modifying operator precedence or parsing rules in `parser.go`, the same cha
 - `:` alone is always an error (suggests `::`)
 - Range operators (`::`, `..`) cannot be nested without parentheses
 - Prefix `::` and `..` do not allow whitespace between operator and operand
+
+### Known revset parser divergences from jj (found by `cmd/grammardiff`)
+
+These are accepted by this library's revset parser but rejected by jj at build time; fixing them is a pending revset-parser strictness task (must be mirrored in the completion parser):
+
+- Pattern shorthand with non-pattern-kind names: `author:exact:"a"` and `author:"x"` — jj's grammar allows `pattern = strict_identifier ":" ...` as an expression primary, but jj rejects it at build time ("`:` is not an infix operator") when the name is not a registered pattern kind. Our parser models the grammar level, so these parse.
+- Whitespace before `@` in `symbol @` positions: `visible("parents(" @-)` is rejected by jj (the grammar is `symbol ~ at_op ~ symbol` / `symbol ~ at_op` with no whitespace), while our parser accepts it.
 
 ### Fileset operator simplicity
 

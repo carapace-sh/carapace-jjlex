@@ -9,9 +9,9 @@ conflict: |
 normal_target: |
   `normal_target()`: Returns the normal target `Option<Commit>` if the ref is not in conflict.
 removed_targets: |
-  `removed_targets()`: Returns the list of removed target Commits.
+  `removed_targets()`: Returns the list of removed target Commits as `List<Option<Commit>>` (vacant for conflicted targets).
 added_targets: |
-  `added_targets()`: Returns the list of added target Commits.
+  `added_targets()`: Returns the list of added target Commits as `List<Option<Commit>>` (vacant for conflicted targets).
 tracked: |
   `tracked()`: Returns `true` if the ref is tracked.
 tracking_present: |

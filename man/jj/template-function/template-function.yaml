@@ -3,7 +3,7 @@
 "false": |
   `false`: Boolean false literal.
 fill: |
-  `fill(width, content)`: Fill lines at the given width.
+  `fill(width, content, [break_words])`: Fill lines at the given width. If `break_words` is true, words longer than `width` are broken to fit.
 indent: |
   `indent(prefix, content)`: Indent non-empty lines with the given prefix.
 pad_start: |
@@ -27,7 +27,9 @@ raw_escape_sequence: |
 stringify: |
   `stringify(content)`: Remove color labels and format content as a string.
 json: |
-  `json(value)`: Serialize the value to JSON format.
+  `json(value)`: Serialize the value to JSON format. Multiple values can be serialized as a JSON object using map literals: `json({"commit_id" => commit_id, "tags" => tags})`.
+revset: |
+  `revset(revset)`: Evaluates the given revset and returns the matching commits as `List<Commit>`. The revset is evaluated once during template parsing if it resolves to a constant string; queries built from values that are only known at runtime (e.g. `self.change_id()`) are evaluated per call.
 if: |
   `if(condition, then, [else])`: Conditional evaluation — returns `then` if `condition` is truthy, otherwise `else`.
 try: |

@@ -40,6 +40,7 @@ func ActionTemplateFunctions() carapace.Action {
 			"separate", "Insert separator between non-empty items",
 			"surround", "Wrap non-empty content",
 			"config", "Look up config value",
+			"revset", "Evaluate a revset expression",
 			"git_web_url", "Convert git URL to HTTPS browse URL",
 			"replace", "Replace matches using pattern",
 			"try", "First successful result, suppresses runtime errors",
@@ -111,10 +112,14 @@ func ActionTemplates() carapace.Action {
 	return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
 		ctx := template.ParseForCompletion(c.Value)
 
-		// Compute the prefix: everything before the partial identifier being typed.
-		// Sub-actions filter against c.Value, so we need to strip this prefix
-		// before invoking them and re-attach it to the completion values.
+		// Compute the prefix: everything before the partial identifier or
+		// string content being typed. Sub-actions filter against c.Value,
+		// so we need to strip this prefix before invoking them and
+		// re-attach it to the completion values.
 		prefix := c.Value[:len(c.Value)-len(ctx.PartialIdent)]
+		if ctx.StringQuote != 0 {
+			prefix = c.Value[:len(c.Value)-len(ctx.PartialString)]
+		}
 
 		if ctx.InPattern {
 			return actionForTemplatePatternValue(ctx).Prefix(prefix)
@@ -122,6 +127,28 @@ func ActionTemplates() carapace.Action {
 
 		if ctx.MethodType != "" {
 			return ActionTemplateTypeMethods(ctx.MethodType).Prefix(prefix)
+		}
+
+		if expectsTemplateToken(ctx, template.ExpectedMapArrow) || expectsTemplateToken(ctx, template.ExpectedClosingBrace) {
+			// Inside a map literal: { template => template }
+			var tokens []string
+			if expectsTemplateToken(ctx, template.ExpectedMapArrow) {
+				tokens = append(tokens, "=>")
+			}
+			if expectsTemplateToken(ctx, template.ExpectedComma) {
+				tokens = append(tokens, ",")
+			}
+			if expectsTemplateToken(ctx, template.ExpectedClosingBrace) {
+				tokens = append(tokens, "}")
+			}
+			batch := carapace.Batch(carapace.ActionValues(tokens...).Prefix(prefix))
+			if expectsTemplateToken(ctx, template.ExpectedExpression) {
+				batch = append(batch, actionTemplateExpression(ctx).Prefix(prefix))
+			}
+			if expectsTemplateToken(ctx, template.ExpectedOperator) {
+				batch = append(batch, ActionTemplateOperators().NoSpace().Prefix(prefix))
+			}
+			return batch.ToA()
 		}
 
 		if ctx.Function != nil {
@@ -179,11 +206,28 @@ func actionTemplateExpression(_ *template.CompletionContext) carapace.Action {
 }
 
 func actionForTemplateFunctionArg(ctx *template.CompletionContext) carapace.Action {
-	if ctx.Function.IsZeroArg {
+	fn := ctx.Function
+	if fn.IsZeroArg {
 		return carapace.ActionValues(")")
 	}
 
-	switch ctx.Function.Name {
+	// Keyword argument name completion (e.g. fill(bre -> break_words=).
+	// The template parser sets ExpectedEquals when a partial identifier
+	// appears as the current function argument.
+	if len(templateKeywordArgs(fn.Name)) > 0 && expectsTemplateToken(ctx, template.ExpectedEquals) {
+		return ActionTemplateKeywordArgs(fn.Name).Suffix("=")
+	}
+
+	// Inside a quoted string argument: revset() and contained_in() take a
+	// revset Stringify, so the string is a symbol reference (bookmark, tag,
+	// commit). Match the revset completion behavior: offer only symbols
+	// valid inside quotes, closing quote as suffix. The caller applies
+	// c.Value-minus-PartialString as prefix.
+	if ctx.StringQuote != 0 && isRevsetStringFunction(fn) {
+		return actionQuotedRevsetArg(RevOpts{}.Default()).Suffix(string(ctx.StringQuote)).NoSpace()
+	}
+
+	switch fn.Name {
 	case "config":
 		return ActionConfigs(true).NoSpace()
 	default:
@@ -192,6 +236,54 @@ func actionForTemplateFunctionArg(ctx *template.CompletionContext) carapace.Acti
 			ActionStringPatterns().Suffix(":"),
 		).ToA().NoSpace()
 	}
+}
+
+// isRevsetStringFunction returns true for template functions whose quoted
+// string argument is a revset symbol reference rather than generic content:
+// the global revset() function and the contained_in() method on Commit.
+func isRevsetStringFunction(fn *template.FunctionContext) bool {
+	if !fn.IsMethod && fn.Name == "revset" {
+		return true
+	}
+	return fn.IsMethod && fn.Name == "contained_in"
+}
+
+// templateKeywordArgs returns the keyword arguments available for a template
+// global function. Only functions registered with expect_named_arguments in
+// jj v0.47.0 (cli/src/template_builder.rs, cli/src/commit_templater.rs) accept
+// keyword arguments; the other optional parameters are positional only (e.g.
+// hyperlink fallback, if else, config name, revset query).
+func templateKeywordArgs(funcName string) []keywordArg {
+	switch funcName {
+	case "fill":
+		return []keywordArg{{"break_words", "Whether to break words longer than width"}}
+	case "pad_start", "pad_end", "pad_centered":
+		return []keywordArg{{"fill_char", "Character used to pad the content"}}
+	case "truncate_start", "truncate_end":
+		return []keywordArg{{"ellipsis", "Ellipsis shown for truncated content"}}
+	case "git_web_url":
+		return []keywordArg{{"remote", "Remote name (defaults to origin)"}}
+	}
+	return nil
+}
+
+// ActionTemplateKeywordArgs completes keyword argument names for a template
+// global function.
+//
+//	break_words (Whether to break words longer than width)
+func ActionTemplateKeywordArgs(funcName string) carapace.Action {
+	return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
+		args := templateKeywordArgs(funcName)
+		if len(args) == 0 {
+			return carapace.ActionValues()
+		}
+		vals := make([]string, 0, len(args)*2)
+		for _, kw := range args {
+			vals = append(vals, kw.name, kw.description)
+		}
+		return carapace.ActionValuesDescribed(vals...)
+	}).Tag("keyword arguments").
+		Uid("jj", "template-keyword-arg", "fn", funcName)
 }
 
 // ActionTemplateTypeMethods completes method names for a template type.
@@ -370,8 +462,8 @@ func templateTypeMethods(typeName string) []templateMethod {
 			{"present", "Whether the ref is present", true},
 			{"conflict", "Whether the ref is in conflict", true},
 			{"normal_target", "Normal target Commit if present", true},
-			{"removed_targets", "List of removed target Commits", true},
-			{"added_targets", "List of added target Commits", true},
+			{"removed_targets", "List of removed target Commits (Option entries)", true},
+			{"added_targets", "List of added target Commits (Option entries)", true},
 			{"tracked", "Whether the ref is tracked", true},
 			{"tracking_present", "Whether a tracking ref exists", true},
 			{"tracking_ahead_count", "SizeHint of ahead count", true},
@@ -418,10 +510,19 @@ func templateTypeMethods(typeName string) []templateMethod {
 	case "TreeEntry":
 		return []templateMethod{
 			{"path", "RepoPath of the file", true},
+			{"normal_value", "Resolved value as Option<TreeValue>", true},
+			{"removed_values", "List of removed TreeValues (Option entries)", true},
+			{"added_values", "List of added TreeValues (Option entries)", true},
 			{"conflict", "Whether the file is conflicted", true},
 			{"conflict_side_count", "Number of conflict sides", true},
 			{"file_type", "File type as String", true},
 			{"executable", "Whether the file is executable", true},
+		}
+	case "TreeValue":
+		return []templateMethod{
+			{"object_id", "Full hex object ID as String", true},
+			{"file_type", "File type as String", true},
+			{"executable", "Whether the value is executable", true},
 		}
 	case "RepoPath":
 		return []templateMethod{
@@ -458,6 +559,7 @@ func templateTypeMethods(typeName string) []templateMethod {
 	case "WorkspaceRef":
 		return []templateMethod{
 			{"name", "Workspace name as RefSymbol", true},
+			{"current_workspace", "Whether this is the current workspace", true},
 			{"target", "Target Commit", true},
 			{"root", "Root path as Option<FsPath>", true},
 		}
@@ -504,14 +606,12 @@ func templateTypeMethods(typeName string) []templateMethod {
 			{"skip", "Skip first N items", false},
 			{"take", "Take first N items", false},
 		}
-	case "List<Trailer>":
-		return []templateMethod{
-			{"contains_key", "Whether list contains key", false},
-		}
 	case "AnyList":
 		return []templateMethod{
 			{"join", "Join with separator as Template", false},
 		}
+	case "List<Trailer>":
+		fallthrough
 	default:
 		return templateTypeMethodsGeneric(typeName)
 	}

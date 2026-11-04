@@ -17,15 +17,41 @@ func methodReturnType(typeName, methodName string) string {
 		inner = strings.TrimSuffix(inner, ">")
 		return methodReturnType(inner, methodName)
 	}
-	// List<T> delegates to generic List for common methods (map, filter, etc.)
-	if inner, ok := strings.CutPrefix(typeName, "List<"); ok {
-		inner = strings.TrimSuffix(inner, ">")
-		_ = inner // element type, not needed for method lookup
-		if rt, ok := typeMethods["List"][methodName]; ok {
+	// List-like types delegate to the generic List methods.
+	if inner, ok := listTypeElement(typeName); ok {
+		switch methodName {
+		case "reverse", "skip", "take":
+			if inner == "" {
+				return "List"
+			}
+			return "List<" + inner + ">"
+		case "first", "last", "get":
+			if inner != "" {
+				// get/first/last return Option<T>
+				return "Option<" + inner + ">"
+			}
+		}
+		if rt, ok := typeMethods["List"][methodName]; ok && rt != "" {
 			return rt
 		}
 	}
 	return ""
+}
+
+// listTypeElement returns the element type of a list-like type name.
+func listTypeElement(typeName string) (string, bool) {
+	if inner, ok := strings.CutPrefix(typeName, "List<"); ok {
+		return strings.TrimSuffix(inner, ">"), true
+	}
+	switch typeName {
+	case "ByteStringList":
+		return "ByteString", true
+	case "StringList":
+		return "String", true
+	case "List", "AnyList":
+		return "", true
+	}
+	return "", false
 }
 
 // globalFunctionReturnType returns the template type returned by a global function.
@@ -186,8 +212,8 @@ var typeMethods = map[string]map[string]string{
 		"present":               "Boolean",
 		"conflict":              "Boolean",
 		"normal_target":         "Option<Commit>",
-		"removed_targets":       "List<Commit>",
-		"added_targets":         "List<Commit>",
+		"removed_targets":       "List<Option<Commit>>",
+		"added_targets":         "List<Option<Commit>>",
 		"tracked":               "Boolean",
 		"tracking_present":      "Boolean",
 		"tracking_ahead_count":  "SizeHint",
@@ -229,10 +255,18 @@ var typeMethods = map[string]map[string]string{
 	},
 	"TreeEntry": {
 		"path":                "RepoPath",
+		"normal_value":        "Option<TreeValue>",
+		"removed_values":      "List<Option<TreeValue>>",
+		"added_values":        "List<Option<TreeValue>>",
 		"conflict":            "Boolean",
 		"conflict_side_count": "Integer",
 		"file_type":           "String",
 		"executable":          "Boolean",
+	},
+	"TreeValue": {
+		"object_id":  "String",
+		"file_type":  "String",
+		"executable": "Boolean",
 	},
 	"RepoPath": {
 		"absolute": "FsPath",
@@ -262,9 +296,10 @@ var typeMethods = map[string]map[string]string{
 		"value": "String",
 	},
 	"WorkspaceRef": {
-		"name":   "RefSymbol",
-		"target": "Commit",
-		"root":   "Option<FsPath>",
+		"name":              "RefSymbol",
+		"current_workspace": "Boolean",
+		"target":            "Commit",
+		"root":              "Option<FsPath>",
 	},
 	"SizeHint": {
 		"lower": "Integer",
@@ -335,6 +370,7 @@ var globalFuncTypes = map[string]string{
 	"separate":            "Template",
 	"surround":            "Template",
 	"config":              "Option<ConfigValue>",
+	"revset":              "List<Commit>",
 	"git_web_url":         "String",
 	"replace":             "Template",
 }

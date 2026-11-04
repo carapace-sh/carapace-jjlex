@@ -41,7 +41,7 @@ change_offset: |
 immutable: |
   `immutable()`: Returns `true` if this commit is immutable.
 contained_in: |
-  `contained_in(revset)`: Returns `true` if this commit is contained in the given revset.
+  `contained_in(revset)`: Returns `true` if this commit is contained in the given revset. The argument is a `Stringify` and may be built dynamically from template values (e.g. `self.change_id()`).
 conflict: |
   `conflict()`: Returns `true` if this commit has files in a conflicted state.
 empty: |

@@ -67,6 +67,8 @@ jj op revert <op-id>    # Revert the effect of a specific operation
 
 Unlike `jj undo`, this can revert any operation — not just the most recent one. It creates a new operation that reverses the target operation's changes.
 
+`jj undo`/`jj redo` refuse to undo or redo an operation that was performed in another workspace; use `--allow-cross-workspace` to allow it anyway (jj 0.46.0+).
+
 Both commands accept a `--what` option:
 - `--what repo` — restore/revert only repo state (bookmarks, heads, etc.)
 - `--what remote-tracking` — restore/revert only remote-tracking bookmark positions

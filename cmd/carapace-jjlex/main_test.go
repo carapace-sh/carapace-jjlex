@@ -566,6 +566,12 @@ var templateSuccessCases = []string{
 	`raw_escape_sequence("\e]8;;" ++ url ++ "\e\\")`,
 	// Hash for redaction
 	`hash(commit_id).substr(0, 4)`,
+	// Map literal JSON object (jj 0.46.0+)
+	`json({"commit_id" => commit_id, "tags" => tags})`,
+	// revset global function (jj 0.47.0+)
+	`revset("mine()").map(|c| c.description().first_line()).join("\n")`,
+	// TreeEntry/TreeValue list methods (jj 0.46.0+/0.47.0+)
+	`diff.files().map(|e| e.added_values().filter(|v| v.executable()).join(",")).join("\n")`,
 	// Empty template (valid per jj grammar: program = SOI ~ template? ~ EOI)
 	"",
 	// Whitespace-only template
@@ -641,6 +647,11 @@ func TestTemplateRoundTrip(t *testing.T) {
 		`exact:foo`,
 		"|| x",
 		"|a| x",
+		`{"a" => "b"}`,
+		`{}`,
+		`{a => b, c => d ++ e}`,
+		`{a => |c| c ++ "x"}`,
+		`{"x:y" => f(g(a), h(b))}`,
 	}
 	for _, input := range cases {
 		t.Run(input, func(t *testing.T) {

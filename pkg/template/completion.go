@@ -12,6 +12,8 @@ const (
 	ExpectedStringClose
 	ExpectedPatternValue
 	ExpectedLambdaClose
+	ExpectedMapArrow
+	ExpectedClosingBrace
 )
 
 func (t ExpectedToken) String() string {
@@ -32,6 +34,10 @@ func (t ExpectedToken) String() string {
 		return "PatternValue"
 	case ExpectedLambdaClose:
 		return "|"
+	case ExpectedMapArrow:
+		return "=>"
+	case ExpectedClosingBrace:
+		return "}"
 	}
 	return "Unknown"
 }

@@ -210,6 +210,7 @@ func (p *parser) parseIntegerLiteral(start int) (*Expression, error) {
 // prefix !, - (handled in parsePrefix)
 // method call x.f() (handled in parseTerm)
 const (
+	precTemplate   = 0 // template level: expression ++ expression
 	precConcat     = 1
 	precLogicalOr  = 2
 	precLogicalAnd = 3

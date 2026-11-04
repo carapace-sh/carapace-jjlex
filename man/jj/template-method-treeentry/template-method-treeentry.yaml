@@ -1,10 +1,16 @@
 path: |
   `path()`: Returns the [RepoPath](jj://template-method-repopath/display) of the file.
+normal_value: |
+  `normal_value()`: Returns the resolved value of the entry as `Option<TreeValue>` [TreeValue](jj://template-method-treevalue/object_id), or none if the entry is absent or conflicted. This includes symlinks, trees, and Git submodules.
+removed_values: |
+  `removed_values()`: Returns the negative (`removes`) terms of the entry as `List<Option<TreeValue>>` if conflicted. Absent terms are `none`.
+added_values: |
+  `added_values()`: Returns the positive (`adds`) terms of the entry as `List<Option<TreeValue>>`. The list usually contains one resolved value. Absent terms are `none`.
 conflict: |
   `conflict()`: Returns `true` if the file is in a conflicted state.
 conflict_side_count: |
   `conflict_side_count()`: Returns the number of conflict sides as an Integer.
 file_type: |
-  `file_type()`: Returns the file type as a [String](jj://template-method-string/len) (e.g. "normal", "symlink", "executable").
+  `file_type()`: Returns the file type as a [String](jj://template-method-string/len): one of `"file"`, `"symlink"`, `"tree"`, `"git-submodule"`, or `"conflict"`.
 executable: |
   `executable()`: Returns `true` if the file is executable.

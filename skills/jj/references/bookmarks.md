@@ -96,3 +96,7 @@ See [revsets.md](revsets.md) for full revset syntax. Key bookmark-related functi
 | `untracked_remote_bookmarks` | `untracked_remote_bookmarks([name_pattern], [[remote=]remote_pattern])` | Targets of untracked remote bookmarks |
 | `tags` | `tags([pattern])` | All tag targets |
 
+
+## Multi-Remote Push (jj 0.46.0+)
+
+`jj git push` can target several remotes at once: pass the repeatable `--remote <pattern>` flag (patterns accepted) or configure defaults via `git.push` (a string pattern or array of patterns). Note that in non-colocated workspaces, fetch and push no longer update remote-tracking Git refs — `jj git export` reflects changes in the underlying Git repo.

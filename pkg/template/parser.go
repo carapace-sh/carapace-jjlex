@@ -336,6 +336,9 @@ func (p *parser) parsePrimary() (*Expression, error) {
 	case ch == '|':
 		return p.parseLambdaOrLogicalOr(start)
 
+	case ch == '{':
+		return p.parseMap(start)
+
 	case isIdentifierStart(ch):
 		return p.parseIdentFuncOrPattern(start)
 
@@ -378,6 +381,67 @@ func (p *parser) parseLambdaOrLogicalOr(start int) (*Expression, error) {
 	}
 	// Regular lambda: |params| expr
 	return p.parseLambda(start)
+}
+
+// parseMap parses a map literal: { template => template, ... }.
+// Matches jj's 'map' grammar rule: entries are template => template pairs
+// separated by commas with optional trailing comma; {} is a valid empty map.
+// Whitespace is allowed around => and , but NOT around { and }.
+func (p *parser) parseMap(start int) (*Expression, error) {
+	p.advance() // consume {
+	var entries []MapEntry
+
+	p.skipWhitespace()
+	if p.peek() == '}' {
+		p.advance()
+		return &Expression{
+			Kind:    KindMap,
+			Span:    Span{Start: start, End: p.pos},
+			payload: &MapExpr{},
+		}, nil
+	}
+
+	for {
+		p.skipWhitespace()
+		key, err := p.parseTemplate()
+		if err != nil {
+			return nil, err
+		}
+		p.skipWhitespace()
+		if p.atEnd() || !p.matchString("=>") {
+			return nil, p.syntaxError("expected '=>' in map literal")
+		}
+		p.pos += 2
+		p.skipWhitespace()
+		value, err := p.parseTemplate()
+		if err != nil {
+			return nil, err
+		}
+		entries = append(entries, MapEntry{Key: key, Value: value})
+
+		p.skipWhitespace()
+		if p.peek() == ',' {
+			p.advance()
+			p.skipWhitespace()
+			if p.peek() == '}' {
+				// trailing comma before } is ok
+				p.advance()
+				break
+			}
+			continue
+		}
+		if p.peek() == '}' {
+			p.advance()
+			break
+		}
+		return nil, p.syntaxError("expected ',' or '}' in map literal")
+	}
+
+	return &Expression{
+		Kind:    KindMap,
+		Span:    Span{Start: start, End: p.pos},
+		payload: &MapExpr{Entries: entries},
+	}, nil
 }
 
 func (p *parser) parseLambda(start int) (*Expression, error) {

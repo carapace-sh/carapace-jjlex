@@ -13,18 +13,25 @@ Listed from **strongest** to **weakest** binding:
 |----------|----------|---------|
 | 1 | `x.f()` | Method call |
 | 2 | `f(x)` | Function call |
-| 3 | `-x` | Negate integer |
-| 4 | `!x` | Logical not |
-| 5 | `p:x` | String pattern |
-| 6 | `x * y`, `x / y`, `x % y` | Multiplication/division/remainder |
-| 7 | `x + y`, `x - y` | Addition/subtraction |
-| 8 | `x >= y`, `x > y`, `x <= y`, `x < y` | Comparison |
-| 9 | `x == y`, `x != y` | Equality |
-| 10 | `x && y` | Logical and |
-| 11 | `x \|\| y` | Logical or |
-| 12 | `x ++ y` | Concatenation (weakest) |
+| 3 | `{k => v, ..}` | Map literal |
+| 4 | `-x` | Negate integer |
+| 5 | `!x` | Logical not |
+| 6 | `p:x` | String pattern |
+| 7 | `x * y`, `x / y`, `x % y` | Multiplication/division/remainder |
+| 8 | `x + y`, `x - y` | Addition/subtraction |
+| 9 | `x >= y`, `x > y`, `x <= y`, `x < y` | Comparison |
+| 10 | `x == y`, `x != y` | Equality |
+| 11 | `x && y` | Logical and |
+| 12 | `x \|\| y` | Logical or |
+| 13 | `x ++ y` | Concatenation (weakest) |
 
 Use parentheses to override precedence.
+
+Map literals (`{ template => template, ... }`) are comma-separated with an optional trailing comma; `{}` is an empty map. They are accepted anywhere a primary expression is allowed, and are mainly used as JSON objects in `json()`:
+
+```javascript
+json({"commit_id" => commit_id, "tags" => tags})
+```
 
 
 ## Global Functions
@@ -33,7 +40,7 @@ Use parentheses to override precedence.
 
 | Function | Returns | Description |
 |----------|---------|-------------|
-| `fill(width, content)` | Template | Fill lines at width |
+| `fill(width, content, [break_words])` | Template | Fill lines at width; break words longer than width if `break_words` is true |
 | `indent(prefix, content)` | Template | Indent non-empty lines with prefix |
 | `pad_start(width, content, [fill_char])` | Template | Left-justify with fill chars |
 | `pad_end(width, content, [fill_char])` | Template | Right-justify with fill chars |
@@ -50,7 +57,8 @@ Use parentheses to override precedence.
 | `hyperlink(url, text, [fallback])` | Template | Render OSC 8 hyperlink |
 | `raw_escape_sequence(content)` | Template | Preserve escape sequences |
 | `stringify(content)` | String | Remove color labels |
-| `json(value)` | String | Serialize to JSON |
+| `json(value)` | String | Serialize to JSON; accepts map literals: `json({"a" => value})` |
+| `revset(revset)` | List\<Commit\> | Evaluate a revset during templating; constants are evaluated at parse time, dynamic queries e.g. `revset(self.change_id())` per call |
 
 ### Conditional/Utility Functions
 
@@ -76,6 +84,18 @@ Replace matches using a lambda with `RegexCaptures`:
 - `.get(index)` — access capture groups
 - `.name(name)` — access named groups
 - `.len()` — number of captures
+
+
+### Optional Named Arguments
+
+Functions accept optional named parameters by keyword-style syntax (these are the only keyword arguments jj declares; other optional parameters such as `hyperlink`'s fallback, `if`'s else branch, or `config`'s name are positional only):
+
+```javascript
+fill(80, description, break_words=true)
+pad_start(10, change_id, fill_char=".")
+truncate_start(10, description, ellipsis="...")
+git_web_url(remote="upstream")
+```
 
 
 ## Color Labels
