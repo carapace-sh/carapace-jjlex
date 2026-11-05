@@ -28,6 +28,15 @@ func (o RevOpts) Default() RevOpts {
 	return o
 }
 
+// revsetQuotedOpts returns opts with RemoteBookmarks disabled, since a single
+// revset quoted string literal (`"name"`) cannot reference a remote bookmark
+// (`"name@origin"` does not resolve). Remote bookmarks are only offered in
+// contexts where the quoted text is a revset expression, not a symbol literal.
+func revsetQuotedOpts(opts RevOpts) RevOpts {
+	opts.RemoteBookmarks = false
+	return opts
+}
+
 // ActionRevs completes revision references (bookmarks, tags, commits, change IDs).
 //
 //	main (last commit message)
@@ -128,7 +137,7 @@ func ActionRevsets(opts RevOpts) carapace.Action {
 			// with the opening quote as prefix and closing quote as suffix.
 			if expectsToken(ctx, revset.ExpectedStringClose) && ctx.StringQuote != 0 {
 				quote := string(ctx.StringQuote)
-				return actionQuotedRevsetArg(opts).Prefix(quote).Suffix(quote).NoSpace()
+				return actionQuotedRevsetArg(revsetQuotedOpts(opts)).Prefix(quote).Suffix(quote).NoSpace()
 			}
 			// After the pattern colon (e.g. exact:foo), the pattern kind is
 			// already determined. Offer revset symbols as the pattern value
@@ -210,7 +219,7 @@ func ActionRevsets(opts RevOpts) carapace.Action {
 		// quote as prefix and closing quote as suffix on the result.
 		if expectsToken(ctx, revset.ExpectedStringClose) && ctx.StringQuote != 0 {
 			quote := string(ctx.StringQuote)
-			return actionQuotedRevsetArg(opts).Prefix(quote).Suffix(quote).NoSpace()
+			return actionQuotedRevsetArg(revsetQuotedOpts(opts)).Prefix(quote).Suffix(quote).NoSpace()
 		}
 
 		if expectsToken(ctx, revset.ExpectedExpression) && expectsToken(ctx, revset.ExpectedOperator) {
@@ -397,6 +406,16 @@ func actionQuotedRevsetArg(opts RevOpts) carapace.Action {
 	if opts.LocalBookmarks {
 		batch = append(batch, actionLocalBookmarksRaw())
 	}
+	if opts.RemoteBookmarks {
+		// Remote bookmarks are referenced as `name@remote` (or
+		// `"name"@remote` for special names). Unlike local bookmarks, they
+		// are already in revset-expression form (with display quoting for
+		// special names), so they are included verbatim and are only valid
+		// in contexts where the quoted string is not itself a revset symbol
+		// literal (e.g. template strings). Revset-context callers pass
+		// RemoteBookmarks=false because `"main@origin"` does not resolve.
+		batch = append(batch, ActionRemoteBookmarks(""))
+	}
 	if opts.Commits > 0 {
 		batch = append(batch, ActionRecentCommits(opts.Commits))
 	}
@@ -448,7 +467,7 @@ func actionForFunctionArg(ctx *revset.CompletionContext, opts RevOpts) carapace.
 	// here. The opening quote is already part of the prefix.
 	if fn.InStringArg && !isStringPatternFunction(fn.Name) {
 		quote := string(ctx.StringQuote)
-		return actionQuotedRevsetArg(opts).Suffix(quote).NoSpace()
+		return actionQuotedRevsetArg(revsetQuotedOpts(opts)).Suffix(quote).NoSpace()
 	}
 
 	switch fn.Name {
