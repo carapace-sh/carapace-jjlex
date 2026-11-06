@@ -2,3 +2,4 @@ cmd/carapace-jjlex/carapace-jjlex
 dist
 profile.cov
 grammardiff
+jj.db
