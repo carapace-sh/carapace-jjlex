@@ -601,7 +601,7 @@ func TestActionTemplatesRevsetStringArg(t *testing.T) {
 
 		// Inside revset("m, the string is a revset symbol reference:
 		// offer bookmarks/tags/commits with the closing quote as suffix.
-		s.Run(`revset("m`).Expect(actionQuotedRevsetArg(RevOpts{}.Default()).Suffix(`"`).Prefix(`revset("`).NoSpace())
+		s.Run(`revset("m`).Expect(actionTemplateRevsetStringNested(RevOpts{}.Default()).Escape().Suffix(`"`).Prefix(`revset("`).NoSpace())
 	})
 }
 
@@ -614,7 +614,22 @@ func TestActionTemplatesContainedInStringArg(t *testing.T) {
 		f.CreateBookmark("main")
 
 		s.Run(`self.contained_in("m`).Expect(
-			actionQuotedRevsetArg(RevOpts{}.Default()).Suffix(`"`).Prefix(`self.contained_in("`),
+			actionTemplateRevsetStringNested(RevOpts{}.Default()).Escape().Suffix(`"`).Prefix(`self.contained_in("`),
 		)
+	})
+}
+
+func TestActionTemplatesRevsetOperatorUnquoted(t *testing.T) {
+	sandbox.Action(t, func() carapace.Action {
+		return ActionTemplates()
+	})(func(s *sandbox.Sandbox) {
+		f := fixture.InitT(t, s)
+		f.CommitAdd("a.txt", "a", "first commit")
+		f.CreateBookmark("main")
+
+		// Operators must appear unquoted in the completion output.
+		r := s.Run(`revset("`)
+		// The expected action mirrors what ActionTemplates produces.
+		r.Expect(actionTemplateRevsetStringNested(RevOpts{}.Default()).Escape().Suffix(`"`).Prefix(`revset("`).NoSpace())
 	})
 }
