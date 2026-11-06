@@ -2,6 +2,8 @@ version: 2
 before:
   hooks:
     - go mod download
+    - sh -c 'curl -fsSL https://github.com/carapace-sh/carapace-man/releases/download/v0.0.6/carapace-man_0.0.6_linux_amd64.tar.gz | tar -xz -C /usr/local/bin'
+    - carapace-man compile man jj.db
 builds:
   - id: default
     env:
@@ -19,3 +21,6 @@ archives:
     format_overrides:
       - goos: windows
         formats: [zip]
+release:
+  extra_files:
+    - glob: ./jj.db
