@@ -224,7 +224,7 @@ func actionForTemplateFunctionArg(ctx *template.CompletionContext) carapace.Acti
 	// valid inside quotes, closing quote as suffix. The caller applies
 	// c.Value-minus-PartialString as prefix.
 	if ctx.StringQuote != 0 && isRevsetStringFunction(fn) {
-		return actionQuotedRevsetArg(RevOpts{}.Default()).Suffix(string(ctx.StringQuote)).NoSpace()
+		return actionTemplateRevsetStringNested(RevOpts{}.Default()).Escape().Suffix(string(ctx.StringQuote)).NoSpace()
 	}
 
 	switch fn.Name {
