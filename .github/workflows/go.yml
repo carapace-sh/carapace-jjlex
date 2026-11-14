@@ -47,10 +47,10 @@ jobs:
       run: go install honnef.co/go/tools/cmd/staticcheck@latest && staticcheck ./...
 
     - name: install carapace-man
-      run: curl -fsSL https://github.com/carapace-sh/carapace-man/releases/download/v0.0.6/carapace-man_0.0.6_linux_amd64.tar.gz | tar -xz -C /usr/local/bin
+      run: curl -fsSL https://github.com/carapace-sh/carapace-man/releases/download/v0.0.7/carapace-man_0.0.7_linux_amd64.tar.gz | tar -xz -C /usr/local/bin
 
     - name: compile man pages
-      run: carapace-man compile man jj.db
+      run: carapace-man compile man jj.db.gz
 
     - name: Run GoReleaser
       uses: goreleaser/goreleaser-action@v7
