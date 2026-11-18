@@ -58,13 +58,18 @@ func ActionRevDiffs(revisions ...string) carapace.Action {
 }
 
 // ActionRevChanges completes files changed in given revisions with add/remove status.
+// Defaults to the working copy when no revisions are given.
 //
 //	go.mod (M)
 //	new_file.rs (A)
 func ActionRevChanges(revisions ...string) carapace.Action {
 	return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
+		revs := revisions
+		if len(revs) == 0 {
+			revs = []string{"@"}
+		}
 		args := []string{"log", "--summary", "--no-graph", "--template", ""}
-		for _, revision := range revisions {
+		for _, revision := range revs {
 			args = append(args, "--revisions", revision)
 		}
 		return actionExecJJ(args...)(func(output []byte) carapace.Action {
@@ -79,8 +84,12 @@ func ActionRevChanges(revisions ...string) carapace.Action {
 			return carapace.ActionValuesDescribed(vals...).MultiParts("/").StyleF(style.ForPathExt)
 		})
 	}).Tag("rev changes").UidF(func(s string, uc uid.Context) (*url.URL, error) {
-		opts := make([]string, 0, len(revisions)*2)
-		for _, rev := range revisions {
+		revs := revisions
+		if len(revs) == 0 {
+			revs = []string{"@"}
+		}
+		opts := make([]string, 0, len(revs)*2)
+		for _, rev := range revs {
 			opts = append(opts, "revision", rev)
 		}
 		return Uid("rev-change", opts...)(s, uc)
